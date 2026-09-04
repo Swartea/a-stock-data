@@ -6,6 +6,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # venv 位于仓库根目录（不在 scripts/ 下），所以向上跳一级
 PY="$SCRIPT_DIR/../venv/bin/python"
+# 抑制 Python 3.12 的弃用警告 stderr，避免某些终端适配器阻塞读 stderr 卡死
+PY_FLAGS="-W ignore"
 
 # 自动加载 .env (如果存在)
 if [ -f "$SCRIPT_DIR/.env" ]; then
@@ -17,7 +19,7 @@ fi
 
 if [ "$1" = "-c" ]; then
   shift
-  exec "$PY" -c "$*"
+  exec "$PY" $PY_FLAGS -c "$*"
 else
-  exec "$PY" "$@"
+  exec "$PY" $PY_FLAGS "$@"
 fi
