@@ -1,0 +1,29 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# 系统
+.DS_Store
+*.swp
+*.swo
+
+# 日志与缓存
+*.log
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# 编辑器
+.idea/
+.vscode/
+*.iml
+
+# 临时/输出（按需放开）
+*.tmp
+*.bak
+
+# reports/ 下生成的归档无需 git 追踪（按需放开）
+# reports/**/*.html
+# reports/**/*.docx
