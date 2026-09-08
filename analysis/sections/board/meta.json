@@ -1,0 +1,18 @@
+{
+  "label": "board",
+  "title": "🎰 打板情绪",
+  "weight": 8,
+  "sort_order": 60,
+  "source_ref": "§8.1-8.3",
+  "data_sources": [
+    "em_zt_pool",
+    "em_zb_pool",
+    "em_dt_pool",
+    "em_yzt_pool",
+    "ths_limit_up_pool",
+    "limit_up_sentiment"
+  ],
+  "fetcher": "fetcher.py:fetch_board",
+  "render_html": "render.py:render_html",
+  "render_md": "render.py:render_md"
+}
