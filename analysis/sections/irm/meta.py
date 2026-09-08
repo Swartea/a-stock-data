@@ -16,8 +16,8 @@ class IRMSection(Section):
     def fetch(self, code: str, ctx: dict) -> dict:
         return fetch_irm(code, limit=5)
 
-    def render_html(self, result: dict, writer: list) -> str:
+    def render_html(self, result: dict, writer: list | None = None) -> str:
         return render_html(result, writer)
 
-    def render_md(self, result: dict, writer: list) -> str:
+    def render_md(self, result: dict, writer: list | None = None) -> str:
         return render_md(result, writer)

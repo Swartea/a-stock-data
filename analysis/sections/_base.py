@@ -39,12 +39,12 @@ class Section(ABC):
         pass
 
     @abstractmethod
-    def render_html(self, result: dict, writer: list) -> str:
+    def render_html(self, result: dict, writer: list | None = None) -> str:
         """渲染 HTML 片段到 result dict
 
         Args:
             result: 当前节的 result key
-            writer: HTML 写入列表（append 字符串）
+            writer: HTML 写入列表（append 字符串）。Phase 1 灰度: 可选, 多数 section 仅用返回值, writer 保留向后兼容
 
         Returns:
             完整 HTML 片段字符串
@@ -52,12 +52,12 @@ class Section(ABC):
         pass
 
     @abstractmethod
-    def render_md(self, result: dict, writer: list) -> str:
+    def render_md(self, result: dict, writer: list | None = None) -> str:
         """渲染 MD 片段到 result dict
 
         Args:
             result: 当前节的 result key
-            writer: MD 写入列表（append 字符串）
+            writer: MD 写入列表（append 字符串）。Phase 1 灰度: 可选, 多数 section 仅用返回值, writer 保留向后兼容
 
         Returns:
             完整 MD 片段字符串
