@@ -1545,7 +1545,10 @@ def eastmoney_fund_flow_minute(code: str) -> list[dict]:
     #    600519/300750 各返回 100 条，而 510300/588000 即便 secid 正确仍为 0 条 ——
     #    东财这个**个股**资金流接口本身不覆盖 ETF。ETF 资金流请另找端点。
     secid = em_secid(code)
-    url = "https://push2.eastmoney.com/api/qt/stock/fflow/kline/get"
+    url = "https://push2his.eastmoney.com/api/qt/stock/fflow/kline/get"
+    # 注：本节为分钟级，保留 kline path（klt=1）。
+    # 日级粒度用 daykline/get（见 §4.5 stock_fund_flow_120d）。
+    # 资金流主源已切 push2his（与 §4.5 一致），其他东财端点仍走 push2。
     params = {
         "secid": secid, "klt": 1,
         "fields1": "f1,f2,f3,f7",
