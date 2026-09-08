@@ -1,0 +1,11 @@
+{
+  "label": "dividend",
+  "title": "💰 分红送转",
+  "weight": 7,
+  "sort_order": 55,
+  "source_ref": "§4.4",
+  "data_sources": ["dividend_history"],
+  "fetcher": "fetcher.py:fetch_dividend",
+  "render_html": "render.py:render_html",
+  "render_md": "render.py:render_md"
+}
