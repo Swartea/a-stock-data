@@ -350,6 +350,96 @@ def compute_three_levels(quote, chip_data, trading_plan=None):
     }
 
 
+# ============================================================
+# 北向资金口径分类 — 债 3 修法 (Task 5.3)
+# 背景: docs/04-模板质量债.md 债 3 — 美湖股份(603319) 报告 "北向净流入 370.5 亿"
+#       与个股流通市值 102 亿 严重不符; 怀疑模板把"全市场北向"误当个股口径填入。
+# 实测 (scripts/verify_north_scope.py, 600693 2026-09-08):
+#   macro.hsgt = {"latest_hgt_yi": -9.28, "latest_sgt_yi": 379.75,
+#                  "total_yi": 370.47, "data_points": 262}
+#   → 同花顺 dayChart 接口确实返回"全市场"沪股通+深股通, 不是个股北向持股变化。
+#   → 370.5 亿 = 沪 -9.28 + 深 379.75, **就是全市场值**, 数据本身正确;
+#     错的只是模板未显式标 "scope", 看报告者容易误读为"个股北向"。
+# 修法:
+#   1) 加 _classify_north_scope() 推断 scope (market / stock / mixed / unknown)
+#   2) result["macro"]["north_scope"] + ["north_label"] 注入 4 元组
+#   3) 3 渲染器 (MD/HTML/DOCX) 读 north_label 替代 hardcode
+# 字段名映射 (实测 vs plan 假设):
+#   实测 (V3 实际返回):  total_yi / latest_hgt_yi / latest_sgt_yi
+#   plan 假设 (错误):    total / sh / sz — **已校准为本节实际 keys**
+#   个股北向特征字段 (前向兼容, 暂未在 V3 启用):
+#     stock_change_pct / stock_holding_ratio / holdings_change / north_holding_pct
+# ============================================================
+def _classify_north_scope(north_data) -> tuple:
+    """根据北向接口返回字段推断 scope, 返回 (scope, label)。
+
+    Args:
+        north_data: dict — V2 同花顺 dayChart 返回值
+                    实际 keys: latest_hgt_yi / latest_sgt_yi / total_yi / data_points
+                    个股北向 (前向兼容): stock_change_pct / stock_holding_ratio 等
+
+    Returns:
+        (scope, label) — scope ∈ {"market", "stock", "mixed", "unknown"}
+                          label — 渲染层直接用的中文描述 (含 scope 关键词)
+    """
+    if not north_data or not isinstance(north_data, dict):
+        return ("unknown", "北向数据缺失")
+
+    # 全市场北向特征字段 (V3 实际: total_yi + latest_hgt_yi/latest_sgt_yi)
+    has_market = any(k in north_data for k in (
+        "total_yi", "total", "north_net", "sh_net", "sz_net",
+        "latest_hgt_yi", "latest_sgt_yi", "hgt", "sgt"
+    ))
+    # 个股北向持股变化特征字段 (前向兼容, V3 当前未启用)
+    has_stock = any(k in north_data for k in (
+        "stock_change_pct", "stock_holding_ratio",
+        "holdings_change", "north_holding_pct", "holding_ratio_chg"
+    ))
+
+    if has_market and not has_stock:
+        # 全市场 (V3 现状): 沪 + 深 净买入 (亿)
+        hgt = (north_data.get("latest_hgt_yi")
+               or north_data.get("hgt")
+               or north_data.get("sh_net") or 0)
+        sgt = (north_data.get("latest_sgt_yi")
+               or north_data.get("sgt")
+               or north_data.get("sz_net") or 0)
+        total = (north_data.get("total_yi")
+                 or north_data.get("total")
+                 or north_data.get("north_net")
+                 or (hgt + sgt))
+        # type-safe: 兜底非数字 → 0
+        try:
+            hgt, sgt, total = float(hgt), float(sgt), float(total)
+        except (TypeError, ValueError):
+            hgt, sgt, total = 0.0, 0.0, 0.0
+        return ("market",
+                f"北向资金(全市场口径): 沪股通 {hgt:+.1f} 亿 / "
+                f"深股通 {sgt:+.1f} 亿 ｜ 合计 {total:+.1f} 亿")
+
+    if has_stock and not has_market:
+        # 个股北向持股变化 (前向兼容, 暂未启用)
+        pct = (north_data.get("stock_change_pct")
+               or north_data.get("holdings_change") or 0)
+        ratio = (north_data.get("stock_holding_ratio")
+                 or north_data.get("north_holding_pct") or 0)
+        try:
+            pct, ratio = float(pct), float(ratio)
+        except (TypeError, ValueError):
+            pct, ratio = 0.0, 0.0
+        return ("stock",
+                f"北向资金(个股口径): 持股变化 {pct:+.2f}% ｜ 持股比例 {ratio:.2f}%")
+
+    if has_market and has_stock:
+        # 混合: 同时返回全市场 + 个股
+        total = float(north_data.get("total_yi", 0) or 0)
+        pct = float(north_data.get("stock_change_pct", 0) or 0)
+        return ("mixed",
+                f"北向资金(混合): 全市场 {total:+.1f} 亿 + 个股持股 {pct:+.2f}%")
+
+    return ("unknown", "北向数据口径未明")
+
+
 def _fmt_time(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
 
@@ -868,6 +958,16 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         "report_date": datetime.now().strftime("%Y-%m-%d"),
         **sections_data,  # Phase 1: 注入 section.label (irm) 作为 result 顶层 key
     }
+
+    # ---- 5.5 北向资金口径分类 (债 3 修法, Task 5.3) ----
+    # 在 result 顶层加 macro.north_scope + macro.north_label,
+    # 渲染层 (MD/HTML/DOCX) 直接读 north_label 替代 hardcode, 杜绝"全市场当个股"误读。
+    # 严守 Task 5.1/5.2 锁定: 不覆盖 trading_plan / three_levels。
+    _north_data = (result.get("macro") or {}).get("hsgt") or {}
+    _scope, _label = _classify_north_scope(_north_data)
+    result["macro"]["north_scope"] = _scope      # "market" / "stock" / "mixed" / "unknown"
+    result["macro"]["north_label"] = _label      # 模板直接用的字符串 (含 scope 关键词)
+    print(f"[v3] 北向资金 scope={_scope} label='{_label}'")
 
     # ---- 6. run_log 收尾: guard + 时点 ----
     fresh = _kline_freshness(chip_data)
@@ -1757,10 +1857,12 @@ def write_markdown_report_v3(r: dict) -> str:
     macro = r.get("macro") or {}
     if isinstance(macro, dict):
         L.append("## 🌏 宏观底色 (全市场)")
-        hsgt = macro.get("hsgt") or {}
-        if hsgt:
-            L.append(f"- 北向资金(全市场口径): 沪股通 {_fnum(hsgt.get('latest_hgt_yi'),1)} 亿 / "
-                     f"深股通 {_fnum(hsgt.get('latest_sgt_yi'),1)} 亿 ｜ 合计 {_fnum(hsgt.get('total_yi'),1)} 亿")
+        # 债 3 修法 (Task 5.3): 读 macro.north_label 替代 hardcode,
+        # 杜绝"全市场北向"被误读为"个股北向" (370 亿 vs 102 亿流通市值的真实问题)。
+        # north_label 由 analyze_single_v3 注入 (_classify_north_scope 推断), 含 scope 关键词。
+        _north_label = macro.get("north_label")
+        if _north_label:
+            L.append(f"- {_north_label}")
         inds = macro.get("industries") or []
         if inds:
             L.append("- 领涨行业: " + "、".join(
@@ -1768,7 +1870,7 @@ def write_markdown_report_v3(r: dict) -> str:
         tags = macro.get("hot_tags") or []
         if tags:
             L.append("- 强势股题材词频: " + " | ".join(f"{t}({c})" for t, c in tags[:6]))
-        if not (hsgt or inds or tags):
+        if not (_north_label or inds or tags):
             L.append("- (北向/行业/强势股全部为空)")
         L.append(_src_foot("宏观底色", metas.get("宏观底色")))
         L.append("")
