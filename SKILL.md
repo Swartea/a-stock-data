@@ -731,6 +731,8 @@ def eastmoney_datacenter(report_name: str, columns: str = "ALL",
     return []
 ```
 
+📎 详见 analysis/references/session-2026-09-03-lessons.md（沙盒可用性表）+ pitfalls.md
+
 ---
 
 ## Layer 1: 行情层（实时，不封IP）
@@ -900,6 +902,8 @@ etf_quotes = tencent_quote(["510050", "510300"])
 > 实测中船特气(688146)：`f[44]=356.15亿`(流通股本 1.45亿股)、`f[45]=1300.61亿`(总股本 5.29亿股)，**差 3.65 倍**。
 > 用市值做筛选时取错会把大市值公司误判成小盘股。可用 `f[45] ÷ 现价` 反推总股本核对（与东财 `f84` 一致）。
 > 参考：东财 push2 的 `f116`=总市值 / `f117`=流通市值 方向与腾讯相反，实测确认无误，勿混用。
+
+📎 详见 analysis/references/session-2026-09-03-lessons.md §1.1（urllib 卡死，改 requests）
 
 ### 1.3 🔥 百度股市通 K线 — 带MA5/MA10/MA20（V3.0 新增）
 
@@ -2834,6 +2838,8 @@ print("停牌天数:", (df["tradestatus"] == "0").sum())
 | `tradestatus` | `1`=正常交易 `0`=停牌 | 算指标前应过滤掉停牌日 |
 | `isST` | `1`=ST/*ST `0`=正常 | 历史逐日标记，可还原「当时是不是 ST」 |
 
+📎 详见 analysis/references/baostock-pitfalls.md（Pitfall 1/2 silent failure 案例）
+
 ---
 
 ### 6.6 🆕🔥 baostock 标的基本信息 — 上市日 / 退市日 / 状态（V3.7.0 新增）
@@ -2859,6 +2865,8 @@ print(baostock_stock_basic("600519"))
 > 🔴 **已退市标的的除权除息，三个源全缺**（2026-08 交叉验证）：通达信 `xdxr()` 即使传对
 > `market=2` 也返回 0 条、东财历史快照同样没有、baostock 直接拒绝北交所代码。
 > 已退市标的（尤其北交所）**做复权必然对不上**，不是本工具包的缺陷，是源侧的保留策略。
+
+📎 详见 analysis/references/baostock-pitfalls.md
 
 ---
 
@@ -2939,6 +2947,8 @@ for d in ("2013-01-01", "2016-01-01", "2026-08-18"):
 
 > **典型用法：** 做行业轮动回测时，每个调仓日调用 `sw_industry_as_of()` 取**当时**的归属，
 > 而不是用一张当前分类表贯穿全程。实测有标的历史上变更过 **10 次**行业。
+
+📎 详见 analysis/references/pitfalls.md（P2 SSL 失败）
 
 ---
 
@@ -3864,6 +3874,8 @@ def calc_peg(pe: float, cagr: float) -> float:
 期权定价例外: PEG > 3 但壁垒极深时，本质是看涨期权，不适用PEG框架。
 ```
 
+📎 详见 analysis/references/report-design-principles.md（4 段式）+ report-delivery.md（用户偏好）
+
 ---
 
 ## 完整调研流程
@@ -4240,6 +4252,15 @@ export IWENCAI_API_KEY="your_key_here"
 
 # 5. 启动 Claude Code，说"查一下688017的估值"即可自动激活
 ```
+
+---
+
+## 🔄 升级/同步
+
+> 这一节专门讲从 GitHub 拉新版 / 升级依赖 / 排查部署问题。install 只是第一次的步骤，sync 才是日常维护。
+> 升级前必看：先查本地版本与 GitHub 是否有差异，避免"README 滞后"导致按错文档踩坑。
+
+📎 详见 analysis/references/sync-from-github.md（sync 不是 install）+ deployment-gotchas.md
 
 ---
 
