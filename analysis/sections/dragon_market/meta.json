@@ -1,0 +1,11 @@
+{
+  "label": "dragon_market",
+  "title": "🐉 龙虎榜动向（市场）",
+  "weight": 9,
+  "sort_order": 65,
+  "source_ref": "§3.9",
+  "data_sources": ["daily_dragon_tiger"],
+  "fetcher": "fetcher.py:fetch_dragon_market",
+  "render_html": "render.py:render_html",
+  "render_md": "render.py:render_md"
+}
