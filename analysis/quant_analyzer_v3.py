@@ -655,8 +655,8 @@ def _emit(code: str, name: str, result: dict) -> dict:
     md_path = os.path.join(day_dir, f"{base}.md")
     html_path = os.path.join(day_dir, f"{base}.html")
     docx_path = os.path.join(day_dir, f"{base}.docx")
-    json_path = os.path.join(day_dir, "result_v3.json")
-    log_path = os.path.join(day_dir, "run_log.json")
+    json_path = os.path.join(day_dir, f"result_v3-{hhmm}.json")
+    log_path = os.path.join(day_dir, f"run_log-{hhmm}.json")
 
     # ① MD
     md_text = write_markdown_report_v3(result)
@@ -743,7 +743,7 @@ def _dump_run_log(code: str, name: str, run_log: dict):
     day_dir = os.path.join(REPORTS_ROOT, f"{code}_{safe_name}",
                            datetime.now().strftime("%Y-%m-%d"))
     os.makedirs(day_dir, exist_ok=True)
-    with open(os.path.join(day_dir, "run_log.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(day_dir, f"run_log-{datetime.now().strftime('%H%M')}.json"), "w", encoding="utf-8") as f:
         json.dump(run_log, f, ensure_ascii=False, indent=2, default=str)
 
 

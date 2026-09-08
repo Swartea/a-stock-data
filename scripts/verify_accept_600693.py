@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """600693 东百集团首票验收辅助检查（纯 stdlib，不碰 venv）"""
-import json, re, zipfile
+import glob, json, os, re, zipfile
 from pathlib import Path
 
 BASE = Path("/Users/swarteachou/Desktop/大A数据")
@@ -10,8 +10,12 @@ D = BASE / "reports" / "600693_东百集团" / "2026-09-07"
 def load(p):
     return json.loads(Path(p).read_text(encoding="utf-8"))
 
-r = load(D / "result_v3.json")
-print("=== result_v3.json 顶层 keys ===")
+# result_v3.json → result_v3-{HHMM}.json (V3 命名 bug fix; glob 取最新)
+result_files = glob.glob(str(D / "result_v3-*.json"))
+assert result_files, f"未找到 result_v3-*.json in {D}"
+result_path = max(result_files, key=os.path.getmtime)
+r = load(result_path)
+print(f"=== {Path(result_path).name} 顶层 keys ===")
 print(list(r.keys()))
 for k, v in r.items():
     if not isinstance(v, (dict, list)):
