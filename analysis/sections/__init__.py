@@ -18,12 +18,13 @@ SECTIONS: List[Section] = []
 # 当前为空实现，确保 enabled_sections() 返回空列表，避免循环依赖。
 def _register_sections():
     from .irm import IRMSection
-    # from .holders import HoldersSection
+    from .holders import HoldersSection
     # from .dividend import DividendSection
     # from .board import BoardSection
     # from .dragon_market import DragonMarketSection
     SECTIONS.extend([
         IRMSection(),
+        HoldersSection(),
     ])
     SECTIONS.sort(key=lambda s: s.sort_order)
 
