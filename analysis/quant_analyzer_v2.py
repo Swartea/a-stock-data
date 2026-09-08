@@ -948,10 +948,11 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
     if hot_count >= 5: sent_score += 3; factors.append(f"覆盖{hot_count}个上涨概念 +3")
     elif hot_count >= 2: sent_score += 1; factors.append(f"覆盖{hot_count}个上涨概念 +1")
     elif hot_count == 0: sent_score -= 1; factors.append("无热门概念 -1")
-    # 北向
+    # 北向 — 债 3 round 1 修法 (Task 5.3 follow-up)
+    # 加 scope 标签: hsgt 接口返"全市场"沪+深股通, 不是个股北向, 显式标注避免误读为个股口径
     hsgt = macro.get("hsgt", {})
-    if hsgt.get("total_yi", 0) > 5: sent_score += 1; factors.append(f"北向净流入{hsgt.get('total_yi',0):.1f}亿 +1")
-    elif hsgt.get("total_yi", 0) < -10: sent_score -= 1; factors.append(f"北向净流出{-hsgt.get('total_yi',0):.1f}亿 -1")
+    if hsgt.get("total_yi", 0) > 5: sent_score += 1; factors.append(f"北向资金(全市场)净流入{hsgt.get('total_yi',0):.1f}亿 +1")
+    elif hsgt.get("total_yi", 0) < -10: sent_score -= 1; factors.append(f"北向资金(全市场)净流出{-hsgt.get('total_yi',0):.1f}亿 -1")
     sent_score = max(0, min(sent_score, 8))
 
     # ---- 7. 风险因子 10分 ----
