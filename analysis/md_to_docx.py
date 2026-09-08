@@ -25,6 +25,15 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, Inches, RGBColor
 
+# ---------------------------------------------------------------- Phase 1: Section Registry
+# 容错 import: 缺则降级, 不阻断主流程 (Task 1.5: 6 块后追加 section 渲染)
+try:
+    from sections import enabled_sections
+    _SECTIONS_OK = True
+except Exception:  # noqa: BLE001
+    enabled_sections = None
+    _SECTIONS_OK = False
+
 # ---------------------------------------------------------------- 设计 token
 # docs/06 §2.1：禁纯黑；打印 AA 用加深过的警告/正色
 C_DARK   = RGBColor(0x1C, 0x19, 0x17)   # 文字
@@ -368,6 +377,81 @@ def flush_table(doc, table_rows, stats):
     table_rows.clear()
 
 
+# ---------------------------------------------------------------- Section Registry 辅助
+def _load_result_near(md_path):
+    """从 md_path 同目录读 result_v3-*.json (Task 1.5: 不依赖 V3 caller 改签名)
+    Returns: dict 或 None (任何 IO/JSON 错误均返回 None)
+    """
+    try:
+        import json as _json
+        d = Path(md_path).parent
+        # 优先匹配 stem 末尾 -HHMM 时间戳的 json
+        stem = Path(md_path).stem  # e.g. "600693-东百集团-1616"
+        cand = []
+        m = re.search(r"-(\d{4})$", stem)
+        if m:
+            cand = list(d.glob(f"result_v3-{m.group(1)}.json"))
+        if not cand:
+            cand = list(d.glob("result_v3-*.json"))
+        if not cand:
+            return None
+        latest = max(cand, key=lambda p: p.stat().st_mtime)
+        return _json.loads(latest.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _render_md_block(doc, md_text, stats):
+    """把一段 markdown 文本追加到 docx, 复用样式函数 (Task 1.5: section registry)
+    逻辑与主流程的 while 循环等价, 但自带 cur_h2 / risk_zone / table_rows 状态
+    """
+    lines = md_text.split("\n")
+    i = 0
+    in_table = False
+    table_rows = []
+    cur_h2 = ""
+    risk_zone = False
+    while i < len(lines):
+        line = lines[i]
+        i += 1
+        if line.strip().startswith("|") and line.strip().endswith("|"):
+            table_rows.append(line)
+            in_table = True
+            continue
+        elif in_table:
+            flush_table(doc, table_rows, stats)
+            in_table = False
+        m = re.match(r"^(#{1,6})\s+(.+)$", line)
+        if m:
+            level = len(m.group(1))
+            text = m.group(2).strip()
+            add_heading(doc, text, level, stats)
+            if level == 2:
+                cur_h2 = text
+                risk_zone = bool(re.search(r"风险警报", cur_h2))
+            continue
+        if re.match(r"^-{3,}$", line.strip()):
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r = p.add_run("─" * 40)
+            _fmt(r, size=9, color=C_MUTED)
+            p.paragraph_format.space_before = Pt(4)
+            p.paragraph_format.space_after = Pt(4)
+            stats["paragraphs"] += 1
+            continue
+        if line.startswith(">"):
+            add_quote(doc, line[1:], stats, in_conclusion=(cur_h2.startswith("🎯")))
+            continue
+        if not line.strip():
+            continue
+        if line.startswith("⚠️ 免责声明") or line.startswith("⚠ 免责声明"):
+            add_body(doc, line, stats, disclaimer=True)
+            continue
+        add_body(doc, line, stats, risk_zone=risk_zone)
+    if in_table:
+        flush_table(doc, table_rows, stats)
+
+
 # ---------------------------------------------------------------- 主流程
 def md_to_docx(md_path: str, docx_path: str) -> None:
     md = Path(md_path).read_text(encoding="utf-8")
@@ -447,6 +531,22 @@ def md_to_docx(md_path: str, docx_path: str) -> None:
     # 末尾表格
     if in_table:
         local_flush()
+
+    # ---- §3.3 灰度: 6 块之后追加 Section Registry 渲染循环 ----
+    # 5 新节(irm/holders/dividend/board/dragon_market)走注册表, 旧 6 块仍保留
+    # writer 语义钉死: 不传 writer, 只取返回值 (Task 1.4 教训: writer 是 list 但实际不 append)
+    if _SECTIONS_OK and enabled_sections is not None:
+        result = _load_result_near(md_path)
+        if result:
+            for sec in enabled_sections():
+                try:
+                    sec_data = result.get(sec.label, {}) or {}
+                    sec_md = sec.render_md(sec_data)
+                    if sec_md:
+                        _render_md_block(doc, sec_md, stats)
+                except Exception:  # noqa: BLE001
+                    # 单节失败不阻断其他渲染 (per-section isolation)
+                    pass
 
     # ---------------------------------------------------------- 页脚
     sec = doc.sections[0]
