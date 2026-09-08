@@ -594,6 +594,30 @@ def _render_checklist(result, state):
     rows = []
     box = '<span class="box">☐</span>'
 
+    # 三价位(同源) 行（债 2 修法, Task 5.2）— 4 支撑/3 压力候选 → 取最近者 (+/-5% 过滤)
+    # 优先读 result['three_levels']; 兜底用 plan['entry_low'/'tp1'/'stop_loss']
+    tl3 = result.get("three_levels") or {}
+    if isinstance(tl3, dict) and (tl3.get("support") or tl3.get("resistance")):
+        tl_sup = tl3.get("support") or sup_low
+        tl_res = tl3.get("resistance") or pres
+        tl_sl = tl3.get("stop_loss") or sl
+        sup_cands = tl3.get("support_candidates") or {}
+        res_cands = tl3.get("resistance_candidates") or {}
+        tl_summary = ("三价位(同源): 支撑=%s 压力=%s 止损=%s" %
+                      (("%.2f" % float(tl_sup)) if tl_sup is not None else "—",
+                       ("%.2f" % float(tl_res)) if tl_res is not None else "—",
+                       ("%.2f" % float(tl_sl)) if tl_sl is not None else "—"))
+        tl_detail = ""
+        if sup_cands:
+            tl_detail += " | 4 支撑候选: " + " / ".join(
+                "%s=%s" % (k, ("%.2f" % float(v)) if v is not None else "—")
+                for k, v in sup_cands.items())
+        if res_cands:
+            tl_detail += " | 3 压力候选: " + " / ".join(
+                "%s=%s" % (k, ("%.2f" % float(v)) if v is not None else "—")
+                for k, v in res_cands.items())
+        rows.append(('watch', '三价位(同源)', _esc(tl_summary + tl_detail)))
+
     # 操作口诀行（债 1 修法, 5 状态独立模板）
     if template_used:
         rows.append(('watch', '操作口诀（5 状态机）', _esc(template_used)))

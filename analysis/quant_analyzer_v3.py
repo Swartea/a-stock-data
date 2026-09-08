@@ -193,6 +193,163 @@ _STATE_DISPLAY = {
 }
 
 
+# ============================================================
+# 三价位表 (债 2 修法, Task 5.2) — 4 候选取最近者
+# ============================================================
+# 字段名映射 (plan 假设 → V3 实际):
+#   - plan 假设 `chip_data.cost_concentration.peak_price` 实际是 `chip_data["peak_price"]` (v2 chip_distribution 平铺, line 572)
+#   - plan 假设 `technical.{ma60,recent_low,recent_high,boll_lower,boll_upper,ma250}` 在 V3 不存在
+#     → 自己从 `chip_data["kline"]` (~250 日 baostock 前复权 K 线, v2 line 618) 现算
+def _klines_to_series(chip_data):
+    """从 chip_data['kline'] 提取 [{date, close, high, low}, ...] 序列（按时间正序）。
+
+    chip_data 是 v2.fetch_chip_distribution() 返回值，含 kline 字段（v2 line 616-618）。
+    无 kline / 含 error / 解析失败 → 返回 None（不抛）。
+    """
+    if not chip_data or not isinstance(chip_data, dict):
+        return None
+    if "error" in chip_data:
+        return None
+    klines = chip_data.get("kline") or []
+    if not klines:
+        return None
+    out = []
+    for k in klines:
+        try:
+            out.append({
+                "date": str(k["date"]),
+                "close": float(k["close"]),
+                "high": float(k["high"]),
+                "low": float(k["low"]),
+            })
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out or None
+
+
+def _series_ma(series, n):
+    """简单移动平均（最后 n 日 close 均值）；len < n 或 n <= 0 → None"""
+    if not series or n <= 0 or len(series) < n:
+        return None
+    closes = [s["close"] for s in series[-n:]]
+    return sum(closes) / len(closes)
+
+
+def _series_boll(series, n=20, k=2):
+    """布林带 (MA_n ± k·σ)。返回 (lower, upper) 二元组；不足 n 日 → None"""
+    if not series or len(series) < n:
+        return None
+    closes = [s["close"] for s in series[-n:]]
+    mean = sum(closes) / n
+    var = sum((c - mean) ** 2 for c in closes) / n
+    std = var ** 0.5
+    return (round(mean - k * std, 2), round(mean + k * std, 2))
+
+
+def _series_recent_high(series, n=60):
+    if not series:
+        return None
+    window = series[-n:] if len(series) >= n else series
+    return max(s["high"] for s in window)
+
+
+def _series_recent_low(series, n=60):
+    if not series:
+        return None
+    window = series[-n:] if len(series) >= n else series
+    return min(s["low"] for s in window)
+
+
+def _to_float(v):
+    """健壮 float 转换；None / NaN / 不可解析 → None"""
+    if v is None:
+        return None
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    if f != f:  # NaN
+        return None
+    return f
+
+
+def compute_three_levels(quote, chip_data, trading_plan=None):
+    """债 2 修法 (Task 5.2) — 三价位表，4 支撑候选 / 3 压力候选 取最近者。
+
+    支撑候选（4 选 1，取最低且 ≤ 1.05×现价）:
+        1. MA60 (K 线 series 自算)
+        2. 前低（60 日最低，K 线 low 自算）
+        3. 筹码峰 (chip_data['peak_price'], v2 line 572 平铺)
+        4. 布林下轨 (MA20 - 2σ，K 线 series 自算)
+
+    压力候选（3 选 1，取最高且 ≥ 0.95×现价）:
+        1. 年线 MA250 (K 线 series 自算)，N<250 兜底用 MA120
+        2. 前高（60 日最高，K 线 high 自算）
+        3. 布林上轨 (MA20 + 2σ，K 线 series 自算)
+
+    止损：**复用** trading_plan.stop_loss（V2 同源，**不重算**），
+    杜绝覆盖 Task 5.1 已锁定的 trading_plan 字段。
+
+    返回 dict:
+        {
+            "support": float|None,
+            "resistance": float|None,
+            "stop_loss": float|None,
+            "support_candidates": {ma60, recent_low, chip_peak, boll_lower},
+            "resistance_candidates": {ma250_or_ma120, recent_high, boll_upper},
+            "method": "...",
+        }
+    """
+    price = _to_float((quote or {}).get("price"))
+    series = _klines_to_series(chip_data)
+    n = len(series) if series else 0
+
+    # ---- 4 支撑候选 ----
+    sup_raw = {
+        "ma60": _series_ma(series, 60),
+        "recent_low": _series_recent_low(series, 60),
+        "chip_peak": _to_float((chip_data or {}).get("peak_price")) if chip_data else None,
+        "boll_lower": (_series_boll(series, 20, 2) or (None, None))[0],
+    }
+    sup_valid = {k: v for k, v in sup_raw.items() if v is not None}
+
+    # ---- 3 压力候选 ----
+    long_ma = _series_ma(series, 250) or _series_ma(series, 120)
+    boll_bands = _series_boll(series, 20, 2)
+    res_raw = {
+        "ma250_or_ma120": long_ma,
+        "recent_high": _series_recent_high(series, 60),
+        "boll_upper": boll_bands[1] if boll_bands else None,
+    }
+    res_valid = {k: v for k, v in res_raw.items() if v is not None}
+
+    # ---- 过滤 ±5% + 取最近者 ----
+    support = None
+    if price is not None and sup_valid:
+        eligible = {k: v for k, v in sup_valid.items() if v <= price * 1.05}
+        if eligible:
+            support = min(eligible.values())  # 最低即最近（最贴近现价下方）
+    resistance = None
+    if price is not None and res_valid:
+        eligible = {k: v for k, v in res_valid.items() if v >= price * 0.95}
+        if eligible:
+            resistance = max(eligible.values())  # 最高即最近（最贴近现价上方）
+
+    # ---- stop_loss 复用 trading_plan.stop_loss（不重算）----
+    stop_loss = None
+    if isinstance(trading_plan, dict):
+        stop_loss = _to_float(trading_plan.get("stop_loss"))
+
+    return {
+        "support": round(support, 2) if support is not None else None,
+        "resistance": round(resistance, 2) if resistance is not None else None,
+        "stop_loss": round(stop_loss, 2) if stop_loss is not None else None,
+        "support_candidates": {k: round(v, 2) for k, v in sup_valid.items()},
+        "resistance_candidates": {k: round(v, 2) for k, v in res_valid.items()},
+        "method": f"4 候选取最近者（支撑 ≤ 1.05×现价；压力 ≥ 0.95×现价；N={n}）",
+    }
+
+
 def _fmt_time(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
 
@@ -547,6 +704,13 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
             plan["template_used"] = OPERATION_TEMPLATES[state]
     good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
 
+    # ---- 2.2 三价位表 (债 2 修法, Task 5.2): 4 支撑/3 压力候选 → 最近者 ----
+    # 候选价从 chip_data['kline'] (~250 日 baostock 前复权 K 线) 自算 MA/布林/前高/前低;
+    # 筹码峰直接读 chip_data['peak_price'] (v2 chip_distribution 平铺, line 572)。
+    # stop_loss **复用** trading_plan.stop_loss（V2 同源，**不重算**），
+    # 严守 Task 5.1 锁定的 trading_plan 字段（entry_low/entry_high/tp1/tp2/tp3/stop_loss/stop_loss_pct）。
+    three_levels = compute_three_levels(q, chip_data, plan)
+
     # ---- 3. 逐类状态判定 (V2 的 10 类) ----
     results2 = base_result
     for lab, field in _FIELD_OF.items():
@@ -698,6 +862,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         "fund_daily5": fetched["fund_daily5"], "margin_hist": fetched["margin_hist"],
         "score": score, "advice": base_result["advice"], "emoji": base_result["emoji"],
         "detail": base_result["detail"], "trading_plan": plan,
+        "three_levels": three_levels,  # 债 2 修法 (Task 5.2): 4 候选取最近者, 与 trading_plan 同源 K 线
         "signals": {"good": good_signals, "bad": bad_signals},
         "run_log": run_log,
         "report_date": datetime.now().strftime("%Y-%m-%d"),
@@ -723,9 +888,15 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     print("\n" + "=" * 72)
     print(f"【V3】{result['name']} ({code6}) 综合 {score_total}分 "
           f"{result['emoji']}{result['advice']}  耗时 {run_log['total_sec']}s")
-    if plan:
-        print(f"  三价位(同源): 支撑={plan['entry_low']:.2f} 压力={plan['tp1']:.2f} "
-              f"止损={plan['stop_loss']:.2f}")
+    # 三价位(同源) — 债 2 修法 (Task 5.2): 优先读 result['three_levels'] 4 候选取最近者;
+    # 兜底用 plan['entry_low'/'tp1'/'stop_loss']（V2 同源），保证控制台/HTML/MD 输出口径一致
+    tl3 = result.get("three_levels") or {}
+    if plan and (tl3.get("support") or tl3.get("resistance") or tl3.get("stop_loss")):
+        print(f"  三价位(同源): 支撑={(tl3.get('support') or plan['entry_low']):.2f} "
+              f"压力={(tl3.get('resistance') or plan['tp1']):.2f} "
+              f"止损={(tl3.get('stop_loss') or plan['stop_loss']):.2f} "
+              f"(4 候选支撑={list((tl3.get('support_candidates') or {}).keys())}, "
+              f"3 候选压力={list((tl3.get('resistance_candidates') or {}).keys())})")
     for key in ("md", "json", "html", "docx", "run_log"):
         p = files.get(key)
         if p:
@@ -1014,6 +1185,24 @@ def write_markdown_report_v3(r: dict) -> str:
     L.append("### 三价位 (支撑 / 压力 / 止损)")
     L.append("")
     if plan:
+        # 债 2 修法 (Task 5.2): 4 支撑候选 / 3 压力候选 → 取最近者 (+/-5% 过滤)
+        # 候选价从 chip_data['kline'] 自算 MA/布林/前高/前低, 筹码峰读 chip_data['peak_price']
+        # stop_loss 复用 trading_plan.stop_loss (V2 同源, **不重算**)
+        tl3 = r.get("three_levels") or {}
+        tl_sup = tl3.get("support")
+        tl_res = tl3.get("resistance")
+        tl_sl = tl3.get("stop_loss") or plan.get("stop_loss")
+        sup_cands = tl3.get("support_candidates") or {}
+        res_cands = tl3.get("resistance_candidates") or {}
+        if tl_sup is not None and tl_res is not None:
+            L.append(f"> **三价位(同源)**: 支撑=**{tl_sup:.2f}** 压力=**{tl_res:.2f}** 止损=**{tl_sl:.2f}**")
+            if sup_cands:
+                sup_str = " / ".join(f"{k}={v:.2f}" for k, v in sup_cands.items())
+                L.append(f"> - 4 支撑候选: {sup_str}（取最低且 ≤ 1.05×现价 = **{tl_sup:.2f}**）")
+            if res_cands:
+                res_str = " / ".join(f"{k}={v:.2f}" for k, v in res_cands.items())
+                L.append(f"> - 3 压力候选: {res_str}（取最高且 ≥ 0.95×现价 = **{tl_res:.2f}**）")
+            L.append("")
         L += [
             "| 价位 | 数值 | 说明 |",
             "|------|------|------|",
