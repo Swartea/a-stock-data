@@ -160,7 +160,7 @@ def _fetch_eastmoney_search(code: str, limit: int) -> list:
             last_err = "%s" % e
             if attempt == 2:
                 break
-        time.sleep(3 + 4 * attempt)
+        time.sleep(0.8 + 1.2 * attempt)    # 0.8, 2.0, 3.2s 替代 3, 7, 11s
     raise ValueError("东财 JSONP 连续 %d 次失败: %s" % (3, last_err))
 
 
