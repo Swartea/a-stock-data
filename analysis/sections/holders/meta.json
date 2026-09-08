@@ -1,0 +1,11 @@
+{
+  "label": "holders",
+  "title": "📊 股东户数变化",
+  "weight": 6,
+  "sort_order": 50,
+  "source_ref": "§4.3",
+  "data_sources": ["holder_num_change"],
+  "fetcher": "fetcher.py:fetch_holders",
+  "render_html": "render.py:render_html",
+  "render_md": "render.py:render_md"
+}
