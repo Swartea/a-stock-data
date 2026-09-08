@@ -554,7 +554,7 @@ def get_prefix(code: str) -> str:
 >
 > **拿新码：** 用 `push2` 北交所全量清单 `fs=m:0+t:81+s:2048` 按名称反查现行代码。
 
-### Ticker 格式归一化
+### 🔥 Ticker 格式归一化
 
 `norm_ticker()` 把下列写法统一成纯 6 位数字：
 
@@ -735,7 +735,7 @@ def eastmoney_datacenter(report_name: str, columns: str = "ALL",
 
 ## Layer 1: 行情层（实时，不封IP）
 
-### 1.1 mootdx — K线 + 五档盘口 + 逐笔成交
+### 1.1 🔥 mootdx — K线 + 五档盘口 + 逐笔成交
 
 TCP 二进制协议，连通达信服务器(7709)，无需注册，不封IP。
 
@@ -771,7 +771,7 @@ trades = client.transaction(symbol='688017', date='20260502')
 
 **mootdx 不提供 PE / PB / 市值 / 换手率 / 涨跌停价** — 这些走腾讯财经。
 
-### 1.2 腾讯财经 API — PE/PB/市值/换手率/涨跌停/指数/ETF
+### 1.2 🔥⚠️ 腾讯财经 API — PE/PB/市值/换手率/涨跌停/指数/ETF
 
 HTTP GET，GBK 编码，`~` 分隔 88 个字段，不封IP。
 
@@ -901,7 +901,7 @@ etf_quotes = tencent_quote(["510050", "510300"])
 > 用市值做筛选时取错会把大市值公司误判成小盘股。可用 `f[45] ÷ 现价` 反推总股本核对（与东财 `f84` 一致）。
 > 参考：东财 push2 的 `f116`=总市值 / `f117`=流通市值 方向与腾讯相反，实测确认无误，勿混用。
 
-### 1.3 百度股市通 K线 — 带MA5/MA10/MA20（V3.0 新增）
+### 1.3 🔥 百度股市通 K线 — 带MA5/MA10/MA20（V3.0 新增）
 
 **核心价值：** 返回时自带均线数据，无需本地计算。
 
@@ -940,7 +940,7 @@ print("最近5根K线:", data["rows"][-5:])
 
 ---
 
-### 1.4 新浪复权因子 — qfq / hfq（V3.7.0 新增）
+### 1.4 🆕🔥 新浪复权因子 — qfq / hfq（V3.7.0 新增）
 
 **核心价值：** §1.1 `tdx_client().bars()` 返回的是**不复权**数据，跨除权日直接比价必然出错。
 本端点给出复权因子序列，一次 HTTP、约 1.8KB、零鉴权。
@@ -1104,7 +1104,7 @@ print(apply_adjust(bars, hfq, kind="hfq"))                # → 1274.28（后复
 
 ## Layer 2: 研报层
 
-### 2.1 东财研报 API — 研报列表 + PDF下载（主力）
+### 2.1 ⚠️🔴 东财研报 API — 研报列表 + PDF下载（主力）
 
 A级接口（公开JSON API），reportapi.eastmoney.com，免费无key。
 
@@ -1260,7 +1260,7 @@ if it:
 
 > **行业码怎么拿：** 东财行业码不是通用记忆码，没有公开的码表端点（`bxpa` 等已 404）。常用做法：先用 `industry_code="*"` 拉一批，从结果的 `industryName`/`industryCode` 找到目标行业的码，再用该码精确过滤。
 
-### 2.2 同花顺一致预期EPS（直连 basic.10jqka.com.cn）
+### 2.2 🔥 同花顺一致预期EPS（直连 basic.10jqka.com.cn）
 
 ```python
 import requests
@@ -1298,7 +1298,7 @@ print(df)
 # "预测机构数" < 3 的要谨慎
 ```
 
-### 2.3 iwencai — NL语义搜索研报（唯一能力）
+### 2.3 ⚠️ iwencai — NL语义搜索研报（唯一能力）
 
 需要 API Key + X-Claw Headers（SkillHub 2.0 强制要求）。
 
@@ -1404,7 +1404,7 @@ for a in articles[:5]:
 
 ## Layer 3: 信号层
 
-### 3.1 同花顺热点 — 当日强势股 + 题材归因 reason tags（独家）
+### 3.1 🔥 同花顺热点 — 当日强势股 + 题材归因 reason tags（独家）
 
 **核心价值：** 不只告诉你"哪些走强"，还告诉你**"为什么走强"** —— 同花顺编辑部人工运营的题材标签。
 
@@ -1477,7 +1477,7 @@ print(df[["代码", "名称", "涨幅%", "题材归因"]].head(10))
 | zhangdie | 涨跌额 | 元 |
 | market | 市场 | 沪/深/北 |
 
-### 3.2 同花顺北向资金 — hsgtApi 实时分钟流向 + 本地自缓存历史
+### 3.2 🔥 同花顺北向资金 — hsgtApi 实时分钟流向 + 本地自缓存历史
 
 > **⚠️ 深股通实时流向近期不可靠（2026-07 实测）：** 沪股通(hgt)分钟序列完整，但深股通(sgt)
 > 常只回传零星几个点、末值量级异常。根因是北向自 2024-08 起收紧盘中实时披露，非本代码问题。
@@ -1566,7 +1566,7 @@ hist = _load_northbound_history(20)
 print(hist)
 ```
 
-### 3.3 东财 slist — 个股所属板块/概念归属（V3.2.2 替换百度）
+### 3.3 ⚠️ 东财 slist — 个股所属板块/概念归属（V3.2.2 替换百度）
 
 **核心价值：** 一次调用拿到个股所属的全部板块（行业 + 概念 + 地域混合），含板块代码（BK码）、当日涨跌幅、板块龙头股。题材归因、板块联动分析必备。
 
@@ -1620,7 +1620,7 @@ print("板块归属:", blocks["concept_tags"])
 
 > **注意：** 东财不区分行业/概念/地域类型（混在一个列表返回）。如需精确分类可按板块名判断，或另查全市场板块清单（`clist` + `m:90+t:1/2/3`）——但后者每次需多发请求、大页易触发风控，不推荐在批量场景用。
 
-### 3.4 东财 push2 — 个股资金流向（分钟级）
+### 3.4 ⚠️ 东财 push2 — 个股资金流向（分钟级）
 
 盘中实时分钟级资金流（主力/大单/中单/小单/超大单净流入）。
 
@@ -1692,7 +1692,7 @@ if realtime:
 
 > **注意：** push2 资金流金额单位是**元**（非万元），使用时注意换算。`klt=1` 分钟级，`klt=101` 日级。
 
-### 3.5 龙虎榜席位 — 个股上榜记录 + 买卖席位 TOP5 + 机构动向
+### 3.5 ⚠️ 龙虎榜席位 — 个股上榜记录 + 买卖席位 TOP5 + 机构动向
 
 直连东财 datacenter API，不依赖第三方封装。
 
@@ -1792,7 +1792,7 @@ if data["seats"]["buy"]:
 
 > **ST 股注意：** 5% 涨跌停更容易触发龙虎榜（"连续三日偏离值累计达12%"），科创板 20% 涨跌停则较少触发。
 
-### 3.6 限售解禁日历 — 历史解禁 + 未来 90 天待解禁
+### 3.6 ⚠️ 限售解禁日历 — 历史解禁 + 未来 90 天待解禁
 
 ```python
 from datetime import datetime, timedelta
@@ -1857,7 +1857,7 @@ else:
 - 定向增发机构配售股份（6-18 个月）
 - 股权激励限售股份
 
-### 3.7 行业板块排名（V3.0 改用东财 — 同花顺加了反爬401）
+### 3.7 ⚠️ 行业板块排名（V3.0 改用东财 — 同花顺加了反爬401）
 
 东财行业板块涨跌幅排名，一次调用看全市场行业轮动。
 
@@ -1913,7 +1913,7 @@ for r in data["bottom"][-5:]:
     print(f"  {r['rank']}. {r['name']}: {r['change_pct']}%")
 ```
 
-### 3.8 板块资金流向（行业/概念/地域 × 今日/5日/10日）
+### 3.8 ⚠️ 板块资金流向（行业/概念/地域 × 今日/5日/10日）
 
 东财板块资金流向——主力净流入额/净占比 + 超大/大/中/小单四档，覆盖行业、概念、地域三类板块，今日/5日/10日三个周期。与 §3.7 板块排名**同源同接口**（push2 `clist`），只是补请求了资金流字段（`f62/f184/f66...`）。走 `em_get` 限流防封。
 
@@ -2019,7 +2019,7 @@ concept_5d = board_fund_flow("concept", "5d", 10)
 region_10d = board_fund_flow("region", "10d", 10)
 ```
 
-### 3.9 全市场龙虎榜
+### 3.9 ⚠️ 全市场龙虎榜
 
 每日全市场龙虎榜汇总——当日所有触发龙虎榜的股票 + 上榜原因 + 买卖净额 + 换手率。
 
@@ -2112,7 +2112,7 @@ for r in comp["top"][:5]:
 
 ## Layer 4: 资金面 / 筹码层（V3.0 新增）
 
-### 4.1 融资融券明细
+### 4.1 ⚠️ 融资融券明细
 
 ```python
 def margin_trading(code: str, page_size: int = 30) -> list[dict]:
@@ -2146,7 +2146,7 @@ for d in data[:5]:
     print(f"{d['date']}: 融资余额={d['rzye']/1e8:.2f}亿 融券余额={d['rqye']/1e8:.2f}亿")
 ```
 
-### 4.2 大宗交易
+### 4.2 ⚠️ 大宗交易
 
 ```python
 def block_trade(code: str, page_size: int = 20) -> list[dict]:
@@ -2183,7 +2183,7 @@ for d in data[:5]:
     print(f"{d['date']}: 价格={d['price']} 溢价={d['premium_pct']}% 买方={d['buyer']}")
 ```
 
-### 4.3 股东户数变化
+### 4.3 ⚠️ 股东户数变化
 
 ```python
 def holder_num_change(code: str, page_size: int = 10) -> list[dict]:
@@ -2215,7 +2215,7 @@ for d in data[:5]:
 # 股东户数持续减少 = 筹码集中 = 主力吸筹信号
 ```
 
-### 4.4 分红送转历史
+### 4.4 ⚠️ 分红送转历史
 
 ```python
 def dividend_history(code: str, page_size: int = 20) -> list[dict]:
@@ -2246,7 +2246,7 @@ for d in data[:5]:
     print(f"{d['date']}: 每股派息={d['bonus_rmb']}元 转增={d['transfer_ratio']} 送={d['bonus_ratio']}")
 ```
 
-### 4.5 个股资金流（120日，日级）
+### 4.5 ⚠️ 个股资金流（120日，日级）
 
 ```python
 import requests
@@ -2307,7 +2307,7 @@ print(f"\n近20日主力累计净流入: {total_main/1e8:.2f}亿")
 
 ---
 
-### 4.6 筹码分布 CYQ — 获利比例 / 平均成本 / 成本区间（V3.7.0 新增）
+### 4.6 🆕🔥 筹码分布 CYQ — 获利比例 / 平均成本 / 成本区间（V3.7.0 新增）
 
 **核心价值：** 本层叫「资金面 / **筹码**层」，但 §4.1~§4.5 全是融资融券、大宗、股东户数这类
 **资金面**数据，一直缺真正的**筹码分布**。本端点补齐。
@@ -2464,7 +2464,7 @@ print(f"筹码峰 {r['peak_price']:.2f}")
 
 ## Layer 5: 新闻层
 
-### 5.1 东财个股新闻（直连 search-api-web）
+### 5.1 ⚠️ 东财个股新闻（直连 search-api-web）
 
 ```python
 import requests
@@ -2519,7 +2519,7 @@ for n in news[:5]:
 
 > **⚠️ 间歇性返回空（#18）：** 部分大陆住宅 IP 调本接口会只拿到 `passportWeb`（股民资料）而无 `cmsArticleWebOld`（文章列表）——这是东财对该 IP 的间歇风控，非代码问题。代码已对空结果安全返回 `[]`；遇到时隔几分钟或换网络重试即可。
 
-### 5.2 财联社快讯（直连 cls.cn，v1 API + 本地签名）✅ 已复活（2026-07）
+### 5.2 🔥 财联社快讯（直连 cls.cn，v1 API + 本地签名）✅ 已复活（2026-07）
 
 > **✅ 2026-07 复活：** 旧接口 `cls.cn/nodeapi/telegraphList` 2026-05 下线（站点改
 > Next.js，旧址返回 HTML 而非 JSON，#14）。现走新版 `cls.cn/v1/roll/get_roll_list`——它
@@ -2564,7 +2564,7 @@ for n in news[:10]:
     print(f"  {n['time']} | {n['title'][:60]}")
 ```
 
-### 5.3 东财全球资讯（7x24）
+### 5.3 ⚠️ 东财全球资讯（7x24）
 
 ```python
 import requests
@@ -2606,7 +2606,7 @@ for n in news[:10]:
 
 ## Layer 6: 基础数据层
 
-### 6.1 mootdx 财务快照（37字段季报数据）
+### 6.1 🔥 mootdx 财务快照（37字段季报数据）
 
 ```python
 from mootdx.quotes import Quotes
@@ -2624,7 +2624,7 @@ fin = client.finance(symbol='688017')
 #   等37个季报财务字段
 ```
 
-### 6.2 mootdx F10（公司文本资料）
+### 6.2 🔥 mootdx F10（公司文本资料）
 
 ```python
 from mootdx.quotes import Quotes
@@ -2645,7 +2645,7 @@ for cat in categories:
 
 > **优化提示：** "股东研究" 中的【4.股东变化】章节含大量历史十大股东列表，实测 16000+ chars。建议只保留最新一期（-70% token）。
 
-### 6.3 东财个股基本面（直连 push2 API）
+### 6.3 ⚠️ 东财个股基本面（直连 push2 API）
 
 ```python
 import requests
@@ -2682,7 +2682,7 @@ info = eastmoney_stock_info("688017")
 print(f"{info['name']}({info['code']}): 行业={info['industry']} 总市值={info['mcap']/1e8:.0f}亿 上市={info['list_date']}")
 ```
 
-### 6.4 新浪财报三表（资产负债表/利润表/现金流量表）
+### 6.4 🔥 新浪财报三表（资产负债表/利润表/现金流量表）
 
 ```python
 import requests
@@ -2744,7 +2744,7 @@ llb = sina_financial_report("600519", "llb")
 
 ---
 
-### 6.5 baostock 估值历史 — PE/PB/PS/PCF + 换手率 + 停牌 + ST（V3.7.0 新增）
+### 6.5 🆕⚠️ baostock 估值历史 — PE/PB/PS/PCF + 换手率 + 停牌 + ST（V3.7.0 新增）
 
 **核心价值：** §1.2 腾讯只给**当日**估值快照，本端点给**日频历史序列**（可回溯至 2016），
 一次调用同时拿到四个我们此前完全没有的字段：**换手率**（筹码分布的必需输入）、
@@ -2836,7 +2836,7 @@ print("停牌天数:", (df["tradestatus"] == "0").sum())
 
 ---
 
-### 6.6 baostock 标的基本信息 — 上市日 / 退市日 / 状态（V3.7.0 新增）
+### 6.6 🆕🔥 baostock 标的基本信息 — 上市日 / 退市日 / 状态（V3.7.0 新增）
 
 **核心价值：** 唯一能拿到**退市日期**的零鉴权源。配合 §1.2 的 `is_stale` 僵尸报价标志，
 可以在回测/筛选阶段直接剔除已退市标的。
@@ -2862,7 +2862,7 @@ print(baostock_stock_basic("600519"))
 
 ---
 
-### 6.7 申万行业分类历史 — 消除行业前视偏差（V3.7.0 新增）
+### 6.7 🆕⚠️ 申万行业分类历史 — 消除行业前视偏差（V3.7.0 新增）
 
 **核心价值：** §3.7 `industry_comparison()` 用东财，**只有当前归属**。做历史研究时用今天的
 行业分类去套过去，是典型的**前视偏差**。本端点给出每只股票的**行业变迁史**。
@@ -2944,7 +2944,7 @@ for d in ("2013-01-01", "2016-01-01", "2026-08-18"):
 
 ## Layer 7: 公告层
 
-### 7.1 巨潮公告（直连 cninfo.com.cn）
+### 7.1 ⚠️ 巨潮公告（直连 cninfo.com.cn）
 
 ```python
 import requests
@@ -3027,7 +3027,7 @@ for a in anns[:10]:
     print(f"  {a['date']} | {a['type']} | {a['title']}")
 ```
 
-### 7.2 mootdx F10 公告摘要
+### 7.2 🔥 mootdx F10 公告摘要
 
 ```python
 from mootdx.quotes import Quotes
@@ -3042,7 +3042,7 @@ text = client.F10(symbol='688017', name='最新提示')
 
 > 连板梯队、炸板率、晋级率、涨停原因题材——打板与题材跟踪的高频需求（#23 / #15）。东财四池走 `push2ex.eastmoney.com`（与现有 push2 同源，已纳入 `em_get()` 限流）；涨停原因题材增强用同花顺。**全部免登录、零鉴权。**
 
-### 8.1 东财涨停板池 — 涨停 / 炸板 / 跌停 / 昨日涨停
+### 8.1 ⚠️ 东财涨停板池 — 涨停 / 炸板 / 跌停 / 昨日涨停
 
 ```python
 import requests
@@ -3131,7 +3131,7 @@ for s in zt[:3]:
 
 > **坑：** ① 价格字段 `price`/`limit_price` 已 ÷1000（原始值是 ×1000 整数）。② 四池只有 `sort` 不同（涨停/炸板=`fbt:asc`、跌停=`fund:asc`、昨涨停=`zs:desc`），`dpt` 都是 `wz.ztzt`。③ `date` 必须传交易日，非交易日 `data` 返回 null。④ 金额单位均为**元**。
 
-### 8.2 同花顺涨停揭秘 — 涨停原因题材 + 封板成功率 + 板型
+### 8.2 🔥 同花顺涨停揭秘 — 涨停原因题材 + 封板成功率 + 板型
 
 ```python
 from datetime import datetime
@@ -3170,7 +3170,7 @@ for s in ths_limit_up_pool("20260626")[:5]:
 
 > **坑：** `first_limit_up_time` 是 **Unix 秒时间戳**（要 `datetime.fromtimestamp`），不是 HHMMSS。`field` 那串是同花顺内部字段 ID，照抄即可。`filter=HS,GEM2STAR` 控制板块范围（沪深主板 + 创业板 + 科创板）。
 
-### 8.3 打板情绪速算 — 炸板率 / 连板高度 / 连板梯队
+### 8.3 ⚠️ 打板情绪速算 — 炸板率 / 连板高度 / 连板梯队
 
 ```python
 def limit_up_sentiment(date: str) -> dict:
@@ -3194,7 +3194,7 @@ print(f"连板梯队: {s['ladder']}")
 
 > 晋级率（昨涨停今仍涨停 / 昨涨停总数）可用 `em_yzt_pool()` 的 `pct >= 9.8` 计数除以总数自算。
 
-### 8.4 东财重点监控池（V3.6.0 新增 · #15）
+### 8.4 ⚠️ 东财重点监控池（V3.6.0 新增 · #15）
 
 东财 App「重点监控」名单：被交易所风险警示 / 重点监控的标的及其**生效时间窗**。零鉴权静态 JSON，全量返回不分页。
 
@@ -3255,7 +3255,7 @@ for s in pool[:5]:
 | VALIDATESTARTDATE / VALIDATEENDDATE | 监控生效起 / 止日（通常 14 天窗口） |
 | LINK_URL | 东财 App 内详情页（可空） |
 
-### 8.5 东财日内异动池 — 严重异常波动（V3.6.0 新增 · #15）
+### 8.5 ⚠️🔴 东财日内异动池 — 严重异常波动（V3.6.0 新增 · #15）
 
 交易所「严重异常波动」口径的异动标的：连续 N 日同向异动、累计偏离值触发阈值等。两个端点同源，**零鉴权，但必须带 `team=h5` 等固定参数**，否则返回 `{"result":1001,"msg":"unknow team"}`。
 
@@ -3366,7 +3366,7 @@ print(f"异动且在监控池: {[(s['code'], s['name']) for s in hot]}")
 
 > 50ETF / 300ETF / 科创50ETF / 500ETF 期权（#13）。走新浪源——**T型报价、希腊字母、隐含波动率均由交易所/新浪预先算好，无需本地算 BSM**。免费直连，唯一注意带 `Referer`。
 
-### 9.1 合约清单 + T型报价 + 希腊字母
+### 9.1 🔥 合约清单 + T型报价 + 希腊字母
 
 ```python
 import requests
@@ -3448,7 +3448,7 @@ print(f"  Delta={g['delta']} Gamma={g['gamma']} Theta={g['theta']} Vega={g['vega
 
 > 投资者互动问答 + 市场热度——AI 问答与选题的独家信源。**互动易**（巨潮）能答"公司怎么回应某传闻/利好"，别处拿不到；**同花顺热榜 / 东财人气榜**给"当下最热个股 + 被归到什么概念在炒"。全部免登录、零鉴权。
 
-### 10.1 互动易问答（巨潮 — 投资者提问 + 公司回复）
+### 10.1 🔥 互动易问答（巨潮 — 投资者提问 + 公司回复）
 
 ```python
 import requests
@@ -3491,7 +3491,7 @@ for q in cninfo_irm("002594", page_size=30):
 
 > **坑：** ① 第二步参数放 **query string**（不是 body），否则 400。② `orgId` 取自第一步的 `secid`（即便前缀是 `gshk`，靠 `stockcode` 过滤照样拿 A 股问答）。③ 最新提问常未回复（`answer=None`），回复率因公司而异（实测立讯精密 002475 回复多、京东方 000725 几乎不回）。④ 时间是毫秒时间戳。
 
-### 10.2 同花顺热榜 + 东财人气榜（市场热度 + 概念命中）
+### 10.2 ⚠️ 同花顺热榜 + 东财人气榜（市场热度 + 概念命中）
 
 ```python
 EM_HOT_BODY = {"appId": "appId01", "globalId": "786e4c21-70dc-435a-93bb-38"}
@@ -3581,7 +3581,7 @@ print("人气第一:", hot[0]["name"], "概念命中:", em_hot_concept(hot[0]["c
 > 2020 及更早是旧版式——表头与项目名合并在一个单元格、且附表带「2017 年以来」的历史区，
 > 传入这些年份会**抛错而不是返回可疑数据**。
 
-### 11.1 人民银行 — 社会融资规模增量
+### 11.1 🆕⚠️ 人民银行 — 社会融资规模增量
 
 **核心价值：** 官方口径的全社会流动性投放，A股中期最重要的宏观变量。中英双语 12 列。
 
@@ -3700,7 +3700,7 @@ print(len(hist), "个月, 全年社融增量", f"{hist['afre_total'].sum():,.0f}
 
 ---
 
-### 11.2 国家统计局 — 采购经理指数 PMI
+### 11.2 🆕⚠️ 国家统计局 — 采购经理指数 PMI
 
 **核心价值：** 制造业景气度同步指标，50 是荣枯线。月末发布，比上市公司财报早一个季度反映景气。
 
@@ -4097,6 +4097,7 @@ if holders:
 import json, urllib.request, ssl
 _ctx = ssl.create_default_context(); _ctx.check_hostname = False; _ctx.verify_mode = ssl.CERT_NONE
 
+# 💎⚠️ 备胎端点（龙虎榜官方备胎）
 def dragon_tiger_backup(trade_date: str) -> dict:
     """龙虎榜官方备用源（东财被封时用）：上交所+深交所官方，零鉴权权威一手，含营业部席位。"""
     out = {"date": trade_date, "sse_raw": "", "szse": []}
@@ -4118,6 +4119,7 @@ def dragon_tiger_backup(trade_date: str) -> dict:
     out["sse_raw"] = "\n".join(json.loads(t[t.index("(")+1:t.rindex(")")]).get("fileContents", []))
     return out
 
+# 💎🔥 备胎端点（资金流新浪备胎）
 def fund_flow_backup(code: str, days: int = 60) -> list:
     """个股资金流备用源（东财被封时用）：新浪，日度四档单净额。"""
     # 92 先判：920xxx 是北交所，误判成 sh/sz 时新浪返回空数组（实测 bj920002 有数据、sh/sz 为 []）
@@ -4132,6 +4134,7 @@ def fund_flow_backup(code: str, days: int = 60) -> list:
     return [{"date": x.get("opendate"), "close": x.get("trade"),
              "net_amount": x.get("netamount"), "turnover": x.get("turnover")} for x in arr]
 
+# 💎⚠️ 备胎端点（公告官方备胎）
 def announcements_backup(code: str, page_size: int = 20) -> list:
     """公告备用源（巨潮被封时用）：深市走深交所官方，沪市走东财，均带 PDF 直链。"""
     if code.startswith(("0", "3")):
