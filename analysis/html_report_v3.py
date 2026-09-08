@@ -548,8 +548,33 @@ def _state_of(score_total):
     return "bull" if sc >= 65 else ("neutral" if sc >= 45 else "bear")
 
 
+def _state_key_of(result):
+    """5 状态机 state 键（债 1 修法）。优先读 plan["state"]（V3 主分析器注入），
+    兜底 score 5 档映射。返回 5 状态之一或 None。"""
+    plan = result.get("trading_plan") or {}
+    sk = plan.get("state") if isinstance(plan, dict) else None
+    if sk in ("bullish", "mild_bull", "neutral", "mild_bear", "bearish"):
+        return sk
+    score = (result.get("score") or {}).get("total")
+    if score is None:
+        return None
+    try:
+        sc = float(score)
+    except (TypeError, ValueError):
+        return None
+    if sc >= 65: return "bullish"
+    if sc >= 55: return "mild_bull"
+    if sc >= 45: return "neutral"
+    if sc >= 35: return "mild_bear"
+    return "bearish"
+
+
 def _render_checklist(result, state):
-    """b) 操作检查清单: 买/卖触发 + 止损纪律 + 仓位 (signals + trading_plan 驱动)"""
+    """b) 操作检查清单: 买/卖触发 + 止损纪律 + 仓位 (signals + trading_plan 驱动)
+
+    债 1 修法（Task 5.1）：新增"操作口诀"行，**直接读 plan["template_used"]**（V3 注入），
+    杜绝 3 状态硬编码（看空 43 分却写"分两批进场"）。旧 3 状态 buy/sell/stop 表格保留兼容。
+    """
     q = result.get("quote") or {}
     plan = result.get("trading_plan") or {}
     if not isinstance(plan, dict):
@@ -561,12 +586,17 @@ def _render_checklist(result, state):
     pres = _first(plan, "resistance", "tp1")
     pos = plan.get("position")
     per = plan.get("period")
+    template_used = plan.get("template_used")
 
     def money(v, default):
         return (default if v is None else "%.2f 元" % float(v))
 
     rows = []
     box = '<span class="box">☐</span>'
+
+    # 操作口诀行（债 1 修法, 5 状态独立模板）
+    if template_used:
+        rows.append(('watch', '操作口诀（5 状态机）', _esc(template_used)))
 
     if state == "bull":
         rows.append(('buy', '买入触发', '回踩 %s 分批进场（每档最多 1/2 仓），不追高、不满仓一把梭'
@@ -1274,10 +1304,19 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     html.append(hero_html)
 
     # ---- b) 操作检查清单 ----
+    # 5 状态机 (债 1 修法, Task 5.1)：bullish/mild_bull/neutral/mild_bear/bearish
+    # 读 plan["state"]，未注入时按 score 兜底 5 档映射。
+    state_key = _state_key_of(result) or "neutral"
+    _STATE_LABELS = {
+        "bullish":   "看多（≥65 分）",
+        "mild_bull": "轻多（55-64 分）",
+        "neutral":   "中性/震荡（45-54 分）",
+        "mild_bear": "轻空（35-44 分）",
+        "bearish":   "看空（<35 分）",
+    }
     html.append('<div class="card"><h2><span class="bar"></span>✅ 操作检查清单</h2>'
-                '<div class="src-line">触发条件、止损纪律与仓位建议 · 按%s三态给出</div>'
-                % {"bull": "多（≥65 分）", "neutral": "中性（45~64 分）",
-                   "bear": "空（<45 分）"}[state])
+                '<div class="src-line">触发条件、止损纪律与仓位建议 · 按 %s 5 状态机给出</div>'
+                % _STATE_LABELS.get(state_key, "中性/震荡（45-54 分）"))
     html.append(_render_checklist(result, state))
     html.append('</div>')
 

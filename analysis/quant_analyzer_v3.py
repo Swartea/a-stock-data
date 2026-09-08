@@ -130,6 +130,69 @@ _TOP_FIELD_OF = {fn: _FIELD_OF[lab] for fn, lab in _V2_FN_TO_SRC.items()}
 _src_meta: dict = {}   # label -> {"ms":int,"at":"HH:MM:SS","status":str,"detail":str}
 
 
+# ============================================================
+# 多空状态机 — 债 1 修法 (Task 5.1)
+# 阈值与 analysis/references/report-design-principles.md:88-94 仓位建议 5 档对齐,
+# 但 state 拆分更细：≥65 多 / 55-65 轻多 / 45-55 中性 / 35-45 轻空 / <35 空。
+# 5 状态对应 5 套独立"结论+操作+风险"三段模板, 杜绝 V3 原报告"看空 43 分仍写分两批进场"矛盾。
+# ============================================================
+def _score_to_state(score: float) -> str:
+    """综合评分 → 多空状态映射（5 状态）。阈值与 plan 文档 Task 5.1 Step 2 一致。"""
+    try:
+        sc = float(score)
+    except (TypeError, ValueError):
+        sc = 0.0
+    if sc >= 65:
+        return "bullish"      # 看多（≥65）
+    if sc >= 55:
+        return "mild_bull"    # 轻多（55-65）
+    if sc >= 45:
+        return "neutral"      # 中性/震荡（45-55）
+    if sc >= 35:
+        return "mild_bear"    # 轻空（35-45）
+    return "bearish"          # 看空（<35）
+
+
+# 5 状态独立模板：每条都包含"结论+操作+风险"三段（用 `｜` 分段，Markdown 表格不破）。
+# 占位符 {score}/{stop_loss}/{stop_loss_pct}/{entry_low}/{tp1} 由调用方 .format 注入。
+OPERATION_TEMPLATES = {
+    "bullish": (
+        "【结论】综合评分 {score} ≥ 65，多头格局占优，看多确立 ｜ "
+        "【操作】现价分两批进场、持有 3-6 个月 ｜ "
+        "【风险】收盘跌破止损 {stop_loss}（-{stop_loss_pct}%）无条件离场，不补仓摊薄"
+    ),
+    "mild_bull": (
+        "【结论】综合评分 {score} 处于 55-65 区间，结构偏多但需确认 ｜ "
+        "【操作】轻仓试探 10-20%，等综合评分回升至 65+ 确认后加仓 ｜ "
+        "【风险】若跌破止损 {stop_loss} 立即降仓至 10% 以下，不抢涨"
+    ),
+    "neutral": (
+        "【结论】综合评分 {score} 处于 45-55 区间，多空平衡、震荡格局 ｜ "
+        "【操作】区间操作 — 上沿 {tp1} 减仓、下沿 {entry_low} 低吸、严格止损 {stop_loss} ｜ "
+        "【风险】单边突破区间则按突破方向顺势操作，不预判方向"
+    ),
+    "mild_bear": (
+        "【结论】综合评分 {score} 处于 35-45 区间，空头压力偏大 ｜ "
+        "【操作】减仓至轻仓（≤10%），反弹遇压力位 {tp1} 不再加仓 ｜ "
+        "【风险】若继续跌破止损 {stop_loss} 直接清仓，不抄底"
+    ),
+    "bearish": (
+        "【结论】综合评分 {score} < 35，空头主导、看空确立 ｜ "
+        "【操作】清仓回避 — 等待综合评分回升至 45+ 再评估进场 ｜ "
+        "【风险】不抢反弹、不抄底；套牢者按计划止损，不补仓摊薄"
+    ),
+}
+
+# 状态 → 中文/图标 给 MD/HTML/DOCX 渲染层复用（避免各自再写一遍 if-elif-else）
+_STATE_DISPLAY = {
+    "bullish":   ("看多", "🟢"),
+    "mild_bull": ("轻多", "🟢"),
+    "neutral":   ("震荡", "🟡"),
+    "mild_bear": ("轻空", "🔴"),
+    "bearish":   ("看空", "🔴"),
+}
+
+
 def _fmt_time(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
 
@@ -466,6 +529,22 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
 
     # ---- 2. 三价位 (V2 同源模型: 腾讯实时价 + baostock 筹码K线, 债4) ----
     plan = v2._make_trading_plan(q, v, chip_data, score_total)
+    # ---- 2.1 多空状态机注入 (债 1 修法, Task 5.1) ----
+    # 在 trading_plan 上加 state + template_used 两个字段,
+    # 渲染层 (MD/HTML) 直接读 plan["template_used"] 即可, 不再各自写硬编码模板。
+    if plan:
+        state = _score_to_state(score_total)
+        plan["state"] = state
+        try:
+            plan["template_used"] = OPERATION_TEMPLATES[state].format(
+                score=score_total,
+                stop_loss=plan.get("stop_loss", "—"),
+                stop_loss_pct=plan.get("stop_loss_pct", "—"),
+                entry_low=plan.get("entry_low", "—"),
+                tp1=plan.get("tp1", "—"),
+            )
+        except (KeyError, IndexError):
+            plan["template_used"] = OPERATION_TEMPLATES[state]
     good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
 
     # ---- 3. 逐类状态判定 (V2 的 10 类) ----
@@ -903,13 +982,14 @@ def write_markdown_report_v3(r: dict) -> str:
     signals = r.get("signals") or {}
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # 决策状态 (债1: 多/震荡/空 三态)
-    if score_total >= 65:
-        state, state_icon = "看多", "🟢"
-    elif score_total >= 45:
-        state, state_icon = "震荡", "🟡"
+    # 决策状态 — 5 状态机 (债 1 修法, Task 5.1)；优先读 plan["state"]（trading_plan 注入），
+    # 兜底 _score_to_state()，再兜底 3 态旧逻辑（plan 缺失时）。
+    if plan and plan.get("state"):
+        state_key = plan["state"]
+        state, state_icon = _STATE_DISPLAY.get(state_key, ("中性", "🟡"))
     else:
-        state, state_icon = "看空", "🔴"
+        state_key = _score_to_state(score_total)
+        state, state_icon = _STATE_DISPLAY.get(state_key, ("中性", "🟡"))
 
     # 三价位 (债2显式三价位 + 债4 同源声明)
     support, resist, stop = None, None, None
@@ -995,34 +1075,37 @@ def write_markdown_report_v3(r: dict) -> str:
         L.append(f"- {a}")
     L.append("")
 
-    # ================= 操作检查清单 (按三态) =================
+    # ================= 操作检查清单 (按 5 状态) =================
     L.append("## ✅ 操作检查清单")
     L.append("")
     if plan:
         e_lo, e_hi = plan["entry_low"], plan["entry_high"]
         st, tp1, tp2, tp3 = plan["stop_loss"], plan["tp1"], plan["tp2"], plan["tp3"]
-        if state == "看多":
+        if state_key in ("bullish", "mild_bull"):
             buy_t = (f"① 回调至 {e_lo:.2f}~{e_hi:.2f} 区间分批建仓(如分两批各1/2); "
                      f"② 放量突破 {tp1:.2f} 可加仓追势")
             sell_t = (f"① 达 {tp1:.2f} 卖 1/2 锁利; ② 达 {tp2:.2f} 再减半; "
                       f"③ 达 {tp3:.2f} 或趋势走弱清剩余; ④ 跌破 {st:.2f} 无条件全走")
             stop_t = f"收盘跌破 {st:.2f} (现价下 -{plan['stop_loss_pct']:.1f}%) 即离场, 不补仓摊平"
             pos_t = f"{plan['position']} | 周期 {plan['period']}"
-        elif state == "震荡":
+        elif state_key == "neutral":
             buy_t = f"仅在 {e_lo:.2f}~{e_hi:.2f} 支撑区低吸, 上轨 {tp1:.2f} 附近不过量追高"
             sell_t = (f"① 反弹至 {tp1:.2f} 一带减仓; ② 跌破 {st:.2f} 转空离场; "
                       f"③ 放量站稳 {tp1:.2f} 上沿再按看多纪律执行")
             stop_t = f"{st:.2f} 为区间底沿, 收盘破位即走, 不猜底"
             pos_t = f"{plan['position']} | 以低吸高抛为主, 周期 {plan['period']}"
-        else:
+        else:  # mild_bear / bearish
             buy_t = "❌ 空头形态: 不买入、不补仓、不抄底; 空仓者观望等底部放量企稳信号"
             sell_t = f"① 反弹至压力位 {tp1:.2f} 一带分批减仓; ② 持仓者跌破 {st:.2f} 清仓; ③ 不抢反弹"
             stop_t = f"反弹减仓/清仓纪律优先, 止损 {st:.2f} 上方不留幻想仓"
             pos_t = "清仓回避 / 极轻仓短线者当日进出"
+        # 操作口诀 (债 1 修法): 读 plan["template_used"], 5 状态各自独立模板, 不再 hardcode
+        operation_tip = plan.get("template_used") or "（无操作口诀 — trading_plan.template_used 未注入）"
         L += [
             "| 检查项 | 触发条件与纪律 |",
             "|--------|----------------|",
-            f"| 当前状态 | {state_icon} **{state}** (评分 {score_total} 分) |",
+            f"| 当前状态 | {state_icon} **{state}** (评分 {score_total} 分, 状态 `{state_key}`) |",
+            f"| 操作口诀 | {operation_tip} |",
             f"| 买入触发 | {buy_t} |",
             f"| 卖出/减仓触发 | {sell_t} |",
             f"| 止损纪律 | {stop_t} |",
