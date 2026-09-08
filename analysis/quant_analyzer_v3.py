@@ -51,6 +51,7 @@ if _ANALYSIS_DIR not in sys.path:
     sys.path.insert(0, _ANALYSIS_DIR)
 
 import quant_analyzer_v2 as v2  # noqa: E402
+from sections import enabled_sections  # noqa: E402  # Phase 1: Section Registry (irm §10.1)
 
 # ---------------------------------------------------------------
 # 4 个新 fetcher — 容错 import (并行开发中, 未落盘不许崩整脚本)
@@ -534,11 +535,26 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         run_log["source_meta"][lab] = meta
         return val
 
-    print("\n[V3+] 追加数据块: 公告 / 财务 / 研报 / 新闻 / 两融 / 5日资金 / 同业…")
+    print("\n[V3+] 追加数据块: 公告 / 财务 / 研报 / 新闻 / Section Registry / 两融 / 5日资金 / 同业…")
     fetched["announcements"] = _call_new("公告", "公告", code6)
     fetched["finance"] = _call_new("财务摘要", "财务", code6)
     fetched["research"] = _call_new("研报观点", "研报", code6, 200)  # days=200: 小票近90日常无覆盖(真实)
     fetched["news"] = _call_new("新闻舆情", "新闻", code6)
+    # Section Registry: 5 新节走新路径（灰度老路径仍保留 4 旧 fetcher；spec §3.3）
+    sections_data = {}
+    sections = enabled_sections()
+    run_log["sections_count"] = 0
+    for sec in sections:
+        sec_started = time.time()
+        try:
+            sections_data[sec.label] = sec.fetch(code6, base_result)
+            ms = int((time.time() - sec_started) * 1000)
+            run_log["sources"][sec.label] = f"ok, {ms}ms"
+            run_log["sections_count"] += 1
+        except Exception as e:  # noqa: BLE001
+            sections_data[sec.label] = {"error": str(e)}
+            run_log["sources"][sec.label] = f"error: {e}"
+            run_log.setdefault("fallback_chain", []).append(f"{sec.label}: {e}")
 
     t0 = time.time()
     margin = None
@@ -561,6 +577,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     fetched["margin"] = margin
 
     # 附加: 近5日主力 + 两融方向历史 + 同业(概念口径) — 失败不致命, 记入 supplements
+    # 灰度保留：spec §3.3（"先保留 4 旧 fetcher 走老路径，5 新节走新注册表；下版本统一"）
     run_log["supplements"] = {}
     for key, lab, fn, args in (
             ("fund_daily5", "资金面-5日主力", _fetch_fund_flow_daily, (code6,)),
@@ -605,6 +622,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         "signals": {"good": good_signals, "bad": bad_signals},
         "run_log": run_log,
         "report_date": datetime.now().strftime("%Y-%m-%d"),
+        **sections_data,  # Phase 1: 注入 section.label (irm) 作为 result 顶层 key
     }
 
     # ---- 6. run_log 收尾: guard + 时点 ----
