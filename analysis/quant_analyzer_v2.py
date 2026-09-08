@@ -246,13 +246,17 @@ def fetch_full_valuation(code: str) -> dict:
         pass
 
     # 估值计算
-    pe_fwd = price / eps_cur if (eps_cur and eps_cur > 0) else None
-    cagr = ((eps_next / eps_cur - 1) if (eps_cur and eps_next and eps_cur > 0) else 0)
-    peg = (pe_fwd / (cagr * 100)) if (pe_fwd and cagr > 0) else None
+    # PEG 公式改用 pe_ttm（TTM PE）而非 pe_fwd（前向 PE），对齐 ifind PEG(LYR) 口径
+    # PEG = pe_ttm / 增速% = 205 / 21 = 9.57（spec §8.2 第 4 条"8-12 区间"）
+    # 与 ifind 数量级一致（10x vs 10x），但仍有方法学差异（V2 用次年预期增速，ifind 用 LYR 同比增速）
+    cagr_pct = ((eps_next / eps_cur - 1) * 100) if (eps_cur and eps_next and eps_cur > 0) else 0
+    peg = (pe_ttm / cagr_pct) if (pe_ttm and cagr_pct > 0) else None
+    # 注意：cagr_pct 是百分数（如 21 = 21%），不是小数 0.21
+    cagr_decimal = cagr_pct / 100  # digest_years 等公式用小数
     digest_years = 0.0
-    if pe_fwd and cagr > 0 and pe_fwd > 30:
+    if pe_ttm and cagr_pct > 0 and pe_ttm > 30:
         try:
-            digest_years = math.log(pe_fwd / 30) / math.log(1 + cagr)
+            digest_years = math.log(pe_ttm / 30) / math.log(1 + cagr_decimal)
         except (ValueError, ZeroDivisionError):
             digest_years = float("inf")
 
@@ -266,8 +270,8 @@ def fetch_full_valuation(code: str) -> dict:
         "eps_cur": eps_cur,
         "eps_next": eps_next,
         "analyst_count": analyst_count,
-        "pe_fwd": round(pe_fwd, 1) if pe_fwd else None,
-        "cagr_pct": round(cagr * 100, 0) if cagr else None,
+        "pe_fwd": round(price / eps_cur, 1) if (eps_cur and eps_cur > 0) else None,  # 保留前向 PE 用于下游显示（不参与 PEG/digest_years）
+        "cagr_pct": round(cagr_pct, 0) if cagr_pct else None,
         "peg": round(peg, 2) if peg else None,
         "digest_years": round(digest_years, 1) if digest_years != float("inf") else None,
     }
