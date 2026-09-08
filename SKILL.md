@@ -207,6 +207,48 @@ ETF期权层 (V3.3 新增)
 | 同步上游 GitHub | [📚 sync-from-github.md](analysis/references/sync-from-github.md) |
 | 部署/升级踩坑 | [📚 deployment-gotchas.md](analysis/references/deployment-gotchas.md) |
 
+## ⚡ 快速命令（11 层最常用，先抄这 22 行就够用）
+
+| 层 | 函数 | 用法 |
+|----|------|------|
+| **L1 行情** | `tencent_quote("600519")` | → 拉 1 只票实时价/PE/PB/市值/换手率 |
+| **L1 行情** | `tdx_client().bars("600519", frequency=9)` | → K 线（多周期，不复权）|
+| **L2 研报** | `eastmoney_reports("600519")` | → 个股研报列表 + 3 年 EPS + 评级 |
+| **L2 研报** | `ths_eps_forecast("600519")` | → 机构一致预期 EPS（次年）|
+| **L3 信号** | `ths_hot_reason()` | → 当日强势股 + 题材归因 reason tags |
+| **L3 信号** | `eastmoney_concept_blocks("600519")` | → 个股所属行业/概念/地域 + BK 码 |
+| **L4 资金** | `dragon_tiger_board("600519", "2026-09-07")` | → 个股龙虎榜 + 买卖席位 TOP5 |
+| **L4 资金** | `chip_distribution(bars_df)` | → 获利比例/平均成本/90-70 区间/筹码峰（本地）|
+| **L5 新闻** | `eastmoney_stock_news("600519")` | → 个股新闻（标题+时间+URL）|
+| **L5 新闻** | `cls_telegraph()` | → 财联社全市场实时电报（零 key）|
+| **L6 基础** | `full_valuation("600519")` | → 前向 PE/PE 消化/PEG/分位 一站式 |
+| **L6 基础** | `baostock_valuation_history("600519", "2023-01-01", "2026-09-07")` | → 日频 PE/PB/PS/PCF + 换手率 + 停牌 + ST |
+| **L7 公告** | `cninfo_announcements("600519")` | → 公告全文检索 + PDF 直链 |
+| **L8 打板** | `em_zt_pool(dt="2026-09-07")` | → 当日涨停池（连板数/封板资金/行业）|
+| **L8 打板** | `em_price_anomaly(date="2026-09-07")` | → 日内严重异常波动明细（必须带 team=h5）|
+| **L9 期权** | `sina_option_tquote(underlying="510050")` | → ETF 期权 T 型报价 + 希腊 + IV |
+| **L10 舆情** | `cninfo_irm("600519")` | → 互动易问答（公司直接回应）|
+| **L10 舆情** | `ths_hot_list()` | → 同花顺热榜（人气值 + 概念标签）|
+| **L11 宏观** | `pboc_social_financing(year=2026)` | → 社融月度 12 列（已发布月份，未发布整行丢）|
+| **L11 宏观** | `nbs_pmi()` | → 制造业/非制造业/综合 PMI + 大中小型分档 |
+| **💎 备胎** | `dragon_tiger_backup("2026-09-07")` | → 龙虎榜官方备胎（沪深交易所一手）|
+| **💎 备胎** | `fund_flow_backup("600519", days=60)` | → 个股资金流新浪备胎（日度四档）|
+
+## 📚 配套文档
+
+8 份实战踩坑/部署/报告设计文档，均位于 `analysis/references/`。
+
+| 文档 | 何时查 | 跳转 |
+|------|--------|------|
+| `analysis/references/baostock-pitfalls.md` | 跑 §6.5/§6.6 遇 `KeyError` / NaN / 静默空 | → §6.5/§6.6 末尾已挂 |
+| `analysis/references/deployment-gotchas.md` | 部署/升级前必读（查本地/README 滞后）| → §安装说明后已挂 |
+| `analysis/references/pitfalls.md` | V2.1~V2.2 历史踩坑（baostock KeyError/北交所/申万 SSL）| → §Prerequisites 末尾已挂 |
+| `analysis/references/quant-analyzer-v2.md` | 看 10 因子打分权重/读 v2 脚本 | → §估值公式引用 |
+| `analysis/references/report-delivery.md` | 出报告前（🎯 一分钟结论/PE 阈值/口诀）| → §完整调研流程前已挂 |
+| `analysis/references/report-design-principles.md` | 报告看不懂？4 段式黄金顺序 | → §完整调研流程前已挂 |
+| `analysis/references/session-2026-09-03-lessons.md` | urllib 卡死/baostock 列名/沙盒网络 | → §1.2 已挂 |
+| `analysis/references/sync-from-github.md` | "帮我装这个 skill"时（sync 不是 install）| → §安装说明后已挂 |
+
 ## 端点路由速查（按需定位，不必通读全文）
 
 只需一类数据时，按下表定位章节（§）局部读取。除 iwencai 需 API Key 外全部零 key。
