@@ -1,0 +1,11 @@
+{
+  "label": "irm",
+  "title": "📞 投资者互动问答",
+  "weight": 5,
+  "sort_order": 40,
+  "source_ref": "§10.1",
+  "data_sources": ["cninfo_irm"],
+  "fetcher": "fetcher.py:fetch_irm",
+  "render_html": "render.py:render_html",
+  "render_md": "render.py:render_md"
+}

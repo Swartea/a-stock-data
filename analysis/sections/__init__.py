@@ -17,20 +17,15 @@ SECTIONS: List[Section] = []
 # Task 1.2 / 2.1-2.4 中逐个实现，本函数在 Phase 2 完成后才会真正被调用。
 # 当前为空实现，确保 enabled_sections() 返回空列表，避免循环依赖。
 def _register_sections():
-    # from .irm import IRMSection
+    from .irm import IRMSection
     # from .holders import HoldersSection
     # from .dividend import DividendSection
     # from .board import BoardSection
     # from .dragon_market import DragonMarketSection
-    # SECTIONS.extend([
-    #     IRMSection(),
-    #     HoldersSection(),
-    #     DividendSection(),
-    #     BoardSection(),
-    #     DragonMarketSection(),
-    # ])
-    # SECTIONS.sort(key=lambda s: s.sort_order)
-    pass
+    SECTIONS.extend([
+        IRMSection(),
+    ])
+    SECTIONS.sort(key=lambda s: s.sort_order)
 
 _REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "registry.yaml")
 
