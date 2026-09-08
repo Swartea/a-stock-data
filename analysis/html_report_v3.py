@@ -27,6 +27,16 @@ import datetime
 
 import html_report as hr  # 只复用 V2 的 4 个 SVG 生成函数
 
+# Phase 1: Section Registry (irm §10.1) — 容错 import, 缺则降级
+# (Task 1.4 灰度: 5 新节走新注册表, 旧 6 块仍保留; spec §3.3)
+try:
+    from sections import enabled_sections
+    _SECTIONS_OK = True
+except Exception as _sec_err:  # noqa: BLE001
+    enabled_sections = None
+    _SECTIONS_OK = False
+    _SEC_IMPORT_ERR = str(_sec_err)
+
 # ============================================================
 # 语义色板 (docs/06 §2.1 token 对齐): A股惯例 红=涨/多, 绿=跌/空,
 # 琥珀=中性; 风险=红系警示。AA 文字档为同色系加深档 (白底小字 ≥4.5:1)。
@@ -1291,6 +1301,23 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     for emoji, title, (src_line, inner) in blocks:
         html.append('<div class="card"><h2><span class="bar"></span>%s %s</h2>%s%s</div>'
                     % (emoji, title, src_line, inner))
+    # ---- §3.3 灰度: 6 块之后追加 Section Registry 渲染循环 ----
+    # 5 新节(irm/holders/dividend/board/dragon_market)走注册表, 旧 6 块仍保留
+    # (Task 1.3 教训: 不替换, 只追加)
+    if _SECTIONS_OK and enabled_sections is not None:
+        for sec in enabled_sections():
+            try:
+                sec_data = result.get(sec.label, {}) or {}
+                # 钉死语义: 不传 writer, 只取返回值 (Finding 2 fix)
+                sec_html = sec.render_html(sec_data)
+                if sec_html:
+                    html.append(sec_html)
+            except Exception as _sec_render_err:  # noqa: BLE001
+                # 单节失败不阻断其他渲染
+                html.append(
+                    '<div class="card"><h2><span class="bar"></span>%s</h2>'
+                    '<p class="warn">⚠️ %s 渲染失败: %s</p></div>'
+                    % (sec.title, sec.label, _sec_render_err))
 
     # ---- 附录 ----
     html.append(_detail_drawer(result))
