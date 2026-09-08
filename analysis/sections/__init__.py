@@ -21,12 +21,13 @@ def _register_sections():
     from .holders import HoldersSection
     from .dividend import DividendSection
     from .board import BoardSection
-    # from .dragon_market import DragonMarketSection
+    from .dragon_market import DragonMarketSection
     SECTIONS.extend([
         IRMSection(),
         HoldersSection(),
         DividendSection(),
         BoardSection(),
+        DragonMarketSection(),
     ])
     SECTIONS.sort(key=lambda s: s.sort_order)
 
