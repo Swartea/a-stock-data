@@ -266,7 +266,7 @@ def _fetch_fund_flow_daily(code: str, days: int = 5) -> dict:
     headers = {"User-Agent": v2.UA, "Referer": "https://quote.eastmoney.com/",
                "Origin": "https://quote.eastmoney.com"}
     try:
-        d = v2.em_get("https://push2.eastmoney.com/api/qt/stock/fflow/kline/get",
+        d = v2.em_get("https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
                       params=params, headers=headers, timeout=15).json()
     except Exception as e:
         return {"error": str(e), "rows": []}
