@@ -1914,6 +1914,21 @@ def write_markdown_report_v3(r: dict) -> str:
             "",
         ]
 
+    # ---- Task 5.4 (D-2 修法): Section Registry 5 sections 渲染循环 ----
+    # 对齐 HTML 渲染器 (html_report_v3.py:1370-1383) 和 DOCX 渲染器 (md_to_docx.py:538-548) pattern
+    # 位置: 6 块 + 3 supplement 之后, 链路运行记录之前 (与 HTML "6 块之后, 附录之前" 对齐)
+    # sec.render_md(sec_data) 返回完整 MD 片段 (含 ## 标题), 不是 dict — 与 plan 假设 .collect() 不同
+    for sec in enabled_sections():
+        try:
+            sec_data = r.get(sec.label, {}) or {}
+            sec_md = sec.render_md(sec_data)
+            if sec_md:
+                L.append(sec_md)
+                L.append("")
+        except Exception:  # noqa: BLE001
+            # 单节失败不阻断其他渲染 (per-section isolation, 与 HTML/DOCX 渲染器一致)
+            pass
+
     # ================= 链路运行记录 =================
     L.append("## 🔗 数据链路与运行记录")
     L.append("")
