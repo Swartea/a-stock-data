@@ -313,6 +313,138 @@ a{color:var(--accent);text-decoration:none}
 .disc{color:var(--ink-3);font-size:11.5px}
 .mono{font-family:var(--font-num)}
 """
+
+# Task 6.1 (UI 升级线): 集成 mingli30119/stock-analysis 双主题 CSS 模板
+# 来源: https://raw.githubusercontent.com/mingli30119/stock-analysis/main/shared/template_base.css
+# 集成方式: 拼到 V3 旧 CSS 之后, 同名类会覆盖 V3 旧定义 (升级意图: 换皮)
+_MINGLI_CSS = r"""
+/* ── mingli30119 双主题 · 红涨绿跌 · 金棕强调 · 响应式 ── */
+.v3-stock-report{
+--bg:#0c0f15;--card-bg:#1a1c24;--card-bg-alt:#1e2029;--border:#2a2d3a;
+--text-primary:#e8e9ec;--text-secondary:#b0b3be;--text-muted:#7a7d8a;
+--red-up:#f55656;--green-down:#28c75b;--gold:#d4a853;--gold-light:#e3c26d;
+--blue-accent:#4a90d9;--orange-warn:#e8923a;
+--shadow:0 4px 20px rgba(0,0,0,.3);--radius:10px;
+--font-sans:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+--font-mono:"JetBrains Mono","SF Mono","Consolas",monospace;--transition:.2s ease;
+}
+.v3-stock-report, .v3-stock-report *{font-family:var(--font-sans)}
+.v3-stock-report.light-mode{
+--bg:#fdf8f0;--card-bg:#fffbf5;--card-bg-alt:#fef5e7;--border:#e2cfa2;
+--text-primary:#2a1f12;--text-secondary:#6b5634;--text-muted:#9c8b6e;
+--red-up:#dc2626;--green-down:#16a34a;--gold:#b38a3c;--gold-light:#d4a853;
+--blue-accent:#2563eb;--orange-warn:#c2410c;--shadow:0 4px 20px rgba(162,125,57,.08)
+}
+.v3-stock-report{background:var(--bg);color:var(--text-primary);line-height:1.7;font-size:14px;
+background-image:radial-gradient(circle at 15% 10%,rgba(212,168,83,.03) 0%,transparent 35%),
+radial-gradient(circle at 85% 70%,rgba(212,168,83,.03) 0%,transparent 35%);background-attachment:fixed;
+max-width:1300px;margin:0 auto;padding:24px 20px 40px}
+/* 顶部导航 */
+.v3-stock-report .top-nav{position:sticky;top:0;z-index:100;background:rgba(10,12,18,.92);
+backdrop-filter:blur(12px);border-bottom:2px solid var(--gold-light);padding:10px 28px;
+margin:-24px -20px 24px;display:flex;align-items:center;justify-content:space-between;
+flex-wrap:wrap;gap:12px}
+.v3-stock-report .top-nav .logo{display:flex;align-items:center;gap:10px;color:#fff}
+.v3-stock-report .top-nav .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#c0392b,#8b0000);
+border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#fff}
+.v3-stock-report .top-nav .stock-name{font-weight:700;font-size:17px;letter-spacing:.5px}
+.v3-stock-report .top-nav .stock-code{font-size:12px;opacity:.7;font-family:var(--font-mono)}
+.v3-stock-report .nav-links{display:flex;gap:8px;flex-wrap:wrap}
+.v3-stock-report .nav-links a{font-size:12px;padding:5px 14px;border-radius:16px;color:var(--gold-light);
+text-decoration:none;border:1px solid transparent;transition:var(--transition);font-weight:500;white-space:nowrap}
+.v3-stock-report .nav-links a:hover,.v3-stock-report .nav-links a.active{background:rgba(255,255,255,.08);
+color:#fff;border-color:var(--gold)}
+.v3-stock-report .theme-toggle{background:rgba(255,255,255,.08);border:1px solid var(--gold-light);
+color:var(--gold-light);padding:5px 14px;border-radius:16px;font-size:12px;cursor:pointer;
+transition:var(--transition);margin-left:12px}
+.v3-stock-report .theme-toggle:hover{background:rgba(255,255,255,.15)}
+/* Hero 行情卡片 */
+.v3-stock-report .hero{background:linear-gradient(105deg,#1c1010 0%,#2c1a1a 50%,#3d2424 100%);
+border-radius:var(--radius);padding:28px 32px;margin-bottom:24px;border:1px solid var(--gold-light);
+box-shadow:0 8px 28px rgba(100,55,55,.2);display:flex;flex-wrap:wrap;gap:24px;
+align-items:center;color:#fff;position:relative;overflow:hidden}
+.v3-stock-report .hero::after{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,.08) 0%,transparent 70%);pointer-events:none}
+.v3-stock-report .hero-price-block{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-price{font-size:56px;font-weight:900;line-height:1;font-family:var(--font-mono)}
+.v3-stock-report .hero-change{font-size:20px;font-weight:700;padding:4px 12px;border-radius:6px;
+background:rgba(245,86,86,.2);color:#f87171;font-family:var(--font-mono)}
+.v3-stock-report .hero-meta{display:flex;gap:28px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-meta-item{text-align:center}
+.v3-stock-report .hero-meta-item .val{font-size:22px;font-weight:700;font-family:var(--font-mono);color:var(--gold-light)}
+.v3-stock-report .hero-meta-item .label{font-size:11px;color:rgba(255,255,255,.7);letter-spacing:1px}
+.v3-stock-report .hero-tags{display:flex;gap:8px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-tag{background:rgba(255,255,255,.08);border:1px solid rgba(255,215,0,.3);
+color:var(--gold-light);padding:4px 9px;border-radius:20px;font-size:11px;font-weight:500}
+/* 结论置顶 */
+.v3-stock-report .conclusion-top{background:linear-gradient(135deg,#1e1a10 0%,#241f14 100%);
+border:2px solid var(--gold);border-radius:var(--radius);padding:22px 28px;margin-bottom:24px;position:relative}
+.v3-stock-report .conclusion-top::before{content:'核心结论';position:absolute;top:-13px;left:24px;
+background:var(--gold);color:#000;padding:3px 16px;border-radius:12px;font-weight:700;font-size:12px;letter-spacing:1px}
+.v3-stock-report .conclusion-top .big-verdict{font-weight:800;font-size:20px;color:#fff;margin-top:8px}
+.v3-stock-report .conclusion-top .verdict-detail{font-size:14px;color:var(--text-secondary);margin-top:8px;line-height:1.7}
+.v3-stock-report .conclusion-top .verdict-tags{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+/* 卡片 */
+.v3-stock-report .card{background:var(--card-bg);border:1px solid var(--border);
+border-radius:var(--radius);padding:22px 28px;margin-bottom:20px;box-shadow:var(--shadow);
+transition:var(--transition)}
+.v3-stock-report .card:hover{box-shadow:0 8px 30px rgba(0,0,0,.5);border-color:var(--gold)}
+.v3-stock-report .card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;
+padding-bottom:12px;border-bottom:2px solid var(--border)}
+.v3-stock-report .card-header .icon{width:32px;height:32px;border-radius:8px;
+background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;
+font-weight:700;font-size:16px;color:var(--gold)}
+.v3-stock-report .card-header h2{font-size:18px;font-weight:700;color:#fff;letter-spacing:.5px}
+.v3-stock-report .card-header .sub{margin-left:auto;font-size:11px;color:var(--text-muted)}
+/* 布局网格 */
+.v3-stock-report .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.v3-stock-report .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+/* 表格 */
+.v3-stock-report table.cons{width:100%;border-collapse:collapse;font-size:13px;
+background:var(--card-bg-alt);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:12px 0}
+.v3-stock-report table.cons thead th{background:linear-gradient(180deg,#2c1a1a 0%,#1c1010 100%);
+color:#fff;font-weight:600;padding:10px 12px;text-align:left;font-size:12px;letter-spacing:1px}
+.v3-stock-report table.cons tbody tr{border-bottom:1px dashed var(--border)}
+.v3-stock-report table.cons tbody tr:hover{background:rgba(255,255,255,.02)}
+.v3-stock-report table.cons tbody td{padding:9px 12px;vertical-align:middle;color:var(--text-secondary)}
+.v3-stock-report .val-up{color:var(--red-up);font-weight:600}
+.v3-stock-report .val-down{color:var(--green-down);font-weight:600}
+/* 标签 */
+.v3-stock-report .tag{display:inline-block;padding:3px 12px;border-radius:14px;font-size:11px;
+font-weight:600;background:rgba(212,168,83,.15);color:var(--gold-light);border:1px solid var(--gold);
+margin-right:6px;margin-bottom:4px}
+/* KPI 行 */
+.v3-stock-report .kpi-info-row{display:flex;justify-content:space-around;margin-top:18px;
+padding-top:14px;border-top:2px solid var(--border)}
+.v3-stock-report .kpi-info-item{text-align:center}
+.v3-stock-report .kpi-info-item .label{font-size:12px;color:var(--text-muted)}
+.v3-stock-report .kpi-info-item .value{font-size:20px;font-weight:700;color:var(--gold-light)}
+/* 浅色模式 */
+.v3-stock-report.light-mode .hero{background:linear-gradient(105deg,#fef5e7,#fffbf5);
+color:var(--text-primary);border-color:var(--gold)}
+.v3-stock-report.light-mode .hero-price{color:var(--text-primary)}
+.v3-stock-report.light-mode .hero-change{background:rgba(220,38,38,.1);color:var(--red-up)}
+.v3-stock-report.light-mode .hero-meta-item .val{color:var(--gold)}
+.v3-stock-report.light-mode .hero-meta-item .label{color:var(--text-muted)}
+.v3-stock-report.light-mode .hero-tag{background:rgba(212,168,83,.15);border-color:var(--gold);color:var(--gold)}
+.v3-stock-report.light-mode .conclusion-top{background:linear-gradient(135deg,#fff9f0,#fef5e7)}
+.v3-stock-report.light-mode .conclusion-top .big-verdict{color:var(--text-primary)}
+.v3-stock-report.light-mode .card-header h2{color:var(--text-primary)}
+.v3-stock-report.light-mode .tag{background:rgba(212,168,83,.15);color:var(--gold);border-color:var(--gold)}
+.v3-stock-report.light-mode .kpi-info-item .value{color:var(--gold)}
+.v3-stock-report.light-mode .top-nav .logo{color:var(--text-primary)}
+.v3-stock-report.light-mode .top-nav .logo-icon{color:var(--card-bg)}
+.v3-stock-report.light-mode .top-nav .stock-name{color:var(--text-primary)}
+.v3-stock-report.light-mode .theme-toggle{background:rgba(0,0,0,.05);border-color:var(--gold);color:var(--gold)}
+/* 响应式 */
+@media(max-width:850px){
+.v3-stock-report .grid-2,.v3-stock-report .grid-3{grid-template-columns:1fr}
+.v3-stock-report .hero{flex-direction:column;align-items:flex-start}
+.v3-stock-report .hero-price{font-size:40px}
+.v3-stock-report .top-nav{padding:10px 14px}
+}
+"""
+
 # masthead 与 hero 的样式单独拼
 _CSS_HEAD = """
 /* ---------- §2.4 顶部 masthead 条: 股票名 + 代码 + 报告日期 + 数据截止时点 ---------- */
@@ -1302,7 +1434,9 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
             '<meta name="viewport" content="width=device-width,initial-scale=1,'
             'maximum-scale=1,user-scalable=no">',
             '<title>%s %s · V3 报告</title>' % (_esc(name), _esc(code)),
-            '<style>', _CSS, _CSS_HEAD, _checklist_css(),
+            # ECharts CDN (Task 6.1: 集成 mingli30119 双主题 UI)
+            '<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>',
+            '<style>', _CSS, _CSS_HEAD, _checklist_css(), _MINGLI_CSS,
             '</style></head><body><div class="container">']
 
     if result.get("__self_test"):
