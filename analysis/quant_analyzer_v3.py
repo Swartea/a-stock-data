@@ -153,6 +153,30 @@ def _score_to_state(score: float) -> str:
     return "bearish"          # 看空（<35）
 
 
+# ============================================================
+# PEG talk-text 4 档阈值 (D-3 修法, Task 5.5)
+# 对齐 analysis/references/report-design-principles.md:73-77
+# ============================================================
+def _format_peg_talk(peg: float) -> str:
+    """PEG → 中文 talk-text (4 档阈值)。
+    
+    阈值规则（与 report-design-principles.md:73-77 严格对齐）:
+        < 1           → PEG < 1, 便宜区
+        [1, 1.5)      → PEG 1~1.5, 合理
+        [1.5, 3)      → PEG 1.5~3, 偏贵
+        >= 3          → PEG > 3, 极贵（成长股例外：壁垒深可能合理）
+    
+    边界用 < (not <=): peg=1.0 → "合理", peg=1.5 → "偏贵", peg=3.0 → "极贵"。
+    """
+    if peg < 1:
+        return "PEG < 1, 便宜区"
+    if peg < 1.5:
+        return "PEG 1~1.5, 合理"
+    if peg < 3:
+        return "PEG 1.5~3, 偏贵"
+    return "PEG > 3, 极贵（成长股例外：壁垒深可能合理）"
+
+
 # 5 状态独立模板：每条都包含"结论+操作+风险"三段（用 `｜` 分段，Markdown 表格不破）。
 # 占位符 {score}/{stop_loss}/{stop_loss_pct}/{entry_low}/{tp1} 由调用方 .format 注入。
 OPERATION_TEMPLATES = {
@@ -1699,8 +1723,8 @@ def write_markdown_report_v3(r: dict) -> str:
         L.append(f"- **PB {pb:.2f}** — {pb_talk}")
     if v.get("peg") and v["peg"] != float("inf"):
         peg = v["peg"]
-        peg_talk = "PEG < 1, 便宜区" if peg < 1 else ("PEG 1~1.5, 合理" if peg < 1.5 else "PEG > 1.5, 偏贵")
-        L.append(f"- **PEG {peg}** — {peg_talk}")
+        # D-3 修法 (Task 5.5): 4 档阈值, 对齐 report-design-principles.md:73-77
+        L.append(f"- **PEG {peg}** — {_format_peg_talk(peg)}")
     if v.get("digest_years") and v["digest_years"] > 0:
         d = v["digest_years"]
         d_talk = "2 年内消化完 (便宜)" if d < 2 else ("2~4 年 (合理)" if d < 4 else "4 年以上 (太贵)")
