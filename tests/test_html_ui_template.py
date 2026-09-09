@@ -132,3 +132,83 @@ def test_mingli_css_size_reasonable():
     assert 8000 <= len(_MINGLI_CSS) <= 15000, (
         f"_MINGLI_CSS 长度 {len(_MINGLI_CSS)} 不在 8-15KB 范围"
     )
+
+
+# ============================================================
+# Task 6.2: 顶部导航 + 主题切换 JS 集成测试
+# ============================================================
+
+def test_v3_render_html_has_top_nav():
+    """V3 渲染器 <body> 段应含 .top-nav + theme-toggle 按钮。"""
+    import inspect
+    from html_report_v3 import write_html_report_v3
+    src = inspect.getsource(write_html_report_v3)
+    assert '<nav class="top-nav">' in src, "V3 渲染器未输出 .top-nav"
+    assert 'id="themeToggle"' in src, "V3 渲染器未注入 themeToggle 按钮"
+
+
+def test_v3_render_html_has_theme_js():
+    """V3 渲染器应含主题切换 JS (localStorage 记忆 + body.light-mode 切换)。"""
+    import inspect
+    from html_report_v3 import write_html_report_v3
+    src = inspect.getsource(write_html_report_v3)
+    assert "v3-stock-report-theme" in src, "V3 渲染器未注入主题 JS (localStorage key)"
+    assert "light-mode" in src, "V3 渲染器未注入 .light-mode 切换逻辑"
+    assert "localStorage" in src, "V3 渲染器未注入 localStorage 记忆"
+
+
+def test_v3_body_wrapped_in_v3_stock_report():
+    """V3 渲染器 <body> 内层 div 应为 .v3-stock-report (CSS 变量继承基底层)。"""
+    import inspect
+    from html_report_v3 import write_html_report_v3
+    src = inspect.getsource(write_html_report_v3)
+    assert '<div class="v3-stock-report">' in src, (
+        "V3 渲染器 <body> 内层未用 .v3-stock-report 包裹 (CSS 变量无法继承)"
+    )
+    # 确认不再是 .container (V3 旧 wrapper)
+    assert '<div class="container">' not in src, (
+        "V3 渲染器仍在用 .container (升级后应改 .v3-stock-report)"
+    )
+
+
+def test_theme_toggle_button_text_default_dark():
+    """主题切换按钮默认文本应为 '☀️ 浅色模式' (暗色模式提示切换到浅色)。"""
+    import inspect
+    from html_report_v3 import write_html_report_v3
+    src = inspect.getsource(write_html_report_v3)
+    assert "☀️ 浅色模式" in src, "主题按钮默认文本不正确"
+    assert "🌙 深色模式" in src, "主题按钮切换后文本不正确"
+
+
+# ============================================================
+# 端到端: 跑 600693 验证 HTML 含主题切换元素
+# ============================================================
+def test_e2e_600693_html_has_theme_toggle():
+    """端到端: 跑 600693, 输出 HTML 应含 top-nav + themeToggle 按钮 + 主题 JS。"""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    report_dir = Path("/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团")
+    if not report_dir.exists():
+        pytest.skip("600693 报告目录不存在, 跳过端到端测试")
+
+    # 跑 V3 一次 (使用已有的 result_v3, 不重新跑端到端 — 避免测试慢)
+    # 直接验证最新 HTML 含主题元素
+    md_files = list(report_dir.glob("**/600693-东百集团-*.md"))
+    if not md_files:
+        pytest.skip("无 600693 报告, 跳过")
+
+    latest_date_dir = max(md_files, key=lambda p: p.stat().st_mtime).parent
+    html_files = list(latest_date_dir.glob("600693-东百集团-v3-*.html"))
+    if not html_files:
+        pytest.skip("无 600693 HTML 报告, 跳过")
+
+    latest_html = max(html_files, key=lambda p: p.stat().st_mtime)
+    content = latest_html.read_text(encoding="utf-8")
+
+    # 验证主题切换元素
+    assert 'class="top-nav"' in content, f"{latest_html.name} 缺 .top-nav"
+    assert 'id="themeToggle"' in content, f"{latest_html.name} 缺 themeToggle 按钮"
+    assert "v3-stock-report-theme" in content, f"{latest_html.name} 缺主题 JS"
+    assert "v3-stock-report" in content, f"{latest_html.name} 缺 v3-stock-report 包裹"

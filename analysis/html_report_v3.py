@@ -1437,7 +1437,7 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
             # ECharts CDN (Task 6.1: 集成 mingli30119 双主题 UI)
             '<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>',
             '<style>', _CSS, _CSS_HEAD, _checklist_css(), _MINGLI_CSS,
-            '</style></head><body><div class="container">']
+            '</style></head><body><div class="v3-stock-report">']
 
     if result.get("__self_test"):
         html.append('<div class="self-test-note">⚠️ 本页为 <b>html_report_v3 模板自测样例</b>'
@@ -1447,15 +1447,24 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     mh_cut = _source_time(run_log, ["quote", "行情", "chip", "kline", "筹码"], None) \
         or chip_t or report_date
 
-    # ---- §2.4 masthead 条: 股票名 + 代码 + 报告日期 + 数据截止时点 ----
-    html.append('<header class="masthead">'
-                '<div class="mh-name">%s<span class="mh-code">%s</span></div>'
-                '<div class="mh-meta">'
-                '<span class="mh-chip">报告日期 %s</span>'
-                '<span class="mh-chip">行情数据截止 %s</span>'
-                '<span class="mh-chip">生成 %s</span>'
-                '</div></header>'
-                % (_esc(name), _esc(code),
+    # ---- §2.4 顶部导航 (Task 6.2: mingli30119 .top-nav 风格 + 主题切换按钮) ----
+    # 保留 V3 旧 masthead 内容, 套用 mingli30119 .top-nav class
+    # 加 主题切换按钮 (id="themeToggle" 由下方 JS 控制)
+    html.append('<nav class="top-nav">'
+                '<div class="logo">'
+                '<div class="logo-icon">%s</div>'
+                '<span class="stock-name">%s</span>'
+                '<span class="stock-code">%s</span>'
+                '</div>'
+                '<div class="nav-links">'
+                '<span class="hero-tag">报告日期 %s</span>'
+                '<span class="hero-tag">行情截止 %s</span>'
+                '<span class="hero-tag">生成 %s</span>'
+                '</div>'
+                '<button class="theme-toggle" id="themeToggle">☀️ 浅色模式</button>'
+                '</nav>'
+                % (_esc(name[0] if name else "股"),
+                   _esc(name), _esc(code),
                    _esc(report_date), _time_label(mh_cut), gen_now))
 
     # ---- a) 结论前置 hero ----
@@ -1535,7 +1544,43 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
                 % (src_line, _esc(report_date), _time_label(mh_cut), gen_now))
 
     html.append('</div></body></html>')
-    content = "\n".join(html)
+
+    # ---- Task 6.2: 主题切换 JS (localStorage 记忆 + body.light-mode 切换) ----
+    # 加在 html.append 之后, 由 write_html_report_v3 末尾追加到 .html 文件
+    _THEME_JS = r'''
+<script>
+(function() {
+  var KEY = 'v3-stock-report-theme';
+  var body = document.body;
+  var btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  // 初始化: localStorage > 默认 dark
+  var saved = localStorage.getItem(KEY);
+  if (saved === 'light') {
+    document.querySelector('.v3-stock-report').classList.add('light-mode');
+    btn.textContent = '🌙 深色模式';
+  } else {
+    btn.textContent = '☀️ 浅色模式';
+  }
+  // 切换
+  btn.addEventListener('click', function() {
+    var target = document.querySelector('.v3-stock-report');
+    target.classList.toggle('light-mode');
+    var isLight = target.classList.contains('light-mode');
+    btn.textContent = isLight ? '🌙 深色模式' : '☀️ 浅色模式';
+    try { localStorage.setItem(KEY, isLight ? 'light' : 'dark'); } catch(e) {}
+    // 触发 ECharts 主题重渲染 (如有)
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new Event('resize'));
+    }
+  });
+})();
+</script>
+'''
+    # 把 _THEME_JS 插在 </body> 之前 (Task 6.2: 主题切换 JS)
+    html_str = "".join(html)
+    html_str = html_str.replace('</body>', _THEME_JS + '</body>')
+    content = html_str
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
     return path
