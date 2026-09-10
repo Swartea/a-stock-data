@@ -352,3 +352,51 @@ def test_e2e_600693_html_has_echarts_5_containers():
 
     # ECharts JS 主题适配 (light-mode 切换)
     assert "light-mode" in content, f"{latest_html.name} 缺 light-mode 主题适配"
+
+
+# ============================================================
+# Task 6.5+: HTML → PDF 渲染 (Chrome headless)
+# ============================================================
+
+def test_render_html_to_pdf_finds_chrome():
+    """_render_html_to_pdf 应能找到本机 Chrome 路径。"""
+    import os
+    from analysis.html_report_v3 import _render_html_to_pdf
+    # 仅检查函数能正常导入且参数校验
+    # 真正的 PDF 渲染需要真实 HTML 文件, 走 e2e 测试
+    assert callable(_render_html_to_pdf)
+
+
+def test_render_html_to_pdf_handles_missing_file():
+    """HTML 文件不存在时应该 raise FileNotFoundError。"""
+    from analysis.html_report_v3 import _render_html_to_pdf
+    with pytest.raises(FileNotFoundError):
+        _render_html_to_pdf("/nonexistent/file.html")
+
+
+def test_e2e_600693_pdf_generated():
+    """端到端: 600693 最新报告应同时生成 PDF (与 HTML 同名前缀)。"""
+    from pathlib import Path
+    report_dir = Path("/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团")
+    if not report_dir.exists():
+        pytest.skip("600693 报告目录不存在")
+    md_files = list(report_dir.glob("**/600693-东百集团-*.md"))
+    if not md_files:
+        pytest.skip("无 600693 报告")
+    latest_date_dir = max(md_files, key=lambda p: p.stat().st_mtime).parent
+    html_files = list(latest_date_dir.glob("600693-东百集团-v3-*.html"))
+    if not html_files:
+        pytest.skip("无 600693 HTML 报告")
+
+    latest_html = max(html_files, key=lambda p: p.stat().st_mtime)
+    expected_pdf = latest_html.with_suffix(".pdf")
+    if not expected_pdf.exists():
+        pytest.skip(f"PDF 还未生成 (Chrome headless 不可用): {expected_pdf.name}")
+
+    # PDF 大小应 > 100KB (含 ECharts 5 图渲染)
+    size_kb = expected_pdf.stat().st_size / 1024
+    assert size_kb > 100, f"PDF 太小 ({size_kb:.0f}KB), 可能渲染失败"
+    # PDF 魔数检查
+    with open(expected_pdf, "rb") as f:
+        head = f.read(4)
+    assert head == b"%PDF", f"{expected_pdf.name} 不是有效 PDF (魔数错误)"

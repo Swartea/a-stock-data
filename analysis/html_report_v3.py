@@ -2005,7 +2005,85 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     content = html_str
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
+
+    # ---- Task 6.5+ (UI 升级线): HTML → PDF 渲染 (Chrome headless) ----
+    # 用本机 Chrome headless 模式渲染 HTML (含 ECharts 5 图 + 双主题) → PDF
+    # 输出: <out_dir>/<name>-<HHMM>.pdf (与 HTML 同名仅后缀不同)
+    try:
+        pdf_path = _render_html_to_pdf(path, virtual_time_budget_ms=15000)
+    except Exception as _pdf_err:
+        # PDF 渲染失败不阻塞 HTML 输出, 仅记录
+        pdf_path = None
+        import sys as _sys
+        print("[V3] PDF 渲染失败 (%s): %s" % (type(_pdf_err).__name__, _pdf_err), file=_sys.stderr)
+
     return path
+
+
+def _render_html_to_pdf(html_path: str, virtual_time_budget_ms: int = 15000) -> str:
+    """用 macOS Google Chrome headless 模式把 V3 HTML 渲染成 PDF。
+
+    Args:
+        html_path: V3 渲染器输出的 HTML 文件绝对路径
+        virtual_time_budget_ms: Chrome 等 ECharts 渲染的虚拟时间预算 (ms)
+                              默认 15s, 给 ECharts 5 图 + 主题 JS 充分加载
+
+    Returns:
+        输出 PDF 绝对路径 (与 HTML 同目录, 同名前缀, .pdf 后缀)
+    """
+    import os
+    import subprocess
+    import sys
+
+    if not os.path.exists(html_path):
+        raise FileNotFoundError("HTML 文件不存在: %s" % html_path)
+
+    # 输出 PDF 路径: <dir>/<basename>.pdf (basename 去掉 .html)
+    base, _ = os.path.splitext(html_path)
+    pdf_path = base + ".pdf"
+
+    # 找 Chrome 路径 (macOS 优先, 其它平台 fallback)
+    chrome_paths = [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+    ]
+    chrome_bin = None
+    for p in chrome_paths:
+        if os.path.exists(p):
+            chrome_bin = p
+            break
+    if not chrome_bin:
+        # 试 which
+        import shutil
+        for name in ("google-chrome", "chromium", "chrome"):
+            w = shutil.which(name)
+            if w:
+                chrome_bin = w
+                break
+    if not chrome_bin:
+        raise FileNotFoundError("找不到 Chrome / Chromium — PDF 渲染需本机 Chrome")
+
+    file_url = "file://" + os.path.abspath(html_path)
+    cmd = [
+        chrome_bin,
+        "--headless",
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--virtual-time-budget=" + str(int(virtual_time_budget_ms)),
+        "--print-to-pdf=" + pdf_path,
+        "--print-to-pdf-no-header",
+        file_url,
+    ]
+    # 静默 stderr (headless 模式有 CVDisplayLink 等无害警告)
+    proc = subprocess.run(
+        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60,
+    )
+    if not os.path.exists(pdf_path):
+        raise RuntimeError("Chrome headless 渲染失败: %s" % proc.returncode)
+    return pdf_path
 
 
 # ============================================================
