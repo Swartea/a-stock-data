@@ -1296,22 +1296,44 @@ def write_markdown_report_v3(r: dict) -> str:
     # ================= 第一屏: 决策结论 =================
     L.append(f"# {name} ({code}) — V3 决策报告")
     L.append("")
-    L.append(f"## 🎯 结论前置 · 30 秒决策")
+    L.append("## 🎯 30 秒决策卡")
     L.append("")
+    # 综合判定行 (block + 强语气)
     L.append(f"> **{r['emoji']} {r['advice']}** ｜ 多空三态: **{state_icon} {state}** ｜ "
-             f"综合评分 **{score_total}/100**")
+             f"综合评分 **{score_total}/100** ｜ 一句话: **{r.get('detail','')}**")
     L.append("")
-    L.append(f"- 现价 **{price:.2f} 元** ({change_pct:+.2f}%) ｜ PE(TTM) {q.get('pe_ttm',0):.1f} ｜ "
-             f"PB {q.get('pb',0):.2f} ｜ 流通市值 {q.get('float_mcap',0):.1f} 亿")
-    L.append(f"- 一句话理由: **{r.get('detail','')}**")
-    L.append(f"- 报告生成: {now} (报告日期 {r.get('report_date','')})")
-    L.append("")
-    L.append("### 三价位 (支撑 / 压力 / 止损)")
+    # 核心指标 7 列大表 (1 屏读完所有核心数据)
+    vh = r.get("valuation_hist") or {}
+    pe_pct = vh.get("pe_percentile_3y")
+    pb_pct = vh.get("pb_percentile_3y")
+    val = r.get("valuation") or {}
+    peg_val = val.get("peg")
+    change_sign = "+" if change_pct >= 0 else ""
+    # PEG 4 档阈值 (Task 5.5): <1 便宜 / 1-1.5 合理 / 1.5-3 偏贵 / >=3 极贵
+    if peg_val is not None and peg_val != float("inf"):
+        if peg_val < 1:
+            peg_label = "便宜"
+        elif peg_val < 1.5:
+            peg_label = "合理"
+        elif peg_val < 3:
+            peg_label = "偏贵"
+        else:
+            peg_label = "极贵"
+        peg_str = f"{peg_val:.2f} ({peg_label})"
+    else:
+        peg_str = "—"
+    L += [
+        "| 💰 现价 | 📊 涨跌 | 🏭 流通市值 | 📈 PE(TTM) | 📉 PB | 📊 PE 分位(3年) | 🎯 PEG |",
+        "|----------|---------|-------------|-------------|------|------------------|------|",
+        f"| **{price:.2f} 元** | {change_sign}{change_pct:.2f}% | {q.get('float_mcap',0):.1f} 亿 "
+        f"| {q.get('pe_ttm',0):.1f} | {q.get('pb',0):.2f} "
+        f"| {(pe_pct if pe_pct is not None else 0):.1f}% | {peg_str} |",
+        "",
+    ]
+    # 三价位 4 行大表 (支撑/压力/止损/现价, emoji 颜色)
+    L.append("### 🎯 三价位（V2 同源实时模型 · 4 候选取最近）")
     L.append("")
     if plan:
-        # 债 2 修法 (Task 5.2): 4 支撑候选 / 3 压力候选 → 取最近者 (+/-5% 过滤)
-        # 候选价从 chip_data['kline'] 自算 MA/布林/前高/前低, 筹码峰读 chip_data['peak_price']
-        # stop_loss 复用 trading_plan.stop_loss (V2 同源, **不重算**)
         tl3 = r.get("three_levels") or {}
         tl_sup = tl3.get("support")
         tl_res = tl3.get("resistance")
@@ -1319,29 +1341,53 @@ def write_markdown_report_v3(r: dict) -> str:
         sup_cands = tl3.get("support_candidates") or {}
         res_cands = tl3.get("resistance_candidates") or {}
         if tl_sup is not None and tl_res is not None:
-            L.append(f"> **三价位(同源)**: 支撑=**{tl_sup:.2f}** 压力=**{tl_res:.2f}** 止损=**{tl_sl:.2f}**")
+            # 4 行大表: 现价(参考) + 支撑 + 压力 + 止损, 距现价百分比
+            L += [
+                "| 价位 | 数值 | 距现价 | 来源 / 触发动作 |",
+                "|------|------|--------|---------------|",
+                f"| 💰 **现价** | **{price:.2f}** | 0% (参考) | 腾讯实时行情 (报告日 {r.get('report_date','')}) |",
+                f"| 🟢 **支撑位** | **{tl_sup:.2f}** | {(tl_sup-price)/price*100:+.1f}% | "
+                f"4 候选取最低（≤1.05×现价）· 60 日最低 {sup_cands.get('recent_low', 0):.2f} |",
+                f"| 🔴 **压力位** | **{tl_res:.2f}** | {(tl_res-price)/price*100:+.1f}% | "
+                f"3 候选取最高（≥0.95×现价）· 60 日最高 {res_cands.get('recent_high', 0):.2f} |",
+                f"| 🟡 **止损位** | **{tl_sl:.2f}** | {(tl_sl-price)/price*100:+.1f}% | "
+                f"5 状态机锁定 · 跌破必走（区间下沿 -7.0%）|",
+                "",
+            ]
+            # 候选明细 (次要信息, blockquote 折叠)
             if sup_cands:
                 sup_str = " / ".join(f"{k}={v:.2f}" for k, v in sup_cands.items())
-                L.append(f"> - 4 支撑候选: {sup_str}（取最低且 ≤ 1.05×现价 = **{tl_sup:.2f}**）")
+                L.append(f"> 📋 **4 支撑候选**: {sup_str}")
             if res_cands:
                 res_str = " / ".join(f"{k}={v:.2f}" for k, v in res_cands.items())
-                L.append(f"> - 3 压力候选: {res_str}（取最高且 ≥ 0.95×现价 = **{tl_res:.2f}**）")
+                L.append(f"> 📋 **3 压力候选**: {res_str}")
             L.append("")
-        L += [
-            "| 价位 | 数值 | 说明 |",
-            "|------|------|------|",
-            f"| **支撑位** | **{plan['entry_low']:.2f} 元** | 回调买入区下沿 (现价-3%, 分批进场上限 "
-            f"{plan['entry_high']:.2f}) |",
-            f"| **压力位** | **{plan['tp1']:.2f} 元** | 第一目标 (+10%, 先减半仓锁利; 远档 "
-            f"{plan['tp2']:.2f} / {plan['tp3']:.2f}) |",
-            f"| **止损位** | **{plan['stop_loss']:.2f} 元** | 跌破必走 (现价下方 -{plan['stop_loss_pct']:.1f}%) |",
-            "",
-        ]
-        L.append(f"> 🔒 三价位均由 V2 同源实时模型推导: 腾讯实时行情价 + baostock 前复权筹码K线, "
-                 f"**未使用任何池 CSV 陈旧价** (债4)。")
+            L.append("### 💰 操作口诀（5 状态机）")
+            L.append("")
+            # 三段式: 结论 + 操作 + 风险
+            template = plan.get("template_used", "")
+            if template:
+                # 拆 template_used 三段
+                for seg in template.split("｜"):
+                    seg = seg.strip()
+                    if seg:
+                        L.append(f"> {seg}")
+                L.append("")
+            # 多目标价
+            L += [
+                f"> 📊 **多目标价**: 短 {plan['tp1']:.2f} / 中 {plan['tp2']:.2f} / 远 {plan['tp3']:.2f} 元",
+                f"> 🎯 **买入区间**: {plan['entry_low']:.2f}~{plan['entry_high']:.2f} 元 (分批上限 {plan['entry_high']:.2f})",
+                f"> ⏱ **周期**: 短线 1-2 周",
+                "",
+            ]
+            L.append("> 🔒 **数据可信度**: 三价位由 V2 同源实时模型推导 (腾讯实时行情 + baostock 前复权筹码K线)，"
+                     "**未使用任何池 CSV 陈旧价** (债4)。")
+        else:
+            L.append("> ⚠️ 三价位无法生成 (行情/筹码数据缺失), 请勿据此操作。")
+        L.append("")
     else:
         L.append("> ⚠️ 三价位无法生成 (行情/筹码数据缺失), 请勿据此操作。")
-    L.append("")
+        L.append("")
 
     # ================= 风险警报区 (红色高亮) =================
     L.append("## 🚨 风险警报区")
