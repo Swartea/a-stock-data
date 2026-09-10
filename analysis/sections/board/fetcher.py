@@ -19,8 +19,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import quant_analyzer_v2 as v2
 
 
-# 4 个东财端点必须全部存在，否则整片失败
-_REQUIRED_ENDPOINTS = ["em_zt_pool", "em_zb_pool", "em_dt_pool", "em_yzt_pool"]
+# 4 个东财端点中: zt/zb/dt 三池必选, yzt(一字板) 可选 (akshare 无 stock_zt_pool_yjyg_em 接口)
+_REQUIRED_ENDPOINTS = ["em_zt_pool", "em_zb_pool", "em_dt_pool"]
+_OPTIONAL_ENDPOINTS = ["em_yzt_pool"]
 
 
 def _raw_fetch(date: str) -> dict:
@@ -30,6 +31,7 @@ def _raw_fetch(date: str) -> dict:
         dict:
           - zt: list[dict] 涨停池
           - dt: list[dict] 跌停池
+          - yzt: list[dict] 一字板池（可空，akshare 无接口时返回 []）
           - limit_up_reasons: list[dict] 同花顺涨停原因（可空）
           - sentiment: dict §8.3 情绪字典（可空）
         失败抛 RuntimeError
@@ -59,9 +61,18 @@ def _raw_fetch(date: str) -> dict:
     # 跌停池放最后（如果 limit_up_sentiment 用了 zb 池，先 zb 再 dt 更稳）
     dt = v2.em_dt_pool(date) or []
 
+    # 一字板池 (可选, akshare 缺 stock_zt_pool_yjyg_em, 留空 list)
+    yzt: list = []
+    try:
+        if hasattr(v2, "em_yzt_pool"):
+            yzt = v2.em_yzt_pool(date) or []
+    except Exception:
+        yzt = []
+
     return {
         "zt": zt,
         "dt": dt,
+        "yzt": yzt,
         "limit_up_reasons": ths,
         "sentiment": sent if isinstance(sent, dict) else {},
     }

@@ -43,8 +43,9 @@ def fetch_dividend(code: str, limit: int = 10) -> dict:
     """拉分红送转记录（最近 10 条 = 5 年）
 
     None-safe 转换：
-    - BONUS_RATIO null → bonus_ratio=0（无送转）
-    - 用 `.get(...) or 0` 而非 `.get(..., 0)`，因为 null 是真实值
+    - 字段名适配: v2.fetch_dividend_history 返回 cninfo 字段 (派息比例/送股比例/转增比例)
+    - 字段值已是"每 10 股 X" 基数, 转换为"每股" (即 /10) 在 v2 端已完成
+    - 用 `.get(...) or 0` 而非 `.get(..., 0)`，因为 null 是真实值（无送转/转增）
 
     Returns:
         dict: {"rows": [...]}
@@ -52,11 +53,14 @@ def fetch_dividend(code: str, limit: int = 10) -> dict:
     """
     try:
         rows = _raw_fetch(code, limit)
-        # None-safe 转换：BONUS_RATIO null 视为 0（无送转）
+        # None-safe 转换: cninfo 字段名 → 统一小写英文键名 (render 期望)
         for r in rows:
-            r["bonus_rmb"] = r.get("BONUS_RATIO") or 0
-            r["bonus_ratio"] = r.get("BONUS_RATIO") or 0
-            r["transfer_ratio"] = r.get("IT_RATIO") or 0
+            # bonus_rmb: 派息比例 (每 10 股 X 元, 已在 v2 中 /10 → 每股派息元)
+            r["bonus_rmb"] = r.get("bonus_rmb") or 0
+            # bonus_ratio: 送股比例 (每 10 股 X 股, 已在 v2 中 /10 → 每股送股)
+            r["bonus_ratio"] = r.get("bonus_ratio") or 0
+            # transfer_ratio: 转增比例 (每 10 股 X 股, 已在 v2 中 /10 → 每股转增)
+            r["transfer_ratio"] = r.get("transfer_ratio") or 0
         return {"rows": rows or []}
     except Exception as e:
         return {"error": str(e)}

@@ -825,6 +825,448 @@ def fetch_macro_snapshot() -> dict:
 
 
 # ============================================================
+# 数据广度线 (Phase 1) — 5 sections 端点补齐
+# Task 7.1-7.5: holders / dividend / board / dragon_market / irm
+# ============================================================
+
+def fetch_holder_num_change(code: str, limit: int = 4) -> list:
+    """拉最近 N 季度股东户数变化（cninfo 巨潮接口）
+
+    数据源: ak.stock_hold_num_cninfo(date='YYYYMMDD') — 全市场季度数据
+    字段: 证券代码/简称/变动日期/本期股东人数/上期股东人数/股东人数增幅/本期人均持股/上期人均持股/人均持股增幅
+
+    Returns:
+        list[dict]: [{date, holder_num, change_ratio, avg_shares_per_holder,
+                       prev_holder_num, prev_avg_shares, avg_change_ratio}, ...]
+        按日期降序，最新在前
+    """
+    import datetime as _dt
+    import warnings as _w
+    _w.filterwarnings('ignore')
+    try:
+        import akshare as _ak
+    except ImportError:
+        return []
+
+    code = str(code).zfill(6)
+    today = _dt.date.today()
+    candidates = []
+    # 候选日期: 最近 8 个季度末 (0331/0630/0930/1231), 按时间倒序
+    for y in [today.year, today.year - 1, today.year - 2]:
+        for q in ['1231', '0930', '0630', '0331']:
+            candidates.append(f'{y}{q}')
+
+    rows = []
+    seen = set()
+    for d in candidates:
+        if len(rows) >= limit:
+            break
+        try:
+            df = _ak.stock_hold_num_cninfo(date=d)
+        except Exception:
+            continue
+        if df is None or df.empty or '证券代码' not in df.columns:
+            continue
+        sub = df[df['证券代码'] == code]
+        if sub.empty:
+            continue
+        r = sub.iloc[0]
+        date_str = str(r.get('变动日期', d))[:10]
+        if date_str in seen:
+            continue
+        seen.add(date_str)
+        try:
+            holder_num = float(r.get('本期股东人数') or 0)
+            prev_holder_num = float(r.get('上期股东人数') or 0)
+            change_ratio = float(r.get('股东人数增幅') or 0)
+            avg_shares = float(r.get('本期人均持股数量') or 0)
+            prev_avg_shares = float(r.get('上期人均持股数量') or 0)
+            avg_change_ratio = float(r.get('人均持股数量增幅') or 0)
+        except (ValueError, TypeError):
+            continue
+        if holder_num <= 0:
+            continue
+        rows.append({
+            "date": date_str,
+            "holder_num": int(holder_num),
+            "change_ratio": change_ratio,
+            "avg_shares_per_holder": int(avg_shares),
+            "prev_holder_num": int(prev_holder_num) if prev_holder_num > 0 else None,
+            "prev_avg_shares": int(prev_avg_shares) if prev_avg_shares > 0 else None,
+            "avg_change_ratio": avg_change_ratio,
+        })
+    return rows
+
+
+def fetch_dividend_history(code: str, limit: int = 10) -> list:
+    """拉最近 N 条分红送转记录（cninfo 巨潮接口）
+
+    数据源: ak.stock_dividend_cninfo(symbol=code) — 单只票分红历史
+    字段: 实施方案公告日期/分红类型/送股比例/转增比例/派息比例/实施方案分红说明/报告时间
+
+    Returns:
+        list[dict]: [{report_date, plan, bonus_rmb, bonus_ratio, transfer_ratio}, ...]
+        按日期降序，最新在前
+    """
+    import warnings as _w
+    _w.filterwarnings('ignore')
+    try:
+        import akshare as _ak
+    except ImportError:
+        return []
+
+    code = str(code).zfill(6)
+    try:
+        df = _ak.stock_dividend_cninfo(symbol=code)
+    except Exception:
+        return []
+    if df is None or df.empty:
+        return []
+    rows = []
+    for _, r in df.head(limit).iterrows():
+        # cninfo 字段名（实际）
+        # 实施方案公告日期 / 分红类型 / 送股比例 / 转增比例 / 派息比例 / 实施方案分红说明
+        report_date = str(r.get('实施方案公告日期') or r.get('公告日期') or '')
+        if not report_date or report_date == 'nan':
+            continue
+        report_date = report_date[:10]
+        # 字段已是"每 10 股 X" 基数, render 表格列名"每股派息(元) / 每股送股 / 每股转增"
+        # 故转换为"每股" (即 /10)
+        try:
+            bonus_ratio = float(r.get('送股比例') or 0) / 10.0
+        except (ValueError, TypeError):
+            bonus_ratio = 0
+        try:
+            transfer_ratio = float(r.get('转增比例') or 0) / 10.0
+        except (ValueError, TypeError):
+            transfer_ratio = 0
+        try:
+            bonus_rmb = float(r.get('派息比例') or 0) / 10.0
+        except (ValueError, TypeError):
+            bonus_rmb = 0
+        # 方案文本 (优先用分红说明)
+        plan_text = str(r.get('实施方案分红说明') or '').strip()
+        if not plan_text or plan_text == 'nan':
+            plan_parts = []
+            if bonus_rmb > 0:
+                plan_parts.append(f'派 {bonus_rmb * 10:g} 元/10股')
+            if bonus_ratio > 0:
+                plan_parts.append(f'送 {bonus_ratio * 10:g} 股/10股')
+            if transfer_ratio > 0:
+                plan_parts.append(f'转 {transfer_ratio * 10:g} 股/10股')
+            plan = "｜".join(plan_parts) if plan_parts else "—"
+        else:
+            plan = plan_text
+        rows.append({
+            "report_date": report_date,
+            "plan": plan,
+            "bonus_rmb": round(bonus_rmb, 4),
+            "bonus_ratio": bonus_ratio,
+            "transfer_ratio": transfer_ratio,
+        })
+    return rows
+
+
+def em_zt_pool(date: str) -> list:
+    """涨停池 (东财) — 拉取指定日期涨停个股池
+
+    数据源: ak.stock_zt_pool_em(date=YYYYMMDD)
+    Returns: list[dict] 涨停个股 (字段对齐 board section render 期望)
+    """
+    import warnings as _w
+    _w.filterwarnings('ignore')
+    try:
+        import akshare as _ak
+    except ImportError:
+        return []
+    date_clean = date.replace('-', '') if '-' in date else date
+    if len(date_clean) != 8 or not date_clean.isdigit():
+        return []
+    try:
+        df = _ak.stock_zt_pool_em(date=date_clean)
+    except Exception:
+        return []
+    if df is None or df.empty:
+        return []
+    rows = []
+    for _, r in df.head(50).iterrows():
+        try:
+            code = str(r.get('代码') or '').zfill(6)
+            name = str(r.get('名称') or '')
+            if not code or not name:
+                continue
+            # 字段映射: akshare → board section render 期望
+            # 注: seal_fund 保持**元** (render 端 _fmt_yi 统一转亿元)
+            rows.append({
+                "code": code,
+                "name": name,
+                "price": float(r.get('最新价') or 0),
+                "change_pct": float(r.get('涨跌幅') or 0),
+                # render 期望字段 (对齐 board/render.py)
+                "limit_days": int(float(r.get('连板数') or 0)),  # 连板数
+                "first_seal": str(r.get('首次封板时间') or ''),    # HHMMSS
+                "seal_fund": float(r.get('封板资金') or 0),       # 封板资金(元, render 端 _fmt_yi 转亿元)
+                "industry": str(r.get('所属行业') or ''),
+            })
+        except (ValueError, TypeError):
+            continue
+    return rows
+
+
+def em_zb_pool(date: str) -> list:
+    """炸板池 (东财) — 涨停后开板个股"""
+    import warnings as _w
+    _w.filterwarnings('ignore')
+    try:
+        import akshare as _ak
+    except ImportError:
+        return []
+    date_clean = date.replace('-', '') if '-' in date else date
+    if len(date_clean) != 8 or not date_clean.isdigit():
+        return []
+    try:
+        df = _ak.stock_zt_pool_zbgc_em(date=date_clean)
+    except Exception:
+        return []
+    if df is None or df.empty:
+        return []
+    rows = []
+    for _, r in df.head(30).iterrows():
+        try:
+            code = str(r.get('代码') or '').zfill(6)
+            name = str(r.get('名称') or '')
+            if not code or not name:
+                continue
+            rows.append({
+                "code": code,
+                "name": name,
+                "price": float(r.get('最新价') or 0),
+                "change_pct": float(r.get('涨跌幅') or 0),
+                "zb_time": str(r.get('炸板时间') or r.get('首次封板时间') or ''),
+                "industry": str(r.get('所属行业') or ''),
+            })
+        except (ValueError, TypeError):
+            continue
+    return rows
+
+
+def em_dt_pool(date: str) -> list:
+    """跌停池 (东财)"""
+    import warnings as _w
+    _w.filterwarnings('ignore')
+    try:
+        import akshare as _ak
+    except ImportError:
+        return []
+    date_clean = date.replace('-', '') if '-' in date else date
+    if len(date_clean) != 8 or not date_clean.isdigit():
+        return []
+    try:
+        df = _ak.stock_zt_pool_dtgc_em(date=date_clean)
+    except Exception:
+        return []
+    if df is None or df.empty:
+        return []
+    rows = []
+    for _, r in df.head(30).iterrows():
+        try:
+            code = str(r.get('代码') or '').zfill(6)
+            name = str(r.get('名称') or '')
+            if not code or not name:
+                continue
+            # 跌停封单资金 (字段名: 跌停封单金额 或 封单资金)
+            # 注: seal_fund 保持**元** (render 端 _fmt_yi 统一转亿元)
+            rows.append({
+                "code": code,
+                "name": name,
+                "price": float(r.get('最新价') or 0),
+                "change_pct": float(r.get('涨跌幅') or 0),
+                "pct": float(r.get('涨跌幅') or 0),  # render 端用 pct 别名
+                "dt_time": str(r.get('跌停时间') or r.get('首次封板时间') or ''),
+                "dt_days": int(float(r.get('连续跌停') or 0)),  # render 端用 dt_days 别名
+                "seal_fund": float(r.get('跌停封单金额') or r.get('封单资金') or 0),  # 元
+                "industry": str(r.get('所属行业') or ''),
+            })
+        except (ValueError, TypeError):
+            continue
+    return rows
+
+
+def em_yzt_pool(date: str) -> list:
+    """一字板池 (东财) — 开盘涨停/跌停一字板
+
+    注: akshare 无 stock_zt_pool_yjyg_em 接口, 此函数始终返回 []
+    (board section 兜底, 不影响主流程)
+    """
+    # akshare 实际接口为 stock_zt_pool_strong_em (强势股池), 不完全等同一字板
+    # 一字板需要 POST 私有接口, akshare 未提供
+    # 返回 [] 避免 board section 报"端点缺失"
+    return []
+
+
+def daily_dragon_tiger(date: str = None) -> dict:
+    """全市场龙虎榜 (东财) — 当日 Top N 净买额
+
+    数据源: ak.stock_lhb_detail_em(start_date, end_date)
+    Returns: {"stocks": [...], "total_records": N}
+    """
+    import warnings as _w
+    _w.filterwarnings('ignore')
+    import datetime as _dt
+    try:
+        import akshare as _ak
+    except ImportError:
+        return {"stocks": [], "total_records": 0}
+
+    # 默认当日 (YYYYMMDD)
+    if not date:
+        date = _dt.date.today().strftime("%Y%m%d")
+    date_clean = date.replace('-', '') if '-' in date else date
+    if len(date_clean) != 8 or not date_clean.isdigit():
+        return {"stocks": [], "total_records": 0}
+
+    # 优先用传入日期, 否则试最近 5 个交易日 (当日可能未出齐, 周末/节假日无数据)
+    import datetime as _dt2
+    try:
+        anchor = _dt2.datetime.strptime(date_clean, "%Y%m%d").date()
+    except ValueError:
+        anchor = _dt.date.today()
+    # 候选日期: anchor 起回溯 5 个自然日
+    candidates = [(anchor - _dt2.timedelta(days=i)).strftime("%Y%m%d") for i in range(5)]
+    df = None
+    used_date = None
+    for c in candidates:
+        try:
+            _df = _ak.stock_lhb_detail_em(start_date=c, end_date=c)
+        except Exception:
+            continue
+        if _df is not None and not _df.empty:
+            df = _df
+            used_date = c
+            break
+    if df is None or df.empty:
+        return {"stocks": [], "total_records": 0}
+
+    stocks = []
+    for _, r in df.head(50).iterrows():
+        try:
+            code = str(r.get('代码') or '').zfill(6)
+            name = str(r.get('名称') or '')
+            if not code or not name:
+                continue
+            net_buy = float(r.get('龙虎榜净买额') or r.get('净额') or 0)
+            stocks.append({
+                "code": code,
+                "name": name,
+                "net_buy": net_buy,  # 元
+                "net_buy_pct": float(r.get('龙虎榜净买额占成交额比例') or 0),
+                "buy_amount": float(r.get('买入额') or 0),
+                "sell_amount": float(r.get('卖出额') or 0),
+                "reason": str(r.get('上榜原因') or ''),
+            })
+        except (ValueError, TypeError):
+            continue
+    # 净买额降序
+    stocks.sort(key=lambda x: x["net_buy"], reverse=True)
+    return {"stocks": stocks, "total_records": len(df), "trade_date": used_date}
+
+
+def fetch_cninfo_irm(code: str, limit: int = 10) -> list:
+    """互动易问答 (巨潮) — 最近 N 条公司回复
+
+    数据源: 巨潮 IRM 平台 (需 POST + UA, 公开数据)
+    """
+    import urllib.request
+    import urllib.parse
+    import json as _json
+    import warnings as _w
+    _w.filterwarnings('ignore')
+
+    code = str(code).zfill(6)
+    # 巨潮 IRM 接口 (公开, 仿 akshare stock_irm_cninfo 内部 endpoint)
+    # orgId 来自 https://irm.cninfo.com.cn/newircs/index/queryKeyboardInfo
+    # Mac Python 自带证书不全 → unverified context 兜底
+    import ssl as _ssl
+    try:
+        _ssl_ctx = _ssl._create_unverified_context()
+    except Exception:
+        _ssl_ctx = None
+
+    try:
+        # 1. 反查 orgId (secid 字段)
+        org_url = "https://irm.cninfo.com.cn/newircs/index/queryKeyboardInfo"
+        org_data_enc = urllib.parse.urlencode({"keyWord": code}).encode("utf-8")
+        req = urllib.request.Request(
+            org_url,
+            data=org_data_enc,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10, context=_ssl_ctx) as resp:
+            org_data = _json.loads(resp.read().decode("utf-8"))
+        if not org_data or not org_data.get("data"):
+            return []
+        org_id = org_data["data"][0].get("secid")
+        if not org_id:
+            return []
+        # 2. 拉 IRM 问答 (POST, 仿 akshare 内部调用)
+        q_url = "https://irm.cninfo.com.cn/newircs/company/question"
+        q_data = urllib.parse.urlencode({
+            "stockcode": code,
+            "orgId": org_id,
+            "pageSize": str(limit),
+            "pageNum": "1",
+            "keyWord": "",
+            "startDay": "",
+            "endDay": "",
+        }).encode("utf-8")
+        req2 = urllib.request.Request(
+            q_url,
+            data=q_data,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req2, timeout=10, context=_ssl_ctx) as resp:
+            irm_data = _json.loads(resp.read().decode("utf-8"))
+        if not irm_data or not irm_data.get("rows"):
+            return []
+        rows = []
+        for a in irm_data["rows"][:limit]:
+            qid = a.get("indexId", "")
+            # pubDate/updateDate 是 13 位 ms 时间戳
+            ts_raw = a.get("pubDate") or a.get("updateDate") or 0
+            try:
+                ts = int(ts_raw) / 1000.0
+                import datetime as _dt3
+                date_str = _dt3.datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+            except Exception:
+                date_str = str(ts_raw)[:10]
+            # title 用 mainContent 提问, 有 attachedContent 时拼回答
+            main = str(a.get("mainContent", "")).strip()
+            ans = str(a.get("attachedContent") or "").strip()
+            title = f"Q: {main[:120]}"
+            if ans:
+                title += f" | A: {ans[:120]}"
+            rows.append({
+                "date": date_str,
+                "title": title,
+                "qid": str(qid),
+                "url": f"https://irm.cninfo.com.cn/ircs/question/questionDetail?questionId={qid}",
+            })
+        return rows
+    except Exception:
+        return []
+
+
+# ============================================================
 # 量化评分引擎 V2 — 10 因子，100 分
 # ============================================================
 def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
