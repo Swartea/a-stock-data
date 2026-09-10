@@ -212,3 +212,143 @@ def test_e2e_600693_html_has_theme_toggle():
     assert 'id="themeToggle"' in content, f"{latest_html.name} 缺 themeToggle 按钮"
     assert "v3-stock-report-theme" in content, f"{latest_html.name} 缺主题 JS"
     assert "v3-stock-report" in content, f"{latest_html.name} 缺 v3-stock-report 包裹"
+
+
+# ============================================================
+# Task 6.3: ECharts K 线 + 4 占位符数据转换
+# ============================================================
+
+def test_kline_to_rawdata_format():
+    """V3 K 线 dict 列表 → ECharts 模板格式 ([date, open, high, low, close, turn])。"""
+    from analysis.html_report_v3 import _kline_to_rawdata
+    sample = [
+        {"date": "2026-01-01", "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5, "turn": 1.5},
+        {"date": "2026-01-02", "open": 10.5, "high": 11.2, "low": 10.3, "close": 10.8, "turn": 1.8},
+    ]
+    result = _kline_to_rawdata(sample)
+    assert result == [
+        ["2026-01-01", 10.0, 11.0, 9.5, 10.5, 1.5],
+        ["2026-01-02", 10.5, 11.2, 10.3, 10.8, 1.8],
+    ]
+
+
+def test_kline_to_rawdata_handles_missing_turn():
+    """K 线缺 turn 字段应默认为 0.0。"""
+    from analysis.html_report_v3 import _kline_to_rawdata
+    sample = [{"date": "2026-01-01", "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5}]
+    result = _kline_to_rawdata(sample)
+    assert result[0][5] == 0.0
+
+
+def test_kline_to_rawdata_empty():
+    from analysis.html_report_v3 import _kline_to_rawdata
+    assert _kline_to_rawdata([]) == []
+
+
+def test_markline_data_from_three_levels():
+    """从 three_levels 自动生成 markLine (3 条: 压力/支撑/止损)。"""
+    from analysis.html_report_v3 import _markline_data
+    tl = {"support": 7.16, "resistance": 12.67, "stop_loss": 9.95}
+    result = _markline_data(tl, current_price=11.52)
+    assert len(result) == 3
+    y_values = {item["yAxis"] for item in result}
+    assert 7.16 in y_values
+    assert 12.67 in y_values
+    assert 9.95 in y_values
+    names = {item["name"] for item in result}
+    assert names == {"压力", "支撑", "止损"}
+
+
+def test_markline_data_empty_three_levels():
+    from analysis.html_report_v3 import _markline_data
+    assert _markline_data(None) == []
+    assert _markline_data({}) == []
+
+
+def test_markpoint_data_includes_current_and_extremes():
+    """markPoint: 现价 + 阶段高 + 阶段低。"""
+    from analysis.html_report_v3 import _markpoint_data
+    sample = [
+        {"close": 10.0},
+        {"close": 12.0},   # 阶段高
+        {"close": 9.0},    # 阶段低
+        {"close": 11.5},   # 当前 (最后一个)
+    ]
+    result = _markpoint_data(sample, current_price=11.5)
+    assert len(result) == 3
+    values = {item["value"] for item in result}
+    assert "现价" in values
+    assert "阶段高" in values
+    assert "阶段低" in values
+
+
+def test_markpoint_data_no_current_price():
+    """current_price 为空时只返回空。"""
+    from analysis.html_report_v3 import _markpoint_data
+    sample = [{"close": 10.0}, {"close": 12.0}]
+    assert _markpoint_data(sample, None) == []
+    assert _markpoint_data([], 10.0) == []
+
+
+# ============================================================
+# Task 6.4: 5 ECharts 容器 (K线 + MACD + KDJ + RSI + BOLL)
+# ============================================================
+
+def test_v3_render_has_5_echarts_containers():
+    """V3 渲染器应输出 5 个 ECharts 容器 (K线 + 4 技术图)。"""
+    from analysis.html_report_v3 import _render_echarts_kline_block, _render_echarts_tech_block
+    fake_result = {
+        "chip_data": {"kline": [
+            {"date": "2026-01-01", "open": 10, "high": 11, "low": 9.5, "close": 10.5, "turn": 1.5}
+        ]},
+        "three_levels": {"support": 9.5, "resistance": 11, "stop_loss": 9.0},
+        "quote": {"price": 10.5},
+    }
+    kline_html = _render_echarts_kline_block(fake_result)
+    tech_html = _render_echarts_tech_block()
+    assert 'id="chart-kline-full"' in kline_html
+    assert 'id="echarts-kline-section"' in kline_html
+    for cid in ["chart-macd", "chart-kdj", "chart-rsi", "chart-boll"]:
+        assert f'id="{cid}"' in tech_html, f"tech 容器缺 {cid}"
+    assert 'id="echarts-tech-section"' in tech_html
+
+
+def test_v3_render_kline_no_data_returns_empty():
+    """无 K 线数据时 K 线渲染返回空字符串 (不报错)。"""
+    from analysis.html_report_v3 import _render_echarts_kline_block
+    assert _render_echarts_kline_block({}) == ""
+    assert _render_echarts_kline_block({"chip_data": {}}) == ""
+    assert _render_echarts_kline_block({"chip_data": {"kline": []}}) == ""
+
+
+def test_e2e_600693_html_has_echarts_5_containers():
+    """端到端: 600693 报告 HTML 应含 5 ECharts 容器 + markLine + markPoint。"""
+    from pathlib import Path
+    report_dir = Path("/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团")
+    if not report_dir.exists():
+        pytest.skip("600693 报告目录不存在")
+    md_files = list(report_dir.glob("**/600693-东百集团-*.md"))
+    if not md_files:
+        pytest.skip("无 600693 报告")
+    latest_date_dir = max(md_files, key=lambda p: p.stat().st_mtime).parent
+    html_files = list(latest_date_dir.glob("600693-东百集团-v3-*.html"))
+    if not html_files:
+        pytest.skip("无 600693 HTML 报告")
+    latest_html = max(html_files, key=lambda p: p.stat().st_mtime)
+    content = latest_html.read_text(encoding="utf-8")
+
+    # 5 容器
+    for cid in ["chart-kline-full", "chart-macd", "chart-kdj", "chart-rsi", "chart-boll"]:
+        assert f'id="{cid}"' in content, f"{latest_html.name} 缺 {cid}"
+
+    # markLine + markPoint 数据
+    assert "markLine" in content, f"{latest_html.name} 缺 markLine"
+    assert "markPoint" in content, f"{latest_html.name} 缺 markPoint"
+
+    # 三价位标注 (from three_levels 自动注入)
+    assert '"压力"' in content or "压力" in content
+    assert '"支撑"' in content or "支撑" in content
+    assert '"止损"' in content or "止损" in content
+
+    # ECharts JS 主题适配 (light-mode 切换)
+    assert "light-mode" in content, f"{latest_html.name} 缺 light-mode 主题适配"

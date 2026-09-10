@@ -445,6 +445,276 @@ color:var(--text-primary);border-color:var(--gold)}
 }
 """
 
+# Task 6.3 + 6.4 (UI 升级线): ECharts 完整 JS 模板 (从 mingli30119 搬)
+# 6 图表: K线 + MACD + KDJ + RSI + BOLL (4 占位符 __RAW_DATA__/__PIE_DATA__/__MARKLINE__/__MARKPOINT__ 在 V3 渲染器运行时替换)
+_ECHARTS_JS_TEMPLATE = r'''
+<script>
+(function() {
+var rawData = __RAW_DATA__;
+
+// 数据处理
+var dates = [], ohlc = [], volumesRaw = [];
+rawData.forEach(function(d) {
+  dates.push(d[0]);
+  ohlc.push([d[1], d[4], d[3], d[2]]);
+  volumesRaw.push(d[5]);
+});
+var closes = ohlc.map(function(d) { return d[1]; });
+var highs = rawData.map(function(d) { return d[4]; });
+var lows = rawData.map(function(d) { return d[3]; });
+function calcMA(arr, n) {
+  return arr.map(function(_, i) {
+    if (i < n - 1) return null;
+    var sum = arr.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0);
+    return +(sum / n).toFixed(2);
+  });
+}
+var ma5 = calcMA(closes, 5), ma20 = calcMA(closes, 20), ma60 = calcMA(closes, 60);
+var volumes = volumesRaw.map(function(v) { return +(v / 10000).toFixed(2); });
+var dateLabels = dates.map(function(d) {
+  var parts = d.split('-');
+  return parts[1] + '-' + parts[2];
+});
+
+// 主题色 (跟随 v3-stock-report.light-mode)
+function getThemeColors() {
+  var isLight = document.body.classList.contains('light-mode') ||
+                (document.querySelector('.v3-stock-report') &&
+                 document.querySelector('.v3-stock-report').classList.contains('light-mode'));
+  return {
+    textColor:    isLight ? '#2a1f12' : '#e8e9ec',
+    textSecondary:isLight ? '#6b5634' : '#b0b3be',
+    textMuted:    isLight ? '#9c8b6e' : '#7a7d8a',
+    upColor:      isLight ? '#dc2626' : '#f55656',
+    downColor:    isLight ? '#16a34a' : '#28c75b',
+    ma5Color:     isLight ? '#2563eb' : '#4a90d9',
+    ma20Color:    isLight ? '#16a34a' : '#28c75b',
+    ma60Color:    isLight ? '#c2410c' : '#e8923a',
+    volUpColor:   isLight ? 'rgba(220,38,38,0.25)'  : 'rgba(245,86,86,0.35)',
+    volDownColor: isLight ? 'rgba(22,163,74,0.25)'  : 'rgba(40,199,91,0.35)',
+  };
+}
+
+// 技术指标计算
+function calcEMA(arr, n) {
+  var k = 2 / (n + 1);
+  var ema = [arr[0]];
+  for (var i = 1; i < arr.length; i++) ema.push(arr[i] * k + ema[i-1] * (1 - k));
+  return ema;
+}
+function calcMACDData(c) {
+  var ema12 = calcEMA(c, 12), ema26 = calcEMA(c, 26);
+  var dif = ema12.map(function(v, i) { return v - ema26[i]; });
+  var dea = calcEMA(dif, 9);
+  var macd = dif.map(function(v, i) { return 2 * (v - dea[i]); });
+  return { dif: dif, dea: dea, macd: macd };
+}
+function calcKDJData(h, l, c, n) {
+  n = n || 9;
+  var k = [], d = [], j = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i < n - 1) { k.push(50); d.push(50); j.push(50); continue; }
+    var hi = Math.max.apply(null, h.slice(i - n + 1, i + 1));
+    var lo = Math.min.apply(null, l.slice(i - n + 1, i + 1));
+    var rsv = ((c[i] - lo) / (hi - lo)) * 100 || 50;
+    k.push(i === n - 1 ? rsv : (2/3) * k[i-1] + (1/3) * rsv);
+    d.push(i === n - 1 ? k[i]  : (2/3) * d[i-1] + (1/3) * k[i]);
+    j.push(3 * k[i] - 2 * d[i]);
+  }
+  return { k: k, d: d, j: j };
+}
+function calcRSI(c, n) {
+  var gains = [], losses = [], rsi = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i === 0) { gains.push(0); losses.push(0); rsi.push(50); continue; }
+    var ch = c[i] - c[i-1];
+    gains.push(ch > 0 ? ch : 0);
+    losses.push(ch < 0 ? -ch : 0);
+    if (i < n) { rsi.push(50); continue; }
+    var ag = gains.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0) / n;
+    var al = losses.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0) / n;
+    rsi.push(al === 0 ? 100 : 100 - (100 / (1 + ag / al)));
+  }
+  return rsi;
+}
+function calcBOLL(c, n) {
+  n = n || 20;
+  var mid = [], upper = [], lower = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i < n - 1) { mid.push(null); upper.push(null); lower.push(null); continue; }
+    var slice = c.slice(i - n + 1, i + 1);
+    var avg = slice.reduce(function(a, b) { return a + b; }, 0) / n;
+    var std = Math.sqrt(slice.reduce(function(a, b) { return a + Math.pow(b - avg, 2); }, 0) / n);
+    mid.push(avg); upper.push(avg + 2 * std); lower.push(avg - 2 * std);
+  }
+  return { mid: mid, upper: upper, lower: lower };
+}
+
+var macdData = calcMACDData(closes);
+var kdjData = calcKDJData(highs, lows, closes);
+var rsi6 = calcRSI(closes, 6), rsi12 = calcRSI(closes, 12), rsi24 = calcRSI(closes, 24);
+var bollData = calcBOLL(closes);
+
+var klineChart, macdChart, kdjChart, rsiChart, bollChart;
+
+// K线图
+function renderKline() {
+  var el = document.getElementById('chart-kline-full');
+  if (!el) return;
+  if (klineChart) klineChart.dispose();
+  klineChart = echarts.init(el);
+  var c = getThemeColors();
+  var volData = volumes.map(function(v, i) {
+    return { value: v, itemStyle: { color: ohlc[i][1] >= ohlc[i][0] ? c.volUpColor : c.volDownColor } };
+  });
+  klineChart.setOption({
+    grid: [
+      { left: '8%', right: '5%', top: '8%',  height: '60%' },
+      { left: '8%', right: '5%', top: '76%', height: '14%' }
+    ],
+    xAxis: [
+      { type: 'category', data: dateLabels, gridIndex: 0,
+        axisLabel: { color: c.textMuted, fontSize: 9, interval: 5 },
+        axisLine: { lineStyle: { color: c.textMuted } }, splitLine: { show: false } },
+      { type: 'category', data: dateLabels, gridIndex: 1, show: false, splitLine: { show: false } }
+    ],
+    yAxis: [
+      { scale: true, gridIndex: 0, axisLabel: { color: c.textMuted, fontSize: 10 }, splitLine: { show: false } },
+      { scale: true, gridIndex: 1, axisLabel: { color: c.textMuted, fontSize: 10, formatter: '{value}%' }, splitLine: { show: false } }
+    ],
+    dataZoom: [{ type: 'inside', xAxisIndex: [0, 1] }],
+    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' },
+      formatter: function(ps) {
+        var k = ps.find(function(p) { return p.seriesName === 'K线'; });
+        var vol = ps.find(function(p) { return p.seriesName === '换手率'; });
+        if (!k) return '';
+        return k.axisValue + '<br/>开:' + k.data[0] + ' 收:' + k.data[1] + '<br/>低:' + k.data[2] + ' 高:' + k.data[3] + (vol ? '<br/>换手率:' + vol.data.value + '%' : '');
+      }
+    },
+    legend: { data: ['K线','MA5','MA20','MA60'], top: 0, textStyle: { color: c.textSecondary } },
+    series: [
+      { name: 'K线', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
+        itemStyle: { color: c.upColor, color0: c.downColor, borderColor: c.upColor, borderColor0: c.downColor },
+        markLine: { symbol: 'none',
+          lineStyle: { color: '#d4a853', width: 1.5, type: 'dashed' },
+          label: { position: 'end', fontSize: 10, color: '#d4a853' },
+          data: __MARKLINE__
+        },
+        markPoint: { symbol: 'pin', symbolSize: 50,
+          label: { fontSize: 11, color: '#fff', fontWeight: 'bold' },
+          data: __MARKPOINT__
+        }
+      },
+      { name: 'MA5',  type: 'line', data: ma5,  smooth: true, lineStyle: { width: 1.5, color: c.ma5Color  }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: 'MA20', type: 'line', data: ma20, smooth: true, lineStyle: { width: 1.5, color: c.ma20Color }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: 'MA60', type: 'line', data: ma60, smooth: true, lineStyle: { width: 1.5, color: c.ma60Color }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: '换手率', type: 'bar', data: volData, xAxisIndex: 1, yAxisIndex: 1 }
+    ]
+  });
+}
+
+// 4 技术指标图
+function renderMACD() {
+  var el = document.getElementById('chart-macd');
+  if (!el) return;
+  if (macdChart) macdChart.dispose();
+  macdChart = echarts.init(el);
+  var c = getThemeColors();
+  macdChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'DIF', type: 'line', data: macdData.dif, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'DEA', type: 'line', data: macdData.dea, lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'MACD', type: 'bar', data: macdData.macd, itemStyle: {
+        color: function(p) { return p.value >= 0 ? 'rgba(245,86,86,0.5)' : 'rgba(40,199,91,0.5)'; }
+      } }
+    ],
+    legend: { data: ['DIF','DEA','MACD'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderKDJ() {
+  var el = document.getElementById('chart-kdj');
+  if (!el) return;
+  if (kdjChart) kdjChart.dispose();
+  kdjChart = echarts.init(el);
+  var c = getThemeColors();
+  kdjChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { min: 0, max: 100, axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'K', type: 'line', data: kdjData.k, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'D', type: 'line', data: kdjData.d, lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'J', type: 'line', data: kdjData.j, lineStyle: { color: '#f55656', width: 1 }, showSymbol: false }
+    ],
+    legend: { data: ['K','D','J'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderRSI() {
+  var el = document.getElementById('chart-rsi');
+  if (!el) return;
+  if (rsiChart) rsiChart.dispose();
+  rsiChart = echarts.init(el);
+  var c = getThemeColors();
+  rsiChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { min: 0, max: 100, axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'RSI6',  type: 'line', data: rsi6,  lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'RSI12', type: 'line', data: rsi12, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'RSI24', type: 'line', data: rsi24, lineStyle: { color: '#f55656', width: 1.2 }, showSymbol: false }
+    ],
+    legend: { data: ['RSI6','RSI12','RSI24'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderBOLL() {
+  var el = document.getElementById('chart-boll');
+  if (!el) return;
+  if (bollChart) bollChart.dispose();
+  bollChart = echarts.init(el);
+  var c = getThemeColors();
+  bollChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: '上轨',   type: 'line', data: bollData.upper, lineStyle: { color: 'rgba(245,86,86,0.4)', width: 1 }, showSymbol: false },
+      { name: '中轨',   type: 'line', data: bollData.mid,   lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: '下轨',   type: 'line', data: bollData.lower, lineStyle: { color: 'rgba(40,199,91,0.4)', width: 1 }, showSymbol: false, areaStyle: { color: 'rgba(212,168,83,0.05)' } },
+      { name: '收盘价', type: 'line', data: closes,         lineStyle: { color: '#4a90d9', width: 1.5 }, showSymbol: false }
+    ],
+    legend: { data: ['上轨','中轨','下轨','收盘价'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+
+function renderAll() { renderKline(); renderMACD(); renderKDJ(); renderRSI(); renderBOLL(); }
+
+// 主题切换时重渲染 (监听 v3-stock-report class 变化)
+var target = document.body;
+var v3root = document.querySelector('.v3-stock-report');
+if (v3root) target = v3root;
+if (window.MutationObserver) {
+  var obs = new MutationObserver(function() { renderAll(); });
+  obs.observe(target, { attributes: true, attributeFilter: ['class'] });
+}
+window.addEventListener('resize', function() {
+  klineChart && klineChart.resize();
+  macdChart && macdChart.resize();
+  kdjChart && kdjChart.resize();
+  rsiChart && rsiChart.resize();
+  bollChart && bollChart.resize();
+});
+
+// 首次渲染
+if (document.readyState === 'complete') renderAll();
+else window.addEventListener('load', renderAll);
+})();
+</script>
+'''
+
 # masthead 与 hero 的样式单独拼
 _CSS_HEAD = """
 /* ---------- §2.4 顶部 masthead 条: 股票名 + 代码 + 报告日期 + 数据截止时点 ---------- */
@@ -583,6 +853,129 @@ def _chart_card(emoji, title, svg_str, asof, radar=False, foot_note=""):
     if foot_note:
         h += '<div class="src-line" style="margin:0 0 6px">%s</div>' % _esc(foot_note)
     return h + body + "</div>"
+
+
+# ============================================================
+# Task 6.3-6.4 (UI 升级线): ECharts K 线 + 4 技术图 (含三价位标注)
+# 数据源: chip_data["kline"] = list of {date, open, high, low, close, turn}
+# ============================================================
+
+def _kline_to_rawdata(kline_dicts):
+    """V3 chip_data['kline'] dict 列表 → [date, open, high, low, close, turn] 列表
+    
+    V3 字段: {date, open, high, low, close, turn}  (turn=换手率%)
+    ECharts 模板: [date, open, high, low, close, vol]
+    注: V3 没 volume, 用 turn (换手率%) 替代
+    """
+    return [
+        [d.get("date", ""), float(d.get("open", 0)), float(d.get("high", 0)),
+         float(d.get("low", 0)), float(d.get("close", 0)), float(d.get("turn", 0))]
+        for d in kline_dicts
+    ]
+
+
+def _markline_data(three_levels, current_price=None):
+    """从 three_levels 自动生成 ECharts markLine 标注。
+    
+    返回 [{yAxis, name, label, lineStyle}, ...]
+    """
+    if not three_levels or not isinstance(three_levels, dict):
+        return []
+    items = []
+    support = three_levels.get("support")
+    resistance = three_levels.get("resistance")
+    stop_loss = three_levels.get("stop_loss")
+    if resistance is not None:
+        items.append({"yAxis": float(resistance), "name": "压力", "label": {"formatter": "压力"}})
+    if support is not None:
+        items.append({"yAxis": float(support), "name": "支撑", "label": {"formatter": "支撑"}})
+    if stop_loss is not None:
+        items.append({"yAxis": float(stop_loss), "name": "止损", "label": {"formatter": "止损"}})
+    return items
+
+
+def _markpoint_data(kline_dicts, current_price):
+    """markPoint: 当前价 (金色) + 阶段高 (红) + 阶段低 (绿)。"""
+    if not kline_dicts or not current_price:
+        return []
+    closes = [float(d.get("close", 0)) for d in kline_dicts]
+    if not closes:
+        return []
+    max_idx = closes.index(max(closes))
+    min_idx = closes.index(min(closes))
+    last_idx = len(closes) - 1
+    items = [
+        {"coord": [last_idx, float(current_price)], "value": "现价",
+         "itemStyle": {"color": "#d4a853"}},
+    ]
+    if max_idx != last_idx:
+        items.append({"coord": [max_idx, closes[max_idx]], "value": "阶段高",
+                      "itemStyle": {"color": "#f55656"}})
+    if min_idx != last_idx:
+        items.append({"coord": [min_idx, closes[min_idx]], "value": "阶段低",
+                      "itemStyle": {"color": "#28c75b"}})
+    return items
+
+
+def _render_echarts_kline_block(result):
+    """ECharts K 线 + 成交量 + MA + markLine 标注 (从 three_levels 自动注入)。
+    
+    位置: V3 渲染器 4 图 (svg_kline/svg_chip/svg_pe/svg_radar) 之后追加。
+    """
+    cd = result.get("chip_data") or {}
+    kline = cd.get("kline") or []
+    three_levels = result.get("three_levels") or {}
+    q = result.get("quote") or {}
+    current_price = q.get("price")
+    if not kline:
+        return ""
+    raw_data = _kline_to_rawdata(kline)
+    import json as _json
+    raw_json = _json.dumps(raw_data)
+    markline = _markline_data(three_levels, current_price)
+    markpoint = _markpoint_data(kline, current_price)
+    markline_json = _json.dumps(markline)
+    markpoint_json = _json.dumps(markpoint)
+    return _ECHARTS_KLINE_CARD_HTML.format(
+        raw_data=raw_json, markline=markline_json, markpoint=markpoint_json,
+        kline_count=len(kline))
+
+
+def _render_echarts_tech_block():
+    """4 技术指标图 (MACD/KDJ/RSI/BOLL) - 数据从全局 rawData 共享。"""
+    return _ECHARTS_TECH_CARD_HTML
+
+
+# ECharts K 线卡片 (Task 6.3)
+_ECHARTS_KLINE_CARD_HTML = r'''
+<div class="chart-card card" id="echarts-kline-section">
+  <div class="chart-head">
+    <span class="t">📈 ECharts K 线 · 含三价位标注</span>
+    <span class="tm">⏱ 数据截止 见图表 · MA5/MA20/MA60</span>
+  </div>
+  <div class="src-line" style="margin:0 0 6px">来源 baostock 前复权日线 · 近 {kline_count} 交易日 · markLine 标注支撑/压力/止损 (从 three_levels 自动注入)</div>
+  <div id="chart-kline-full" style="width:100%;height:480px;"></div>
+</div>
+'''
+
+# 4 技术指标图卡片 (Task 6.4)
+_ECHARTS_TECH_CARD_HTML = r'''
+<div class="chart-card card" id="echarts-tech-section">
+  <div class="chart-head">
+    <span class="t">📊 4 技术指标 · MACD / KDJ / RSI / BOLL</span>
+    <span class="tm">⏱ JS 实时计算 · 双主题自动切换</span>
+  </div>
+  <div class="src-line" style="margin:0 0 6px">MACD (DIF/DEA/柱) · KDJ (K/D/J 0-100) · RSI (6/12/24 0-100) · BOLL (上/中/下轨 + 收盘价)</div>
+  <div class="grid-2-wrap">
+    <div id="chart-macd" style="width:100%;height:280px;"></div>
+    <div id="chart-kdj" style="width:100%;height:280px;"></div>
+  </div>
+  <div class="grid-2-wrap" style="margin-top:12px;">
+    <div id="chart-rsi" style="width:100%;height:260px;"></div>
+    <div id="chart-boll" style="width:100%;height:260px;"></div>
+  </div>
+</div>
+'''
 
 
 def _a_share_verdict_mark(state, emoji_raw):
@@ -1428,6 +1821,10 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
                                   foot_note="来源本地 10 因子量化引擎 · 满分 100"))
     chart_grid.append('</div>')
 
+    # Task 6.3 + 6.4 (UI 升级线): ECharts K 线 + 4 技术图 (SVG 升级 fintech-h5-demos 风格)
+    chart_grid.append(_render_echarts_kline_block(result))
+    chart_grid.append(_render_echarts_tech_block())
+
     # ---- 头部 (CSS token 层 + masthead) ----
     html = ['<!DOCTYPE html>', '<html lang="zh-CN"><head>',
             '<meta charset="UTF-8">',
@@ -1577,9 +1974,34 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
 })();
 </script>
 '''
-    # 把 _THEME_JS 插在 </body> 之前 (Task 6.2: 主题切换 JS)
+    # 把 _THEME_JS + _ECHARTS_JS_TEMPLATE 插在 </body> 之前
+    # Task 6.3 + 6.4: ECharts 4 占位符替换 (raw_data / markline / markpoint / pie_data)
+    echarts_js = _ECHARTS_JS_TEMPLATE
+    # 收集 V3 端注入的数据 (从 chart_grid 调用 _render_echarts_kline_block 时已计算)
+    # 但 _render_echarts_kline_block 在 chart_grid.append() 时已执行, 这里需要从 result 重新计算
+    cd = result.get("chip_data") or {}
+    kline = cd.get("kline") or []
+    three_levels = result.get("three_levels") or {}
+    q = result.get("quote") or {}
+    current_price = q.get("price")
+    if kline:
+        import json as _json
+        raw_data_json = _json.dumps(_kline_to_rawdata(kline))
+        markline_json = _json.dumps(_markline_data(three_levels, current_price))
+        markpoint_json = _json.dumps(_markpoint_data(kline, current_price))
+        echarts_js = echarts_js.replace("__RAW_DATA__", raw_data_json)
+        echarts_js = echarts_js.replace("__PIE_DATA__", "[]")  # 暂不渲染饼图
+        echarts_js = echarts_js.replace("__MARKLINE__", markline_json)
+        echarts_js = echarts_js.replace("__MARKPOINT__", markpoint_json)
+    else:
+        # 没 K 线数据时, 4 占位符置空 (JS 仍可执行, 5 图会显示 no-data)
+        echarts_js = (echarts_js
+                      .replace("__RAW_DATA__", "[]")
+                      .replace("__PIE_DATA__", "[]")
+                      .replace("__MARKLINE__", "[]")
+                      .replace("__MARKPOINT__", "[]"))
     html_str = "".join(html)
-    html_str = html_str.replace('</body>', _THEME_JS + '</body>')
+    html_str = html_str.replace('</body>', _THEME_JS + echarts_js + '</body>')
     content = html_str
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
