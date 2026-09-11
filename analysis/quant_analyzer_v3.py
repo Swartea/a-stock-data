@@ -593,27 +593,59 @@ def _retry_call(label: str, fn, *args, tries: int = 3, timeout: int = 60, **kw) 
 # V3 附加端点 (同一数据源家族的接线复用, 不新建数据源)
 # ============================================================
 def _fetch_fund_flow_daily(code: str, days: int = 5) -> dict:
-    """近 N 日主力资金 (东财 push2 fflow kline, klt=101 日线 — 与 v2 分钟线同源)。"""
+    """近 N 日主力资金 (东财 push2 fflow kline, klt=101 日线 — 与 v2 分钟线同源)。
+
+    返回每行字段: date / main_net_yi / large_super_yi / close / chg_pct
+    债 6 修法 (Task 7.3): 资金面 5 行大表 5 列 — 主力/大单+超大单/融资余额变化/股价/当日涨跌幅
+    重试 3 次 (Task 7.3 稳定性): push2his 易遇 SSL EOF/网络抖动, 指数退避 0.6/1.2/2.4s
+    """
+    import time as _time
     code = v2.normalize_code(code)
     secid = f"{v2.em_market_code(code)}.{code}"
     params = {"secid": secid, "klt": 101, "lmt": days,
-              "fields1": "f1,f2,f3,f7", "fields2": "f51,f52,f53,f54,f55,f56,f57"}
+              "fields1": "f1,f2,f3,f7", "fields2": "f51,f52,f53,f54,f55,f56,f57,f12"}
     headers = {"User-Agent": v2.UA, "Referer": "https://quote.eastmoney.com/",
                "Origin": "https://quote.eastmoney.com"}
-    try:
-        d = v2.em_get("https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
-                      params=params, headers=headers, timeout=15).json()
-    except Exception as e:
-        return {"error": str(e), "rows": []}
+    last_err = None
+    for attempt in range(3):
+        try:
+            d = v2.em_get("https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+                          params=params, headers=headers, timeout=15).json()
+            if d.get("data") and (d["data"].get("klines") or []):
+                break  # 拿到数据, 跳出重试
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+        if attempt < 2:
+            _time.sleep(0.6 * (2 ** attempt))  # 0.6s, 1.2s
+    else:
+        return {"error": str(last_err) if last_err else "push2his fetch failed after 3 retries",
+                "rows": []}
     rows = []
     for line in (d.get("data") or {}).get("klines") or []:
         p = line.split(",")
         if len(p) >= 7:
-            rows.append({"date": str(p[0])[:10],
-                         "main_net_yi": round(float(p[1]) / 1e8, 3),
-                         "large_super_yi": round((float(p[4]) + float(p[5])) / 1e8, 3)})
+            # 兼容老格式 (len=7) 与新加 f57/f12 (len=9)
+            row = {
+                "date": str(p[0])[:10],
+                "main_net_yi": round(float(p[1]) / 1e8, 3),
+                "large_super_yi": round((float(p[4]) + float(p[5])) / 1e8, 3),
+            }
+            if len(p) >= 8:
+                # f57 = 收盘价 (元), 兼容 None/空字符串
+                try:
+                    row["close"] = float(p[7]) if p[7] not in ("", "None", "null") else None
+                except (TypeError, ValueError):
+                    row["close"] = None
+            rows.append(row)
     if not rows:
         return {"error": "近5日主力资金无数据", "rows": []}
+    # 计算每日涨跌幅 (基于 close 序列, 错位一日)
+    closes = [r.get("close") for r in rows]
+    for i, r in enumerate(rows):
+        if i + 1 < len(closes) and closes[i + 1] and r.get("close"):
+            r["chg_pct"] = round((r["close"] - closes[i + 1]) / closes[i + 1] * 100, 2)
+        else:
+            r["chg_pct"] = None
     return {"rows": rows, "total_main_yi": round(sum(r["main_net_yi"] for r in rows), 3),
             "start": rows[0]["date"], "end": rows[-1]["date"],
             "as_of": datetime.now().strftime("%Y-%m-%d")}
@@ -664,7 +696,11 @@ def _num_or_none(x):
 
 def _fetch_concept_peers(code: str, blocks: list, max_concepts: int = 6) -> dict:
     """同业对比(近似口径): 取本票所属东财概念板块的市值前100, 标出本票市值排名。
-    数据源: 东财 push2 clist (与 v2 行业排名同端点家族)。"""
+    数据源: 东财 push2 clist (与 v2 行业排名同端点家族)。
+
+    债 6 修法 (Task 7.3): 7 维表 — 补 ROE (f37) + 5 日涨跌 (f105), 营收增速东财 clist 行情接口
+    无标准字段, 标 None 显示 '—'。
+    """
     code = v2.normalize_code(code)
     if not isinstance(blocks, list):
         return {"error": "无概念板块数据(概念归属缺失), 无法取成分股做同业对比"}
@@ -676,7 +712,9 @@ def _fetch_concept_peers(code: str, blocks: list, max_concepts: int = 6) -> dict
         bcode = str(b.get("code", ""))
         params = {"pn": "1", "pz": "100", "po": "1", "np": "1", "fltt": "2", "invt": "2",
                   "fid": "f20", "fs": f"b:{bcode}",
-                  "fields": "f12,f14,f2,f3,f9,f23,f20,f21"}
+                  # f12=code f14=name f2=price f3=chg% f9=PE f23=PB f20=total_mcap f21=float_mcap
+                  # f37=ROE(%) f105=5日涨跌(%) — 营收增速 clist 行情接口无, 标 None
+                  "fields": "f12,f14,f2,f3,f9,f23,f20,f21,f37,f105"}
         try:
             d = v2.em_get("https://push2.eastmoney.com/api/qt/clist/get",
                           params=params, headers={"User-Agent": v2.UA,
@@ -692,6 +730,9 @@ def _fetch_concept_peers(code: str, blocks: list, max_concepts: int = 6) -> dict
                     "pe": _num_or_none(it.get("f9")), "pb": _num_or_none(it.get("f23")),
                     "total_mcap_yi": _num_or_none(it.get("f20")),
                     "float_mcap_yi": _num_or_none(it.get("f21")),
+                    "roe_pct": _num_or_none(it.get("f37")),
+                    "chg_5d_pct": _num_or_none(it.get("f105")),
+                    "rev_growth_pct": None,  # 东财 clist 行情接口无, 独立 fetcher 待立
                 })
             rank = next((i + 1 for i, r in enumerate(rows) if r["code"] == code), None)
             tried.append({"concept": b.get("name"), "code": bcode, "total": total,
@@ -1689,17 +1730,21 @@ def write_markdown_report_v3(r: dict) -> str:
         else:
             L.append(f"- 📍 本票未进入该概念市值前 {len(rows)} (总 {peers.get('total','?')} 只)")
         L.append("")
-        L.append("| 代码 | 名称 | 现价 | 涨跌% | PE(TTM) | PB | 总市值(亿) |")
-        L.append("|------|------|------|-------|---------|-----|-----------|")
+        # 债 6 修法 (Task 7.3): 同业表 7 维 — 代码/简称/PE/PB/市值/ROE/近 5 日涨跌
+        # 营收增速 (8 维) 东财 clist 行情接口无标准字段, 留 "—"
+        L.append("| 代码 | 名称 | PE(TTM) | PB | 总市值(亿) | ROE(%) | 5日涨跌(%) |")
+        L.append("|------|------|---------|-----|-----------|--------|-----------|")
         anchor = " ← 本票"
         for x in self_rows[:1]:
             L.append(f"| {x.get('code')} | **{_clean(x.get('name'),12)}**{anchor} | "
-                     f"{_fnum(x.get('price'))} | {_fpct(x.get('chg'))} | {_fnum(x.get('pe'),1)} | "
-                     f"{_fnum(x.get('pb'),2)} | {_fnum(x.get('total_mcap_yi'),1)} |")
+                     f"{_fnum(x.get('pe'),1)} | {_fnum(x.get('pb'),2)} | "
+                     f"{_fnum(x.get('total_mcap_yi'),1)} | {_fnum(x.get('roe_pct'),2)} | "
+                     f"{_fpct(x.get('chg_5d_pct'))} |")
         for x in show[:8]:
-            L.append(f"| {x.get('code')} | {_clean(x.get('name'),12)} | {_fnum(x.get('price'))} | "
-                     f"{_fpct(x.get('chg'))} | {_fnum(x.get('pe'),1)} | {_fnum(x.get('pb'),2)} | "
-                     f"{_fnum(x.get('total_mcap_yi'),1)} |")
+            L.append(f"| {x.get('code')} | {_clean(x.get('name'),12)} | "
+                     f"{_fnum(x.get('pe'),1)} | {_fnum(x.get('pb'),2)} | "
+                     f"{_fnum(x.get('total_mcap_yi'),1)} | {_fnum(x.get('roe_pct'),2)} | "
+                     f"{_fpct(x.get('chg_5d_pct'))} |")
         # 位置话: 用 PE/PB 对比高估低估
         self_pe = self_rows[0].get("pe") if self_rows else None
         if self_pe is not None and show:
@@ -1719,16 +1764,32 @@ def write_markdown_report_v3(r: dict) -> str:
     L.append(_src_foot("同业对比", metas.get("同业对比")))
     L.append("")
 
-    # --- 5. 资金面 (近5日主力 + 两融) ---
-    L.append("### 💰 5. 资金面 (近 5 日主力资金 + 融资融券方向)")
+    # --- 5. 资金面 (近 5 日主力资金 + 融资余额变化 + 股价) ---
+    # 债 6 修法 (Task 7.3): 5 行大表 6 列
+    #   日期 | 主力净流入(亿) | 大单+超大单(亿) | 融资余额变化(亿) | 收盘价 | 当日涨跌幅
+    L.append("### 💰 5. 资金面 (近 5 日主力资金 + 融资余额变化 + 股价)")
     L.append("")
     fund5 = r.get("fund_daily5")
+    mh = r.get("margin_hist") or {}
+    # 按日期合并融资余额变化
+    mh_by_date = {}
+    if isinstance(mh, dict) and mh.get("rows"):
+        for mrow in mh["rows"]:
+            mh_by_date[mrow.get("date", "")] = mrow.get("rzye_chg_yi")
     if fund5 and isinstance(fund5, dict) and "error" not in fund5 and fund5.get("rows"):
-        L.append("| 日期 | 主力净流入(亿) | 大单+超大单(亿) |")
-        L.append("|------|---------------|----------------|")
+        L.append("| 日期 | 主力净流入(亿) | 大单+超大单(亿) | 融资余额变化(亿) | 收盘价(元) | 当日涨跌(%) |")
+        L.append("|------|---------------|----------------|------------------|------------|-------------|")
         for x in fund5["rows"]:
-            L.append(f"| {x.get('date','—')} | {_fnum(x.get('main_net_yi'),3)} | "
-                     f"{_fnum(x.get('large_super_yi'),3)} |")
+            d = x.get("date", "—")
+            rzye_chg = mh_by_date.get(d)
+            rzye_chg_str = _fnum(rzye_chg, 3) if rzye_chg is not None else "—"
+            close = x.get("close")
+            close_str = f"{close:.2f}" if close is not None else "—"
+            chg = x.get("chg_pct")
+            chg_str = _fpct(chg) if chg is not None else "—"
+            L.append(f"| {d} | {_fnum(x.get('main_net_yi'),3)} | "
+                     f"{_fnum(x.get('large_super_yi'),3)} | "
+                     f"{rzye_chg_str} | {close_str} | {chg_str} |")
         tot = fund5.get("total_main_yi")
         talk = "近5日主力**净流入**, 资金面偏多" if (tot or 0) > 0 else \
             ("近5日主力**净流出**, 资金面承压" if (tot or 0) < 0 else "近5日主力基本平衡")
