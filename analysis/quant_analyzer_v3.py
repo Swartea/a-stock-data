@@ -298,30 +298,44 @@ def _to_float(v):
 
 
 def compute_three_levels(quote, chip_data, trading_plan=None):
-    """债 2 修法 (Task 5.2) — 三价位表，4 支撑候选 / 3 压力候选 取最近者。
+    """三价位: 支撑下沿/压力上沿/止损 (P0-A 规范整改 v1.0, 2026-09-11)
 
-    支撑候选（4 选 1，取最低且 ≤ 1.05×现价）:
-        1. MA60 (K 线 series 自算)
-        2. 前低（60 日最低，K 线 low 自算）
-        3. 筹码峰 (chip_data['peak_price'], v2 line 572 平铺)
-        4. 布林下轨 (MA20 - 2σ，K 线 series 自算)
+    业务含义: 报告 §"三价位" 段展示的"支撑/压力/止损", 供"低吸/减仓/止损离场"参考。
+    完整规则+例子+边界: `analysis/references/three-levels-rules.md`
 
-    压力候选（3 选 1，取最高且 ≥ 0.95×现价）:
-        1. 年线 MA250 (K 线 series 自算)，N<250 兜底用 MA120
-        2. 前高（60 日最高，K 线 high 自算）
-        3. 布林上轨 (MA20 + 2σ，K 线 series 自算)
+    命名约定 (与 §6 规范对齐, 2026-09-11 整改):
+      - 支撑 = "支撑下沿" = ±5% 区间内最低 (允许跨现价 5%)
+      - 压力 = "压力上沿" = ±5% 区间内最高 (允许跨现价 5%)
+      - 与 §6 标准"最近支撑/压力" (不高于现价最大 / 不低于现价最小) 不同,
+        §6 要求"若产品选择区间极值或允许跨越现价, 必须另行命名" — 本函数即采用此命名
 
-    止损：**复用** trading_plan.stop_loss（V2 同源，**不重算**），
-    杜绝覆盖 Task 5.1 已锁定的 trading_plan 字段。
+    支撑候选 (4 类, 任一缺失不影响其他):
+      1. ma60        — K 线 close 60 日均线
+      2. recent_low  — 60 日内 K 线 low 最小值
+      3. chip_peak   — 筹码峰 (chip_data['peak_price'], v2 line 572 平铺)
+      4. boll_lower  — 布林下轨 = MA20 - 2σ
 
-    返回 dict:
+    压力候选 (3 类, 任一缺失不影响其他):
+      1. ma250_or_ma120 — K 线 close 250 日均线, N<250 回退 120 日
+      2. recent_high    — 60 日内 K 线 high 最大值
+      3. boll_upper     — 布林上轨 = MA20 + 2σ
+
+    过滤与选择:
+      - 支撑: 过滤掉 > 1.05×现价 的候选, 剩余取最小
+      - 压力: 过滤掉 < 0.95×现价 的候选, 剩余取最大
+      - 任一过滤后无候选 → 对应字段 = None, 不填充
+
+    止损: 复用 trading_plan.stop_loss (V2 同源, 不重算, 防覆盖 Task 5.1 锁定字段)
+           trading_plan 缺失或 stop_loss=None → 字段 = None
+
+    返回 dict (与 docs/references/three-levels-rules.md §五 一致):
         {
-            "support": float|None,
-            "resistance": float|None,
-            "stop_loss": float|None,
-            "support_candidates": {ma60, recent_low, chip_peak, boll_lower},
-            "resistance_candidates": {ma250_or_ma120, recent_high, boll_upper},
-            "method": "...",
+            "support": float|None,           # 支撑下沿
+            "resistance": float|None,        # 压力上沿
+            "stop_loss": float|None,         # 止损 (复用 trading_plan)
+            "support_candidates": dict,      # 全部支撑候选 (未过滤)
+            "resistance_candidates": dict,   # 全部压力候选 (未过滤)
+            "method": str,                   # 算法描述, 含 N=K线数
         }
     """
     price = _to_float((quote or {}).get("price"))
@@ -347,19 +361,19 @@ def compute_three_levels(quote, chip_data, trading_plan=None):
     }
     res_valid = {k: v for k, v in res_raw.items() if v is not None}
 
-    # ---- 过滤 ±5% + 取最近者 ----
+    # ---- 过滤 ±5% + 取最近者 (支撑下沿/压力上沿, P0-A 命名统一) ----
     support = None
     if price is not None and sup_valid:
         eligible = {k: v for k, v in sup_valid.items() if v <= price * 1.05}
         if eligible:
-            support = min(eligible.values())  # 最低即最近（最贴近现价下方）
+            support = min(eligible.values())  # 支撑下沿 = 区间内最低 (允许跨价 5%)
     resistance = None
     if price is not None and res_valid:
         eligible = {k: v for k, v in res_valid.items() if v >= price * 0.95}
         if eligible:
-            resistance = max(eligible.values())  # 最高即最近（最贴近现价上方）
+            resistance = max(eligible.values())  # 压力上沿 = 区间内最高 (允许跨价 5%)
 
-    # ---- stop_loss 复用 trading_plan.stop_loss（不重算）----
+    # ---- stop_loss 复用 trading_plan.stop_loss (不重算, 防止覆盖 Task 5.1) ----
     stop_loss = None
     if isinstance(trading_plan, dict):
         stop_loss = _to_float(trading_plan.get("stop_loss"))
@@ -370,7 +384,9 @@ def compute_three_levels(quote, chip_data, trading_plan=None):
         "stop_loss": round(stop_loss, 2) if stop_loss is not None else None,
         "support_candidates": {k: round(v, 2) for k, v in sup_valid.items()},
         "resistance_candidates": {k: round(v, 2) for k, v in res_valid.items()},
-        "method": f"4 候选取最近者（支撑 ≤ 1.05×现价；压力 ≥ 0.95×现价；N={n}）",
+        "method": (f"4 候选取最近者 (P0-A 命名: 支撑下沿/压力上沿; "
+                   f"4 候选 → 支撑下沿 (取最小, 过滤>1.05×价); "
+                   f"3 候选 → 压力上沿 (取最大, 过滤<0.95×价); N={n} 根K线)"),
     }
 
 
@@ -859,11 +875,13 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
             plan["template_used"] = OPERATION_TEMPLATES[state]
     good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
 
-    # ---- 2.2 三价位表 (债 2 修法, Task 5.2): 4 支撑/3 压力候选 → 最近者 ----
+    # ---- 2.2 三价位表 (债 2 修法, Task 5.2 + P0-A 规范整改, 2026-09-11): 支撑下沿/压力上沿 ----
     # 候选价从 chip_data['kline'] (~250 日 baostock 前复权 K 线) 自算 MA/布林/前高/前低;
     # 筹码峰直接读 chip_data['peak_price'] (v2 chip_distribution 平铺, line 572)。
     # stop_loss **复用** trading_plan.stop_loss（V2 同源，**不重算**），
     # 严守 Task 5.1 锁定的 trading_plan 字段（entry_low/entry_high/tp1/tp2/tp3/stop_loss/stop_loss_pct）。
+    # 命名: 支撑 = "支撑下沿" (4 候选最小, 过滤>1.05×价), 压力 = "压力上沿" (3 候选最大, 过滤<0.95×价)。
+    # 规则文档: analysis/references/three-levels-rules.md (§6 规范"区间极值/跨价"另命名要求)
     three_levels = compute_three_levels(q, chip_data, plan)
 
     # ---- 3. 逐类状态判定 (V2 的 10 类) ----
@@ -1372,7 +1390,12 @@ def write_markdown_report_v3(r: dict) -> str:
         "",
     ]
     # 三价位 4 行大表 (支撑/压力/止损/现价, emoji 颜色)
-    L.append("### 🎯 三价位（V2 同源实时模型 · 4 候选取最近）")
+    # P0-A 规范整改 (2026-09-11): 报告层同步"支撑下沿/压力上沿"新命名 + 规则文档引用
+    L.append("### 🎯 三价位（V2 同源实时模型 · 支撑下沿/压力上沿）")
+    L.append("")
+    L.append("> 📐 **命名约定** (P0-A 规范整改 v1.0): 支撑 = **支撑下沿** (4 候选最小, 过滤>1.05×价); "
+             "压力 = **压力上沿** (3 候选最大, 过滤<0.95×价); 允许跨现价 5% (与 §6 标准'最近'不同)。"
+             "完整规则+例子: `analysis/references/three-levels-rules.md`")
     L.append("")
     if plan:
         tl3 = r.get("three_levels") or {}
@@ -1382,17 +1405,17 @@ def write_markdown_report_v3(r: dict) -> str:
         sup_cands = tl3.get("support_candidates") or {}
         res_cands = tl3.get("resistance_candidates") or {}
         if tl_sup is not None and tl_res is not None:
-            # 4 行大表: 现价(参考) + 支撑 + 压力 + 止损, 距现价百分比
+            # 4 行大表: 现价(参考) + 支撑下沿 + 压力上沿 + 止损, 距现价百分比
             L += [
                 "| 价位 | 数值 | 距现价 | 来源 / 触发动作 |",
                 "|------|------|--------|---------------|",
                 f"| 💰 **现价** | **{price:.2f}** | 0% (参考) | 腾讯实时行情 (报告日 {r.get('report_date','')}) |",
-                f"| 🟢 **支撑位** | **{tl_sup:.2f}** | {(tl_sup-price)/price*100:+.1f}% | "
-                f"4 候选取最低（≤1.05×现价）· 60 日最低 {sup_cands.get('recent_low', 0):.2f} |",
-                f"| 🔴 **压力位** | **{tl_res:.2f}** | {(tl_res-price)/price*100:+.1f}% | "
-                f"3 候选取最高（≥0.95×现价）· 60 日最高 {res_cands.get('recent_high', 0):.2f} |",
+                f"| 🟢 **支撑位（支撑下沿）** | **{tl_sup:.2f}** | {(tl_sup-price)/price*100:+.1f}% | "
+                f"4 支撑候选最小 · 过滤>1.05×现价 · 60 日最低 {sup_cands.get('recent_low', 0):.2f} |",
+                f"| 🔴 **压力位（压力上沿）** | **{tl_res:.2f}** | {(tl_res-price)/price*100:+.1f}% | "
+                f"3 压力候选最大 · 过滤<0.95×现价 · 60 日最高 {res_cands.get('recent_high', 0):.2f} |",
                 f"| 🟡 **止损位** | **{tl_sl:.2f}** | {(tl_sl-price)/price*100:+.1f}% | "
-                f"5 状态机锁定 · 跌破必走（区间下沿 -7.0%）|",
+                f"复用 trading_plan.stop_loss (V2 同源) · 5 状态机锁定 · 跌破必走 |",
                 "",
             ]
             # 候选明细 (次要信息, blockquote 折叠)

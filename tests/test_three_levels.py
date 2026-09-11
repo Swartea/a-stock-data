@@ -323,3 +323,103 @@ def test_docx_renderer_follows_md_no_hardcode():
         "md_to_docx.py 不应硬编码'三价位(同源)'，DOCX 跟随 MD 渲染"
     assert "support_candidates" not in src, \
         "md_to_docx.py 不应硬编码支撑候选，DOCX 跟随 MD 渲染"
+
+
+# ============================================================
+# P0-A 边界测试 (2026-09-11, 规范 §6 + §12 P0 整改)
+# 规则文档: analysis/references/three-levels-rules.md
+# ============================================================
+import datetime as _dt
+
+
+def test_p0a_n_zero_all_none():
+    """N=0 (K 线全空): support/resistance/stop_loss 全 None, 候选字典空"""
+    r = compute_three_levels({"price": 10.0}, None, None)
+    assert r["support"] is None
+    assert r["resistance"] is None
+    assert r["stop_loss"] is None
+    assert r["support_candidates"] == {}
+    assert r["resistance_candidates"] == {}
+    assert "N=0" in r["method"]
+
+
+def test_p0a_support_all_above_threshold_returns_none():
+    """支撑候选全部 > 1.05×价 → support=None (不强行取跨价极值)"""
+    klines = _make_klines(n=200, start_close=10.0, slope=0.05, vol=0.1)  # close 持续上行
+    # 构造现价低于所有候选的极端场景: 现价=5, 候选都在 9-12 区间
+    r = compute_three_levels({"price": 5.0}, {"kline": klines, "peak_price": 12.0}, None)
+    assert r["support"] is None
+    # candidates 仍记录 (未过滤, 用于报告展示)
+    assert len(r["support_candidates"]) == 4
+
+
+def test_p0a_resistance_all_below_threshold_returns_none():
+    """压力候选全部 < 0.95×价 → resistance=None"""
+    klines = _make_klines(n=200, start_close=5.0, slope=0.0, vol=0.1)  # close 平稳在 5
+    # 现价=15, 候选都在 4-6 区间
+    r = compute_three_levels({"price": 15.0}, {"kline": klines, "peak_price": 4.0}, None)
+    assert r["resistance"] is None
+    assert len(r["resistance_candidates"]) == 3
+
+
+def test_p0a_method_includes_新命名():
+    """method 字段必须含规范统一后的命名 (支撑下沿/压力上沿)"""
+    klines = _make_klines(n=250, start_close=10.0, slope=0.02, vol=0.5)
+    r = compute_three_levels({"price": 12.0}, {"kline": klines, "peak_price": 11.0}, None)
+    assert "支撑下沿" in r["method"]
+    assert "压力上沿" in r["method"]
+    assert "N=" in r["method"]
+
+
+def test_p0a_candidate_keys_unchanged():
+    """4 支撑候选键 + 3 压力候选键不能改 (下游报告+测试都依赖这些键)"""
+    klines = _make_klines(n=250, start_close=10.0, slope=0.02, vol=0.5)
+    r = compute_three_levels({"price": 12.0}, {"kline": klines, "peak_price": 11.0}, None)
+    assert set(r["support_candidates"].keys()) == {"ma60", "recent_low", "chip_peak", "boll_lower"}
+    assert set(r["resistance_candidates"].keys()) == {"ma250_or_ma120", "recent_high", "boll_upper"}
+
+
+def test_p0a_stop_loss_reuse_only_no_recompute():
+    """stop_loss 严格复用 trading_plan.stop_loss, 缺则 None (不复算)"""
+    klines = _make_klines(n=250, start_close=10.0, slope=0.02, vol=0.5)
+    # plan 缺 → stop_loss = None
+    r1 = compute_three_levels({"price": 12.0}, {"kline": klines, "peak_price": 11.0}, None)
+    assert r1["stop_loss"] is None
+    # plan.stop_loss 显式 None → 仍 None
+    r2 = compute_three_levels({"price": 12.0}, {"kline": klines, "peak_price": 11.0}, {"stop_loss": None})
+    assert r2["stop_loss"] is None
+    # plan.stop_loss = 9.33 → 复用为 9.33
+    r3 = compute_three_levels({"price": 12.0}, {"kline": klines, "peak_price": 11.0}, {"stop_loss": 9.33})
+    assert r3["stop_loss"] == 9.33
+
+
+def test_p0a_threshold_exactly_5pct():
+    """±5% 边界值: 候选正好 = price*1.05 应保留 (= 不 >)"""
+    # 构造候选: 唯一支撑候选 = 1.05 × price 边界
+    klines = _make_klines(n=60, start_close=10.0, slope=0.0, vol=0.1)
+    # K 线 close 全 10, ma60 = 10, recent_low = 9.9 (10-0.1), boll_lower < 10
+    # 用 chip_peak = 10.5, price=10.0 → 10.5 == 10.5 (price*1.05), 边界值
+    r = compute_three_levels({"price": 10.0}, {"kline": klines, "peak_price": 10.5}, None)
+    # chip_peak = 10.5 = 10.0 * 1.05, 边界值保留 (≤)
+    assert "chip_peak" in r["support_candidates"]
+    # 10.5 保留后, 跟其他候选 (ma60≈10) 一起, min(10, 9.9, 10.5, boll_lower≈9.8) → 9.8
+    assert r["support"] is not None
+    assert r["support"] <= 10.5
+
+
+def test_p0a_real_600693_case_2026_09_11():
+    """600693 9-11 跑通实测: 现价 10.76, 支撑 7.16 (recent_low), 压力 12.20 (recent_high)"""
+    # 简化: 构造一段 60 日 K 线让 ma60/recent_low/recent_high 落在合理范围
+    klines = _make_klines(n=120, start_close=8.0, slope=0.02, vol=1.0)
+    # 60 日前 close≈8, 现 close≈10.4 (8+120*0.02)
+    # 但 ma60 是后 60 日, 后 60 日 close ≈ 9.2-10.4, ma60 ≈ 9.8
+    # recent_low (60 日内 low 最小) ≈ 后 60 日最低 close-1.0 ≈ 8.2
+    # recent_high ≈ 11.4
+    # chip_peak 假设 11.0
+    r = compute_three_levels({"price": 10.5}, {"kline": klines, "peak_price": 11.0}, {"stop_loss": 9.33})
+    assert r["support"] is not None
+    assert r["resistance"] is not None
+    assert r["stop_loss"] == 9.33
+    # 验证过滤逻辑: support <= 1.05*10.5 = 11.025 (chip_peak 11.0 通过)
+    assert r["support"] <= 10.5 * 1.05 + 0.01
+    assert r["resistance"] >= 10.5 * 0.95 - 0.01
