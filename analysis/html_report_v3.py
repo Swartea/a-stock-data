@@ -1220,11 +1220,11 @@ def _render_checklist(result, state):
         if kind == "watch":
             h.append('<div class="%s">%s<div><div class="grp" style="margin:0 0 2px">%s</div>'
                      '<div class="t">%s</div></div></div>'
-                     % (cls[kind], box, _esc(label), txt))
+                     % (cls[kind], box, _esc(label), _esc(txt)))
         else:
             h.append('<div class="%s">%s<div class="grp" style="margin:0 0 2px">%s</div>'
                      '<div class="t">%s</div></div>'
-                     % (cls[kind], box, _esc(label), txt))
+                     % (cls[kind], box, _esc(label), _esc(txt)))
     if not sig_rows:
         h.append('<div class="src-line">操作清单由 trading_plan + signals 生成 · signals 数据源暂缺</div>')
 
@@ -1825,7 +1825,7 @@ def _detail_drawer(result):
             if isinstance(c70, (list, tuple)) and len(c70) == 2:
                 rows[3] = ("70% 成本区间", "%s ~ %s 元" % (_num(c70[0], 2), _num(c70[1], 2)))
             for k, v in rows:
-                h.append("<tr><td>%s</td><td class=\"num\">%s</td></tr>" % (_esc(k), v))
+                h.append("<tr><td>%s</td><td class=\"num\">%s</td></tr>" % (_esc(k), _esc(v)))
             h.append('</tbody></table></div>')
         if isinstance(vh, dict) and not _is_error(vh):
             h.append('<div class="tbl-wrap" style="margin-top:var(--sp-1)">'
@@ -1847,7 +1847,7 @@ def _detail_drawer(result):
                                                            else "—"))),
                          ("ST 剔除占比", "%s%%" % (_num(vh.get("is_st_ratio"), 1)
                                                    if vh.get("is_st_ratio") is not None else "—"))]:
-                h.append("<tr><td>%s</td><td class=\"num\">%s</td></tr>" % (_esc(k), v))
+                h.append("<tr><td>%s</td><td class=\"num\">%s</td></tr>" % (_esc(k), _esc(v)))
             h.append('</tbody></table></div>')
         h.append("</div>")
     return "\n".join(h)

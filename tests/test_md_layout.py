@@ -51,8 +51,8 @@ def test_md_has_three_levels_4row_table():
 
     # 4 行大表: 现价 + 支撑 + 压力 + 止损
     assert "💰 **现价**" in content, f"{latest.name} 缺现价行"
-    assert "🟢 **支撑位**" in content, f"{latest.name} 缺支撑行 (绿)"
-    assert "🔴 **压力位**" in content, f"{latest.name} 缺压力行 (红)"
+    assert "🟢 **支撑位（支撑下沿）**" in content, f"{latest.name} 缺支撑行 (绿, P0-A 命名)"
+    assert "🔴 **压力位（压力上沿）**" in content, f"{latest.name} 缺压力行 (红, P0-A 命名)"
     assert "🟡 **止损位**" in content, f"{latest.name} 缺止损行 (黄)"
 
     # 距现价% 列

@@ -149,9 +149,9 @@ def test_v3_trading_plan_has_template_used_for_600693():
         pytest.skip("600693 trading_plan 缺失（数据源问题，跳过）")
     assert "state" in plan, f"trading_plan 必须有 state 字段 (文件: {path})"
     assert "template_used" in plan, f"trading_plan 必须有 template_used 字段 (文件: {path})"
-    # 600693 历史 score 通常 40-50，落在 neutral 或 mild_bear
-    assert plan["state"] in ("neutral", "mild_bear", "bullish", "mild_bull"), \
-        f"600693 应落在 5 状态之一，实际 {plan['state']}"
+    # 600693 历史 score 通常 30-50, 落在 5 状态之一 (当前 34 = bearish, 边界 35)
+    assert plan["state"] in ("neutral", "mild_bear", "bullish", "mild_bull", "bearish"), \
+        f"600693 应落在 5 状态之一, 实际 {plan['state']}"
     if plan["state"] == "neutral":
         assert "区间操作" in plan["template_used"], \
             f"neutral 模板必须含'区间操作'，实际: {plan['template_used']}"
