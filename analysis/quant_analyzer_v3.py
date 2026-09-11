@@ -23,6 +23,10 @@ V2 同源复用 (只读引用, 不修改 v2):
 硬约束 (债4):
   - 三价位 (支撑/压力/止损) 必须来自 V2 同源实时 K 线模型
     (腾讯实时行情价 + baostock 前复权筹码 K 线)，严禁用 scripts/screener_pool.csv 陈旧价兜底。
+
+P0-B 规范整改 (2026-09-11, 规范 §4): 4 个 fetcher 入仓后, 通过 fetcher_contract.from_legacy()
+适配老 ad-hoc 返回 ({"error": str, "rows": []}), 报告层用 status_of()/is_error() 统一检测。
+完整契约见 `analysis/fetcher_contract.py` + §4 规范。
   - K 线当日证据: last_bar 与最新交易日比对, 非当日(且非周末节假日)记 WARN 进 run_log。
 
 输出: {REPORTS_ROOT}/{code}_{name}/{YYYY-MM-DD}/{code}-{name}-{HHMM}.md + run_log.json
@@ -42,6 +46,22 @@ import json
 import time
 from datetime import datetime, timedelta, date, time as dtime
 from typing import Optional
+
+# P0-B 规范整改 (2026-09-11, 规范 §4): 统一 fetcher 返回契约
+try:
+    from fetcher_contract import (
+        status_of, is_error as _is_error_fc, is_ok, is_empty, is_unsupported,
+        from_legacy as _from_legacy,
+        STATUS_OK, STATUS_EMPTY, STATUS_ERROR, STATUS_UNSUPPORTED,
+    )
+    _HAS_FETCHER_CONTRACT = True
+except Exception:  # noqa: BLE001
+    _HAS_FETCHER_CONTRACT = False
+    # 兜底: 保持老 ad-hoc 检测逻辑
+    def status_of(blob):
+        if isinstance(blob, dict) and "error" in blob and isinstance(blob["error"], str):
+            return "error"
+        return "ok"
 
 # ---------------------------------------------------------------
 # 路径: 本文件所在目录 → 可 import v2 / 4 个新 fetcher
@@ -935,12 +955,24 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         fn = mod["fn"]
         val, n_try, exc = _retry_call(lab, fn, *args, tries=tries, **kw)
         meta = _src_meta.get(lab, {})
+        # P0-B (2026-09-11, §4): 用 status_of() 统一检测, 兼容新契约 + 老 ad-hoc
+        st = status_of(val) if val is not None else "error"
         if exc:
             status = f"error:调用异常 {exc[:80]}, {meta.get('ms','?')}ms"
             run_log["fallback_chain"].append(f"{lab}: 第{n_try}次后仍失败 — {exc}")
-        elif isinstance(val, dict) and "error" in val:
-            status = f"error:{str(val['error'])[:60]}, {meta.get('ms','?')}ms"
-            run_log["fallback_chain"].append(f"{lab}: {str(val['error'])[:100]}")
+        elif st == "error":
+            # 新契约从 error.message 取, 老 ad-hoc 从 error 字段取
+            err_msg = ""
+            if isinstance(val, dict):
+                e = val.get("error")
+                if isinstance(e, dict) and "message" in e:
+                    err_msg = str(e["message"])
+                elif isinstance(e, str):
+                    err_msg = e
+            status = f"error:{err_msg[:60]}, {meta.get('ms','?')}ms"
+            run_log["fallback_chain"].append(f"{lab}: {err_msg[:100]}")
+        elif st == "empty":
+            status = f"empty:无记录, {meta.get('ms','?')}ms"
         elif isinstance(val, dict) and val.get("source"):
             status = f"ok:{val['source']}, {meta.get('ms','?')}ms"     # 实际数据源
         else:

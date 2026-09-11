@@ -115,9 +115,16 @@ def _days_between(a, b):
 
 
 def _is_error(blob):
-    """v2 风格: {'error': '...'} 或 None 视为拉取失败"""
+    """§4 规范: 错误返回不等于成功; 调用方必须检查状态, 而非只检查是否抛异常。
+
+    P0-B (2026-09-11): 兼容老 ad-hoc 格式 ({"error": str, ...}) + 新契约 (status=error)。
+    """
     if not isinstance(blob, dict):
         return True
+    # 新契约优先
+    if "status" in blob and blob["status"] in ("ok", "empty", "error", "unsupported"):
+        return blob["status"] == "error"
+    # 老 ad-hoc 兜底
     return "error" in blob
 
 
