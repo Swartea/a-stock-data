@@ -500,6 +500,60 @@ def _classify_north_scope(north_data) -> tuple:
     return ("unknown", "北向数据口径未明")
 
 
+def _json_default(obj):
+    """P1-C 规范整改 (2026-09-11, §3): 显式 JSON 序列化默认处理。
+
+    替代禁用的 default=str 静默序列化 (规范 §3 '禁止静默使用 default=str 掩盖未定义
+    的序列化类型; 应显式转换日期、数值和模型')。
+
+    支持类型:
+      - datetime/date:  → ISO 8601 字符串 (含时区)
+      - Decimal:        → 浮点 (金融场景常见)
+      - Path:           → 字符串
+      - set/frozenset:  → 排序后的 list (确定性 JSON)
+      - bytes:          → hex 编码
+      - Exception:      → type 名称 + 消息
+      - Enum:           → value
+
+    未知类型: raise TypeError (强制显式声明, 不静默字符串化)
+    """
+    if hasattr(obj, "isoformat"):
+        # datetime / date / time
+        try:
+            return obj.isoformat()
+        except (TypeError, ValueError):
+            pass
+    if isinstance(obj, set):
+        try:
+            return sorted(list(obj))
+        except TypeError:
+            return list(obj)
+    if isinstance(obj, bytes):
+        return obj.hex()
+    if isinstance(obj, Exception):
+        return f"{type(obj).__name__}: {obj}"
+    try:
+        from decimal import Decimal
+        if isinstance(obj, Decimal):
+            return float(obj)
+    except ImportError:
+        pass
+    from pathlib import Path
+    if isinstance(obj, Path):
+        return str(obj)
+    try:
+        from enum import Enum
+        if isinstance(obj, Enum):
+            return obj.value
+    except ImportError:
+        pass
+    # 兜底: 强制显式, 不静默
+    raise TypeError(
+        f"object of type {type(obj).__name__} is not JSON serializable; "
+        f"显式转换或加进 _json_default 列表 (规范 §3)"
+    )
+
+
 def _fmt_time(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
 
@@ -1125,9 +1179,10 @@ def _emit(code: str, name: str, result: dict) -> dict:
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(md_text)
 
-    # ② 完整 result dict → result_v3.json (HTML 组同款契约; default=str 兜底非序列化字段)
+    # ② 完整 result dict → result_v3.json (HTML 组也按此读)
+    # P1-C (2026-09-11, §3): 禁止 default=str 静默序列化; 显式 JSONEncoder 处理日期/数值/模型
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2, default=str)
+        json.dump(result, f, ensure_ascii=False, indent=2, default=_json_default)
 
     # ③ HTML — html_report_v3.write_html_report_v3(result, out_dir) (import 失败则补路径重试)
     html_status = "error:未执行"
@@ -1182,7 +1237,7 @@ def _emit(code: str, name: str, result: dict) -> dict:
         "sizes_bytes": sizes,
     }
     with open(log_path, "w", encoding="utf-8") as f:
-        json.dump(rl, f, ensure_ascii=False, indent=2, default=str)
+        json.dump(rl, f, ensure_ascii=False, indent=2, default=_json_default)
 
     files = {"md": md_path, "html": html_path, "docx": docx_path,
              "json": json_path, "run_log": log_path, "day_dir": day_dir,
@@ -1191,7 +1246,7 @@ def _emit(code: str, name: str, result: dict) -> dict:
     result["_files"] = files
     # ②(终) 补 dump: result["run_log"] 与 rl 同对象, 此时已含 artifacts; _files 也一并入 json
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2, default=str)
+        json.dump(result, f, ensure_ascii=False, indent=2, default=_json_default)
     if html_status != "ok":
         print(f"  [WARN] HTML 生成失败: {html_status}")
     if docx_status != "ok":
@@ -1206,7 +1261,7 @@ def _dump_run_log(code: str, name: str, run_log: dict):
                            datetime.now().strftime("%Y-%m-%d"))
     os.makedirs(day_dir, exist_ok=True)
     with open(os.path.join(day_dir, f"run_log-{datetime.now().strftime('%H%M')}.json"), "w", encoding="utf-8") as f:
-        json.dump(run_log, f, ensure_ascii=False, indent=2, default=str)
+        json.dump(run_log, f, ensure_ascii=False, indent=2, default=_json_default)
 
 
 # ============================================================
