@@ -1158,10 +1158,19 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
 # 输出
 # ============================================================
 def _emit(code: str, name: str, result: dict) -> dict:
-    """三件套落盘 (out_dir 内, 同 HHMM 时间戳命名):
-    ① {code}-{name}-{HHMM}.md  ② result_v3.json  ③ run_log.json
-    ④ {code}-{name}-{HHMM}.html (html_report_v3)  ⑤ {code}-{name}-{HHMM}.docx (md_to_docx)
-    返回 {md, html, docx, json, run_log, day_dir, status:{...}}"""
+    """6 件套落盘 (out_dir 内, 同 HHMM 时间戳命名):
+    ① {code}-{name}-{HHMM}.md            (必需, §7 必需产物)
+    ② result_v3.json                     (必需, 完整 result dict)
+    ③ run_log.json                       (必需, 链路记录)
+    ④ {code}-{name}-{HHMM}.html          (允许降级, 写 run_log.html_status)
+    ⑤ {code}-{name}-{HHMM}.docx          (允许降级, 写 run_log.docx_status)
+    ⑥ {code}-{name}-{HHMM}.pdf           (允许降级, html_report_v3 写 result.pdf_status)
+
+    P1-A (2026-09-11, §7): 输出 deliverable_status = complete / partial / failed
+      - complete: 3 必需 + 3 允许降级全活
+      - partial: 必需全活, 至少 1 个允许降级失败
+      - failed:  至少 1 个必需失败
+    """
     safe_name = name or code
     day_dir = os.path.join(REPORTS_ROOT, f"{code}_{safe_name}",
                            datetime.now().strftime("%Y-%m-%d"))
@@ -1174,17 +1183,28 @@ def _emit(code: str, name: str, result: dict) -> dict:
     json_path = os.path.join(day_dir, f"result_v3-{hhmm}.json")
     log_path = os.path.join(day_dir, f"run_log-{hhmm}.json")
 
-    # ① MD
-    md_text = write_markdown_report_v3(result)
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(md_text)
+    # ① MD (必需)
+    md_status = "ok"
+    md_err = ""
+    try:
+        md_text = write_markdown_report_v3(result)
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(md_text)
+    except Exception as e:  # noqa: BLE001
+        md_status = f"error:{str(e)[:120]}"
+        md_err = str(e)
 
-    # ② 完整 result dict → result_v3.json (HTML 组也按此读)
-    # P1-C (2026-09-11, §3): 禁止 default=str 静默序列化; 显式 JSONEncoder 处理日期/数值/模型
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2, default=_json_default)
+    # ② result_v3.json (必需, P1-C 显式 JSONEncoder)
+    json_status = "ok"
+    json_err = ""
+    try:
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2, default=_json_default)
+    except Exception as e:  # noqa: BLE001
+        json_status = f"error:{str(e)[:120]}"
+        json_err = str(e)
 
-    # ③ HTML — html_report_v3.write_html_report_v3(result, out_dir) (import 失败则补路径重试)
+    # ③ HTML (允许降级)
     html_status = "error:未执行"
     html_err = ""
     t0 = time.time()
@@ -1195,13 +1215,14 @@ def _emit(code: str, name: str, result: dict) -> dict:
             sys.path.insert(0, _ANALYSIS_DIR)
             import html_report_v3 as _hrv3
         html_path = _hrv3.write_html_report_v3(result, day_dir)
-        html_status = "ok"
+        # P1-A: html_report_v3 内部已写 result.pdf_status
+        html_status = "ok" if (html_path and os.path.exists(html_path)) else f"error: HTML 文件未生成"
     except Exception as e:  # noqa: BLE001
         html_err = str(e)
         html_status = f"error:{str(e)[:120]}"
     html_ms = round((time.time() - t0) * 1000)
 
-    # ④ DOCX — md_to_docx(md_path, docx_path); 直接 import, 失败则 subprocess 兜底 (不改 md_to_docx.py)
+    # ④ DOCX (允许降级)
     docx_status = "error:未执行"
     docx_err = ""
     t0 = time.time()
@@ -1221,36 +1242,95 @@ def _emit(code: str, name: str, result: dict) -> dict:
             docx_status = f"error:{docx_err[:120]}"
     docx_ms = round((time.time() - t0) * 1000)
 
-    # run_log.json — 末尾再写一次, 并入产物状态与文件大小 (HTML/DOCX 成败均如实记录)
+    # ⑤ PDF (允许降级, html_report_v3 已写 result.pdf_status; 兜底 None)
+    pdf_status = result.get("pdf_status", "skipped:html_report_v3 未执行")
+    pdf_path = result.get("pdf_path")
+
+    # ================= P1-A deliverable_status 计算 (§7) =================
+    optional_status = {"html": html_status, "docx": docx_status, "pdf": pdf_status}
+
+    def _is_ok(s):
+        return s == "ok" or (isinstance(s, str) and s.startswith("ok("))
+
+    def _calc_deliverable(rl_status):
+        req = {"md": md_status, "result_json": json_status, "run_log": rl_status}
+        req_failed = [k for k, v in req.items() if not _is_ok(v)]
+        opt_failed = [k for k, v in optional_status.items() if not _is_ok(v)]
+        if req_failed:
+            return "failed", req_failed, [k for k, v in req.items() if _is_ok(v)], opt_failed
+        if opt_failed:
+            return "partial", [], [k for k, v in req.items() if _is_ok(v)], opt_failed
+        return "complete", [], [k for k, v in req.items() if _is_ok(v)], []
+
+    # run_log 第一次写 (含产物状态 + sizes)
     rl = result.get("run_log") or {}
     sizes = {}
-    for p in (md_path, html_path, docx_path, json_path, log_path):
+    for label, p in [("md", md_path), ("html", html_path), ("docx", docx_path),
+                     ("result_json", json_path), ("pdf", pdf_path)]:
         try:
-            sizes[os.path.basename(p)] = os.path.getsize(p)
+            sizes[label] = os.path.getsize(p) if p else None
         except OSError:
-            sizes[os.path.basename(p)] = None
+            sizes[label] = None
     rl["artifacts"] = {
         "md": os.path.basename(md_path), "html": os.path.basename(html_path),
-        "docx": os.path.basename(docx_path), "result_json": os.path.basename(json_path),
-        "html_status": html_status, "html_ms": html_ms,
-        "docx_status": docx_status, "docx_ms": docx_ms,
+        "docx": os.path.basename(docx_path),
+        "pdf": os.path.basename(pdf_path) if pdf_path else None,
+        "result_json": os.path.basename(json_path),
+        "md_status": md_status, "html_status": html_status, "docx_status": docx_status,
+        "pdf_status": pdf_status, "result_json_status": json_status,
+        "html_ms": html_ms, "docx_ms": docx_ms,
         "sizes_bytes": sizes,
     }
-    with open(log_path, "w", encoding="utf-8") as f:
-        json.dump(rl, f, ensure_ascii=False, indent=2, default=_json_default)
+    log_status = "ok"
+    try:
+        with open(log_path, "w", encoding="utf-8") as f:
+            json.dump(rl, f, ensure_ascii=False, indent=2, default=_json_default)
+    except Exception as e:  # noqa: BLE001
+        log_status = f"error:{str(e)[:120]}"
+    rl["artifacts"]["run_log_status"] = log_status
+    sizes["run_log"] = os.path.getsize(log_path) if os.path.exists(log_path) else None
+    rl["artifacts"]["sizes_bytes"] = sizes
 
-    files = {"md": md_path, "html": html_path, "docx": docx_path,
+    # 算最终 deliverable (含 run_log)
+    deliverable_status, req_failed, req_ok, opt_failed = _calc_deliverable(log_status)
+    rl["artifacts"]["deliverable_status"] = deliverable_status
+    rl["artifacts"]["required_failed"] = req_failed
+    rl["artifacts"]["optional_failed"] = opt_failed
+    rl["artifacts"]["required_ok"] = req_ok
+    rl["artifacts"]["optional_ok"] = [k for k, v in optional_status.items() if _is_ok(v)]
+    rl["artifacts"]["sizes_bytes"] = sizes
+
+    # 第二次写 run_log (含 deliverable + sizes)
+    try:
+        with open(log_path, "w", encoding="utf-8") as f:
+            json.dump(rl, f, ensure_ascii=False, indent=2, default=_json_default)
+    except Exception:
+        pass
+
+    files = {"md": md_path, "html": html_path, "docx": docx_path, "pdf": pdf_path,
              "json": json_path, "run_log": log_path, "day_dir": day_dir,
-             "status": {"html": html_status, "docx": docx_status,
-                        "html_err": html_err, "docx_err": docx_err}}
+             "status": {"md": md_status, "html": html_status, "docx": docx_status,
+                        "pdf": pdf_status, "json": json_status, "log": log_status,
+                        "deliverable": deliverable_status,
+                        "required_failed": req_failed, "optional_failed": opt_failed,
+                        "html_err": html_err, "docx_err": docx_err, "json_err": json_err,
+                        "md_err": md_err}}
     result["_files"] = files
+    result["deliverable_status"] = deliverable_status  # 顶层, 方便测试/外部读
+
     # ②(终) 补 dump: result["run_log"] 与 rl 同对象, 此时已含 artifacts; _files 也一并入 json
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2, default=_json_default)
+    try:
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2, default=_json_default)
+    except Exception as e:  # noqa: BLE001
+        print(f"  [WARN] result_v3.json 终 dump 失败: {e}")
+
     if html_status != "ok":
         print(f"  [WARN] HTML 生成失败: {html_status}")
     if docx_status != "ok":
         print(f"  [WARN] DOCX 生成失败: {docx_status}")
+    if pdf_status != "ok":
+        print(f"  [WARN] PDF 生成失败: {pdf_status}")
     return files
 
 

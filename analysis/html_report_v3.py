@@ -2155,13 +2155,16 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
         f.write(content)
 
     # ---- Task 6.5+ (UI 升级线): HTML → PDF 渲染 (Chrome headless) ----
-    # 用本机 Chrome headless 模式渲染 HTML (含 ECharts 5 图 + 双主题) → PDF
-    # 输出: <out_dir>/<name>-<HHMM>.pdf (与 HTML 同名仅后缀不同)
+    # P1-A (2026-09-11, §7): PDF 失败必须进入运行结果, 不能仅 print 错误
+    #   在 result 写 pdf_status / pdf_path, 让 _emit 算 deliverable_status
     try:
         pdf_path = _render_html_to_pdf(path, virtual_time_budget_ms=15000)
+        result["pdf_status"] = "ok" if pdf_path and os.path.exists(pdf_path) else f"error: PDF 未生成"
+        result["pdf_path"] = pdf_path
     except Exception as _pdf_err:
-        # PDF 渲染失败不阻塞 HTML 输出, 仅记录
-        pdf_path = None
+        # PDF 渲染失败不阻塞 HTML 输出, 但必须记录到 result
+        result["pdf_status"] = f"error:{type(_pdf_err).__name__}: {str(_pdf_err)[:100]}"
+        result["pdf_path"] = None
         import sys as _sys
         print("[V3] PDF 渲染失败 (%s): %s" % (type(_pdf_err).__name__, _pdf_err), file=_sys.stderr)
 
