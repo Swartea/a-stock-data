@@ -826,50 +826,29 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     finally:
         _restore_v2(saved)
 
-    # ---- 1.5 申万SSL直连失败 → verify=False 重试 (本机CA环境问题, 不改 v2; 成功则重算评分) ----
+    # ---- 1.5 申万 SSL 失败处理 (P0-C 规范整改, 2026-09-11, §5 'TLS 证书校验') ----
+    # 历史: 本机 CA 证书链过旧 → swsresearch.com HTTPS 握手失败 (SSL EOF);
+    #       原 P0-C 前用 verify=False 全局 patch 绕过, 9-10 plan 已标同 swsresearch 类问题.
+    # 整改: 移除 verify=False 兜底 (§5 '保持 TLS 证书校验开启; 不得 verify=False 作为生产默认'),
+    #       失败如实记录, run_log 推荐 'pip install -U certifi' 修复; 评分沿用 v2 已算值.
     code6 = base_result["code"]
     sw0 = base_result.get("sw_data") or {}
     if isinstance(sw0, dict) and "error" in sw0:
-        import requests as _req
-        _orig_get = _req.get
-
-        def _patched_get(url, *a, **k):
-            if "swsresearch.com" in str(url):
-                k["verify"] = False
-            return _orig_get(url, *a, **k)
-
-        t0 = time.time()
-        sw_retry = {"error": "未执行"}
-        try:
-            _req.get = _patched_get
-            sw_retry = v2.fetch_sw_stability(code6)
-        except Exception as e:  # noqa: BLE001
-            sw_retry = {"error": str(e)}
-        finally:
-            _req.get = _orig_get
-        ms = round((time.time() - t0) * 1000)
-        if isinstance(sw_retry, dict) and "error" not in sw_retry:
-            base_result["sw_data"] = sw_retry
-            run_log["fallback_chain"].append(
-                f"申万分类: SSL直连失败({str(sw0.get('error',''))[:44]}) → verify=False 重试成功 "
-                f"({ms}ms, 变更{sw_retry.get('n_changes','?')}次) [环境CA问题已绕过, 如实记录]")
-            meta = _src_meta.setdefault("申万分类", {"at": _fmt_time(time.time())})
-            meta["ms"] = ms
-            meta["status"] = f"ok:swsresearch(verify=False重试), {ms}ms"
-            score2 = v2.compute_quant_score_v2(
-                base_result["quote"], base_result["valuation"],
-                base_result.get("blocks", []), base_result.get("fund", {}),
-                base_result.get("valuation_hist", {}), base_result.get("lockup", {}),
-                base_result.get("dragon", {}), base_result.get("macro", {}),
-                chip_data=base_result["chip_data"], sw_data=sw_retry)
-            base_result["score"] = score2
-            adv2, emj2, det2 = v2.get_advice_v2(score2["total"])
-            base_result["advice"], base_result["emoji"], base_result["detail"] = adv2, emj2, det2
-            print(f"[v3] 申万 SSL 绕过成功({sw_retry.get('n_changes')}次行业变更); "
-                  f"评分重算: {score2['total']}分 {emj2}{adv2}")
-        else:
-            run_log["fallback_chain"].append(
-                f"申万分类: SSL直连失败且 verify=False 重试亦失败: {str(sw_retry.get('error',''))[:80]}")
+        sw_err = str(sw0.get("error", ""))[:80]
+        run_log["fallback_chain"].append(
+            f"申万分类: SSL 直连失败 ({sw_err[:44]}) — 不再 verify=False 兜底 (§5); "
+            f"修复: pip install -U certifi  (申万行业因子按 v2 默认中性计)")
+        # §5: 不重试不回退, 失败如实记录; 评分不变, 由 v2.analyze_single 已按 sw 缺失算
+        meta = _src_meta.setdefault("申万分类", {"at": _fmt_time(time.time())})
+        meta["ms"] = 0
+        meta["status"] = f"error:{sw_err[:40]} (需 pip install -U certifi), 0ms"
+        meta["detail"] = _SRC_DESC.get("申万分类", "申万行业稳定性")
+        meta["tls_recommendation"] = "pip install -U certifi"
+        run_log.setdefault("tls_recommendations", []).append({
+            "host": "swsresearch.com",
+            "fix": "pip install -U certifi",
+            "applies_to": ["申万分类"],
+        })
 
     q = base_result["quote"]; v = base_result["valuation"]
     score = base_result["score"]; score_total = score["total"]
