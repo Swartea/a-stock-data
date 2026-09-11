@@ -804,6 +804,18 @@ def _checklist_css():
 .chk-sell{border-left-color:var(--accent);background:var(--surface)}
 .chk-stop{border-left-color:var(--risk-ink);background:var(--risk-bg)}
 .chk-watch{border-left-color:var(--hairline)}
+/* ---------- §2.4 5 项 GFM checkbox 清单 (债 5 修法, Task 7.2) ---------- */
+.task-list{list-style:none;padding:0;margin:8px 0 0}
+.task-list-item{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;
+     margin-bottom:6px;border-radius:var(--radius);background:var(--bg);
+     border-left:3px solid var(--accent);font-size:13px;line-height:1.6}
+.task-list-item .cb{color:var(--accent);font-weight:800;flex:none;font-size:15px;
+     line-height:1.4}
+.task-list-item .lbl{flex:1;color:var(--ink-2)}
+.task-list-item .lbl b{color:var(--ink-1)}
+.task-bull{border-left-color:var(--up)}
+.task-stop{border-left-color:var(--risk-ink);background:var(--risk-bg)}
+.task-watch{border-left-color:var(--hairline)}
 /* ---------- §2.4 风险警报区 (红系警示不变) ---------- */
 .risk{background:var(--risk-bg);border:1px solid var(--risk-line);border-radius:var(--radius);
      padding:12px 14px;margin-bottom:var(--sp-1)}
@@ -1147,7 +1159,7 @@ def _render_checklist(result, state):
     if template_used:
         rows.append(('watch', '操作口诀（5 状态机）', _esc(template_used)))
 
-    if state == "bull":
+    if state in ("bullish", "mild_bull"):
         rows.append(('buy', '买入触发', '回踩 %s 分批进场（每档最多 1/2 仓），不追高、不满仓一把梭'
                      % money(sup_low if sup_low is not None else q.get("price"),
                              "支撑区")))
@@ -1208,15 +1220,84 @@ def _render_checklist(result, state):
                      % (cls[kind], box, _esc(label), txt))
     if not sig_rows:
         h.append('<div class="src-line">操作清单由 trading_plan + signals 生成 · signals 数据源暂缺</div>')
+
+    # ----- 5 项 GFM checkbox 清单 (债 5 修法, Task 7.2) -----
+    # 5 状态 × 5 项, 运行时按 state 选 1 套
+    # 5 项: 状态确认 / 买点触发 / 卖点触发 / 止损纪律 / 仓位管理
+    sl_pct_str = (_num(sl_pct, 1) if _num(sl_pct, 1) else "?")
+    e_lo_s = money(sup_low if sup_low is not None else q.get("price"), "支撑区")
+    e_hi_s = money(sup_high if sup_high is not None else q.get("price"), "支撑上沿")
+    tp1_s = money(pres if pres is not None else q.get("price"), "第一压力")
+    st_s = money(sl, "止损位")
+    pos_s = (_esc(pos) if pos else "数据源暂缺")
+    per_s = (_esc(per) if per else "数据源暂缺")
+    sl_pct_s = (_num(sl_pct, 1) if _num(sl_pct, 1) else "—")
+    e_lo_v = sup_low if sup_low is not None else None
+    e_hi_v = sup_high if sup_high is not None else None
+    tp1_v = pres if pres is not None else None
+    sl_v = sl
+    CHECKLIST_5T = {
+        "bullish": [
+            ("状态确认", "评分 ≥65 + 趋势确认 + 量能配合, 5 状态机判定为多头"),
+            ("买点触发", "回调至 %s 区间分批建仓 (各 1/2 仓); 放量突破 %s 可加仓" % (e_lo_s, tp1_s)),
+            ("卖点触发", "达 %s 卖 1/2 锁利 → 达更高位再减半 → 趋势走弱清剩余" % tp1_s),
+            ("止损纪律", "收盘跌破 %s (现价下 -%s%%) 即离场, 不补仓摊平" % (st_s, sl_pct_s)),
+            ("仓位管理", "%s · 周期 %s" % (pos_s, per_s)),
+        ],
+        "mild_bull": [
+            ("状态确认", "评分 55-64 + 趋势偏多, 5 状态机判定为轻多 (震荡偏多)"),
+            ("买点触发", "回调至 %s 附近小仓低吸 (1/3 仓); 突破 %s 站稳再加 1/3" % (e_lo_s, tp1_s)),
+            ("卖点触发", "达 %s 减 1/3 锁利; 达更高位再减 1/3; 余仓看第三压力" % tp1_s),
+            ("止损纪律", "收盘跌破 %s (现价下 -%s%%) 即减半; 破支撑下沿全走" % (st_s, sl_pct_s)),
+            ("仓位管理", "%s · 周期 %s (轻多, 严控仓位)" % (pos_s, per_s)),
+        ],
+        "neutral": [
+            ("状态确认", "评分 45-54 + 多空信号混杂, 5 状态机判定为中性 (区间震荡)"),
+            ("买点触发", "仅在 %s 支撑区低吸, 上轨 %s 附近不过量追高" % (e_lo_s, tp1_s)),
+            ("卖点触发", "反弹至 %s 一带减仓; 跌破 %s 转空离场; 放量站稳 %s 再看多" % (tp1_s, st_s, tp1_s)),
+            ("止损纪律", "%s 为区间底沿, 收盘破位即走, 不猜底" % st_s),
+            ("仓位管理", "%s · 以低吸高抛为主, 周期 %s" % (pos_s, per_s)),
+        ],
+        "mild_bear": [
+            ("状态确认", "评分 35-44 + 趋势偏空, 5 状态机判定为轻空 (震荡偏空)"),
+            ("买点触发", "严控 — 仅在 %s 附近且出现放量反转 K 线小仓 (1/4 仓) 抢短; 否则不动" % e_lo_s),
+            ("卖点触发", "已有持仓反弹至 %s 一带分批减仓; 跌破 %s 清仓; 不抢反弹" % (tp1_s, st_s)),
+            ("止损纪律", "%s 上方不留幻想仓, 反弹即减, 跌穿即走" % st_s),
+            ("仓位管理", "%s · 周期 %s (轻空, 逢反减)" % (pos_s, per_s)),
+        ],
+        "bearish": [
+            ("状态确认", "评分 <35 + 趋势空头, 5 状态机判定为空头 (下跌趋势)"),
+            ("买点触发", "❌ 不买入 / 不补仓 / 不抄底; 空仓者观望等底部放量企稳信号"),
+            ("卖点触发", "反弹至压力位 %s 一带分批减仓; 持仓者跌破 %s 清仓; 不抢反弹" % (tp1_s, st_s)),
+            ("止损纪律", "反弹减仓/清仓纪律优先, 止损 %s 上方不留幻想仓" % st_s),
+            ("仓位管理", "清仓回避 / 极轻仓短线者当日进出"),
+        ],
+    }
+    items5 = CHECKLIST_5T.get(state, CHECKLIST_5T["neutral"])
+    # 状态决定边框色: bullish=up, mild_bull=up, neutral=accent, mild_bear=risk, bearish=risk
+    state_cls = {"bullish": "task-bull", "mild_bull": "task-bull",
+                 "neutral": "", "mild_bear": "task-stop", "bearish": "task-stop"}.get(state, "")
+    h.append('<ul class="task-list" style="margin-top:12px">')
+    for label, txt in items5:
+        h.append('<li class="task-list-item %s"><span class="cb">☐</span>'
+                 '<span class="lbl"><b>%s：</b>%s</span></li>'
+                 % (state_cls, _esc(label), _esc(txt)))
+    h.append('</ul>')
     return "\n".join(h)
 
 
 def _risk_items(result, report_date):
-    """c) 风险事件收集: 解禁 / 财报披露临近 / 减持·风险类公告 (纯数据驱动, 不编造)"""
-    items = []
+    """c) 风险事件收集 (债 5 修法, Task 7.2) — 5 列 dict list
+
+    字段: category / desc / severity / trigger / action
+    数据源: 解禁 / 财报窗口 / 估值极端 / 龙虎榜 / 减持公告
+    """
+    rows = []
+    # 1) 解禁
     lockup = result.get("lockup")
     if not _is_error(lockup):
-        for u in lockup.get("upcoming", []):
+        upcomings = (lockup or {}).get("upcoming", [])
+        for u in upcomings[:3]:
             d = u.get("date")
             ratio = u.get("ratio_pct", 0) or 0
             days = _days_between(d, report_date)
@@ -1227,62 +1308,122 @@ def _risk_items(result, report_date):
                 ratio_f = float(ratio)
             except (TypeError, ValueError):
                 ratio_f = 0
-            big = ratio_f >= 5 or days <= 10
-            items.append({
-                "date": str(d),
-                "days": days,
-                "high": big,
-                "title": "限售解禁 %s%%" % _num(ratio, 1),
-                "body": ("%s 解禁 %s 万股（占流通 %.2f%%）"
-                         % (_trunc(u.get("type", "限售股"), 26),
-                            _num(shares / 1e4, 2) if shares >= 1e4 else _num(shares, 0),
-                            ratio_f)),
+            sev = "🔴高" if ratio_f >= 5 else ("🟠中" if ratio_f >= 2 else "🟡低")
+            type_txt = u.get("type", "")
+            rows.append({
+                "category": "解禁压力",
+                "desc": "%s 解禁 %s 万股" % (str(d), _num(shares, 0)),
+                "severity": sev,
+                "trigger": "占股本 %.2f%%" % ratio_f + (" [%s]" % type_txt if type_txt else ""),
+                "action": "解禁前 5 日减仓 / 当日观望",
             })
+    elif _is_error(lockup):
+        rows.append({
+            "category": "解禁数据", "desc": "数据源暂缺", "severity": "🟡低",
+            "trigger": (lockup.get("error", "") or "—")[:30],
+            "action": "补 fetcher 后重跑",
+        })
+    else:
+        rows.append({
+            "category": "解禁压力", "desc": "未来 90 天无解禁", "severity": "🟢无",
+            "trigger": "无 upcoming 记录", "action": "无需应对",
+        })
+    # 2) 估值极端
+    q = result.get("quote") or {}
+    pe = q.get("pe_ttm", 0) or 0
+    vh = result.get("valuation_hist") or {}
+    if pe > 80:
+        rows.append({
+            "category": "估值", "desc": "PE(TTM) %.1f 极高估" % pe,
+            "severity": "🔴高",
+            "trigger": "PE > 80; 估值分位 %s%%" % _num(vh.get("pe_percentile_3y"), 1),
+            "action": "减仓兑现, 不追高",
+        })
+    elif not _is_error(vh) and (vh.get("pe_percentile_3y") or 0) > 80:
+        rows.append({
+            "category": "估值", "desc": "PE 历史分位 %d%% — 接近 3 年最高" % (vh.get("pe_percentile_3y") or 0),
+            "severity": "🔴高",
+            "trigger": "PE 分位 > 80%",
+            "action": "分批减仓, 等待估值修复",
+        })
+    # 3) 龙虎榜大额净卖
+    dragon = result.get("dragon") or {}
+    if not _is_error(dragon) and dragon.get("records"):
+        nbs = [x.get("net_buy_wan", 0) or 0 for x in dragon["records"]]
+        if nbs and sum(nbs) / len(nbs) < -1000:
+            avg = sum(nbs) / len(nbs)
+            rows.append({
+                "category": "龙虎榜",
+                "desc": "近 30 日平均净卖出 %s 万元" % _num(avg, 0),
+                "severity": "🟠中",
+                "trigger": "近 30 日均净卖 > 1000 万",
+                "action": "游资撤退, 谨慎追涨",
+            })
+    # 4) 减持公告
     anns = (result.get("announcements") or {}).get("announcements") or []
-    for a in anns:
+    for a in anns[:10]:
         if not isinstance(a, dict):
             continue
         cat = str(a.get("category") or "")
         title = str(a.get("title") or "")
-        sent = str(a.get("sentiment") or "")
-        d = a.get("date")
-        days = _days_between(d, report_date)
-        hit = ("财报" in cat or "业绩" in cat or "披露" in cat)
-        # 财报披露类公告若在未来 30 天内出现, 提示财报临近
-        if hit and days is not None and 0 <= days <= 30:
-            items.append({"date": str(d), "days": days, "high": False,
-                          "title": "财报/业绩披露临近",
-                          "body": "%s：%s" % (_trunc(title, 34), _esc(sent or "中性") or "—")})
-        if ("减持" in cat or "减持" in title or "解禁" in title
-                or "利空" in sent or "风险" in cat):
-            if days is None or 0 <= days <= 45:
-                items.append({"date": str(d), "days": days if days is not None else -1,
-                              "high": ("减持" in cat or "利空" in sent),
-                              "title": _trunc(title, 30), "body": ""})
-    # 按 时间近->远 排, 最多 6 条
-    items.sort(key=lambda x: (x["days"] < 0, x["days"]))
-    return items[:6]
+        if "减持" in cat or "减持" in title:
+            rows.append({
+                "category": "减持公告",
+                "desc": _trunc(title, 36),
+                "severity": "🔴高",
+                "trigger": "%s 公告" % str(a.get("date", "—")),
+                "action": "关注减持进度, 短期回避",
+            })
+            break
+    if not rows:
+        rows.append({
+            "category": "综合", "desc": "未发现明显风险事件", "severity": "🟢无",
+            "trigger": "—", "action": "正常持仓",
+        })
+    return rows[:7]
 
 
-def _render_risk(items):
-    """c) 风险警报区渲染"""
-    if not items:
+def _render_risk(rows):
+    """c) 风险警报区大表渲染 (债 5 修法, Task 7.2)
+
+    rows: list[dict] keys=category/desc/severity/trigger/action
+    5 列: 类别 | 描述 | 严重度 | 触发条件 | 应对
+    """
+    if not rows:
         return ('<div class="risk-ok">✅ 无临近风险事件<br>'
                 '<span style="font-weight:400;font-size:12px">'
                 '近 90 日无解禁、无财报披露临近、无减持类公告</span></div>')
     h = ['<div style="font-size:11.5px;color:var(--risk-ink);margin:-2px 0 8px">'
-         '⚠️ 风险事件 %d 项（红=高优先）</div>' % len(items)]
-    for it in items:
-        d = ("今天" if it["days"] == 0
-             else ("%d 天后" % it["days"] if it["days"] > 0
-                   else "已公告（日期见正文）"))
-        h.append('<div class="risk"><div class="h">%s %s'
-                 '<span class="d">%s · %s</span></div>'
-                 % ("🔴" if it["high"] else "🟠", _esc(it["title"]),
-                    _esc(it["date"]), _esc(d)))
-        if it.get("body"):
-            h.append('<div class="b">%s</div>' % _esc(it["body"]))
-        h.append("</div>")
+         '⚠️ 风险事件 %d 项（红=高 / 橙=中 / 黄=低 / 绿=无）</div>' % len(rows)]
+    h.append('<table class="risk-tbl" style="width:100%;border-collapse:collapse;font-size:12.5px;'
+             'margin-top:4px">')
+    h.append('<thead><tr style="background:var(--risk-bg)">'
+             '<th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline);width:80px">类别</th>'
+             '<th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline)">描述</th>'
+             '<th style="padding:6px 8px;text-align:center;border:1px solid var(--hairline);width:60px">严重度</th>'
+             '<th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline);width:130px">触发条件</th>'
+             '<th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline);width:140px">应对</th>'
+             '</tr></thead><tbody>')
+    for row in rows:
+        sev = row.get("severity", "")
+        # 严重度色: 红/橙/黄/绿
+        sev_color = ("var(--risk-ink)" if "高" in sev
+                     else ("#d97706" if "中" in sev
+                           else ("#ca8a04" if "低" in sev
+                                 else "var(--ok-ink)")))
+        h.append('<tr>'
+                 '<td style="padding:6px 8px;border:1px solid var(--hairline);font-weight:600">%s</td>'
+                 '<td style="padding:6px 8px;border:1px solid var(--hairline)">%s</td>'
+                 '<td style="padding:6px 8px;border:1px solid var(--hairline);text-align:center;'
+                 'color:%s;font-weight:700">%s</td>'
+                 '<td style="padding:6px 8px;border:1px solid var(--hairline);font-size:11.5px;color:var(--ink-3)">%s</td>'
+                 '<td style="padding:6px 8px;border:1px solid var(--hairline);font-size:11.5px">%s</td>'
+                 '</tr>' % (_esc(row.get("category", "—")),
+                            _esc(row.get("desc", "—")),
+                            sev_color, _esc(sev),
+                            _esc(row.get("trigger", "—")),
+                            _esc(row.get("action", "—"))))
+    h.append('</tbody></table>')
     return "\n".join(h)
 
 
@@ -1881,7 +2022,7 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     html.append('<div class="card"><h2><span class="bar"></span>✅ 操作检查清单</h2>'
                 '<div class="src-line">触发条件、止损纪律与仓位建议 · 按 %s 5 状态机给出</div>'
                 % _STATE_LABELS.get(state_key, "中性/震荡（45-54 分）"))
-    html.append(_render_checklist(result, state))
+    html.append(_render_checklist(result, state_key))
     html.append('</div>')
 
     # ---- c) 风险警报区 ----

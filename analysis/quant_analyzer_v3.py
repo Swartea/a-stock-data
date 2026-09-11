@@ -1389,90 +1389,164 @@ def write_markdown_report_v3(r: dict) -> str:
         L.append("> ⚠️ 三价位无法生成 (行情/筹码数据缺失), 请勿据此操作。")
         L.append("")
 
-    # ================= 风险警报区 (红色高亮) =================
+    # ================= 风险警报区 (5-7 行大表, 债 5 修法, Task 7.2) =================
+    # 5 列: 类别 | 描述 | 严重度 | 触发条件 | 应对
     L.append("## 🚨 风险警报区")
     L.append("")
-    alerts = []
+    risk_rows = []  # list[dict]: category, desc, severity, trigger, action
+    # 1) 解禁
     lockup = r.get("lockup") or {}
     if isinstance(lockup, dict) and "error" not in lockup and lockup.get("upcoming"):
-        for u in lockup["upcoming"]:
-            heavy = "【高风险🚨】" if u.get("ratio_pct", 0) > 5 else ""
-            alerts.append(f"🔴 解禁 {u.get('date','—')} 解禁 {u.get('shares_wan',0):,.0f} 万股"
-                          f" ({_fnum(u.get('ratio_pct'),2)}% 股本) {heavy}"
-                          f" [{u.get('type','')}]")
+        for u in lockup["upcoming"][:3]:  # 最多 3 条
+            ratio = u.get("ratio_pct", 0) or 0
+            shares = u.get("shares_wan", 0) or 0
+            severity = "🔴高" if ratio >= 5 else ("🟠中" if ratio >= 2 else "🟡低")
+            risk_rows.append({
+                "category": "解禁压力",
+                "desc": f"{u.get('date','—')} 解禁 {shares:,.0f} 万股",
+                "severity": severity,
+                "trigger": f"占股本 {ratio:.2f}%" + (f" [{u.get('type','')}]" if u.get("type") else ""),
+                "action": "解禁前 5 日减仓 / 解禁当日观望",
+            })
     elif isinstance(lockup, dict) and "error" in lockup:
-        alerts.append(f"🟡 解禁数据不可用: {lockup['error']}")
-    if not alerts and not (isinstance(lockup, dict) and "error" in lockup):
-        alerts.append("🟢 未来 90 天无解禁压力")
-    # 财报窗口
+        risk_rows.append({
+            "category": "解禁数据", "desc": "数据源暂缺", "severity": "🟡低",
+            "trigger": lockup["error"][:30], "action": "补 fetcher 后重跑",
+        })
+    else:
+        risk_rows.append({
+            "category": "解禁压力", "desc": "未来 90 天无解禁", "severity": "🟢无",
+            "trigger": "近 90 日无 upcoming 记录", "action": "无需应对",
+        })
+    # 2) 财报窗口
     fin = r.get("finance")
     if fin and isinstance(fin, dict) and "error" not in fin and fin.get("latest"):
         win = _next_report_window(fin["latest"].get("report_date"))
         if "临近" in win:
-            alerts.append("🔴 " + win)
+            risk_rows.append({
+                "category": "财报窗口", "desc": win, "severity": "🔴高",
+                "trigger": "距披露日 < 30 日", "action": "业绩雷风险大, 减仓/对冲",
+            })
         else:
-            alerts.append("🟡 " + win)
+            risk_rows.append({
+                "category": "财报窗口", "desc": win, "severity": "🟡低",
+                "trigger": "距披露日 > 30 日", "action": "无需立即应对",
+            })
     else:
-        alerts.append("🟡 财报窗口推算: 财务摘要数据源暂缺, 无法推算")
-    # 估值极端
+        risk_rows.append({
+            "category": "财报窗口", "desc": "财务摘要数据源暂缺", "severity": "🟡低",
+            "trigger": "无 latest 报告期", "action": "补 fetcher 后重跑",
+        })
+    # 3) 估值极端
     pe, vh = q.get("pe_ttm", 0), r.get("valuation_hist") or {}
     if pe and pe > 80:
-        alerts.append(f"🔴 PE(TTM) {pe:.1f} 极高估, 泡沫风险 (估值分位 "
-                      f"{_fnum(vh.get('pe_percentile_3y'),1)}%)")
+        risk_rows.append({
+            "category": "估值", "desc": f"PE(TTM) {pe:.1f} 极高估, 泡沫风险",
+            "severity": "🔴高",
+            "trigger": f"PE(TTM) > 80; 估值分位 {_fnum(vh.get('pe_percentile_3y'),1)}%",
+            "action": "减仓兑现, 不追高",
+        })
     elif isinstance(vh, dict) and "error" not in vh and (vh.get("pe_percentile_3y") or 0) > 80:
-        alerts.append(f"🔴 PE 历史分位 {(vh.get('pe_percentile_3y') or 0):.0f}% — 接近 3 年最高")
-    # 龙虎榜大额净卖
+        risk_rows.append({
+            "category": "估值", "desc": f"PE 历史分位 {(vh.get('pe_percentile_3y') or 0):.0f}% — 接近 3 年最高",
+            "severity": "🔴高",
+            "trigger": "PE 分位 > 80%",
+            "action": "分批减仓, 等待估值修复",
+        })
+    # 4) 龙虎榜大额净卖
     dragon = r.get("dragon") or {}
     if isinstance(dragon, dict) and "error" not in dragon and dragon.get("records"):
         nbs = [x.get("net_buy_wan", 0) for x in dragon["records"]]
         if nbs and sum(nbs) / len(nbs) < -1000:
             avg = sum(nbs) / len(nbs)
-            alerts.append(f"🔴 龙虎榜近30日平均净卖出 {avg:,.0f} 万元 — 游资/机构撤退信号")
-    if not alerts:
-        alerts.append("✅ 未发现明显风险事件")
-    for a in alerts:
-        L.append(f"- {a}")
+            risk_rows.append({
+                "category": "龙虎榜", "desc": f"近 30 日平均净卖出 {avg:,.0f} 万元",
+                "severity": "🟠中", "trigger": "近 30 日均净卖 > 1000 万",
+                "action": "游资撤退, 谨慎追涨",
+            })
+    # 5) 减持公告
+    anns = r.get("announcements") or {}
+    for a in (anns.get("announcements") or [])[:10]:
+        if not isinstance(a, dict):
+            continue
+        cat = str(a.get("category") or "")
+        title = str(a.get("title") or "")
+        if "减持" in cat or "减持" in title:
+            risk_rows.append({
+                "category": "减持公告", "desc": title[:40],
+                "severity": "🔴高", "trigger": f"{a.get('date','—')} 公告",
+                "action": "关注减持进度, 短期回避",
+            })
+            break
+    if not risk_rows:
+        risk_rows.append({
+            "category": "综合", "desc": "未发现明显风险事件", "severity": "🟢无",
+            "trigger": "—", "action": "正常持仓",
+        })
+    # 截断到 7 行
+    risk_rows = risk_rows[:7]
+    L += [
+        "| 类别 | 描述 | 严重度 | 触发条件 | 应对 |",
+        "|------|------|--------|----------|------|",
+    ]
+    for row in risk_rows:
+        L.append(f"| {row['category']} | {row['desc']} | {row['severity']} | "
+                 f"{row['trigger']} | {row['action']} |")
     L.append("")
 
-    # ================= 操作检查清单 (按 5 状态) =================
+    # ================= 操作检查清单 (5 项 checkbox, 5 状态各配 1 套, 债 5 修法, Task 7.2) =================
     L.append("## ✅ 操作检查清单")
     L.append("")
+    L.append(f"> 📋 **当前状态**: {state_icon} **{state}** (评分 {score_total} 分, 状态 `{state_key}`)")
+    L.append("")
+
     if plan:
         e_lo, e_hi = plan["entry_low"], plan["entry_high"]
         st, tp1, tp2, tp3 = plan["stop_loss"], plan["tp1"], plan["tp2"], plan["tp3"]
-        if state_key in ("bullish", "mild_bull"):
-            buy_t = (f"① 回调至 {e_lo:.2f}~{e_hi:.2f} 区间分批建仓(如分两批各1/2); "
-                     f"② 放量突破 {tp1:.2f} 可加仓追势")
-            sell_t = (f"① 达 {tp1:.2f} 卖 1/2 锁利; ② 达 {tp2:.2f} 再减半; "
-                      f"③ 达 {tp3:.2f} 或趋势走弱清剩余; ④ 跌破 {st:.2f} 无条件全走")
-            stop_t = f"收盘跌破 {st:.2f} (现价下 -{plan['stop_loss_pct']:.1f}%) 即离场, 不补仓摊平"
-            pos_t = f"{plan['position']} | 周期 {plan['period']}"
-        elif state_key == "neutral":
-            buy_t = f"仅在 {e_lo:.2f}~{e_hi:.2f} 支撑区低吸, 上轨 {tp1:.2f} 附近不过量追高"
-            sell_t = (f"① 反弹至 {tp1:.2f} 一带减仓; ② 跌破 {st:.2f} 转空离场; "
-                      f"③ 放量站稳 {tp1:.2f} 上沿再按看多纪律执行")
-            stop_t = f"{st:.2f} 为区间底沿, 收盘破位即走, 不猜底"
-            pos_t = f"{plan['position']} | 以低吸高抛为主, 周期 {plan['period']}"
-        else:  # mild_bear / bearish
-            buy_t = "❌ 空头形态: 不买入、不补仓、不抄底; 空仓者观望等底部放量企稳信号"
-            sell_t = f"① 反弹至压力位 {tp1:.2f} 一带分批减仓; ② 持仓者跌破 {st:.2f} 清仓; ③ 不抢反弹"
-            stop_t = f"反弹减仓/清仓纪律优先, 止损 {st:.2f} 上方不留幻想仓"
-            pos_t = "清仓回避 / 极轻仓短线者当日进出"
-        # 操作口诀 (债 1 修法): 读 plan["template_used"], 5 状态各自独立模板, 不再 hardcode
-        operation_tip = plan.get("template_used") or "（无操作口诀 — trading_plan.template_used 未注入）"
-        L += [
-            "| 检查项 | 触发条件与纪律 |",
-            "|--------|----------------|",
-            f"| 当前状态 | {state_icon} **{state}** (评分 {score_total} 分, 状态 `{state_key}`) |",
-            f"| 操作口诀 | {operation_tip} |",
-            f"| 买入触发 | {buy_t} |",
-            f"| 卖出/减仓触发 | {sell_t} |",
-            f"| 止损纪律 | {stop_t} |",
-            f"| 仓位建议 | {pos_t} |",
-            "",
-        ]
+        # 5 状态 × 5 项 = 25 条模板; 运行时按 state_key 选 1 套
+        # 5 项: 状态确认 / 买点触发 / 卖点触发 / 止损纪律 / 仓位管理
+        CHECKLIST_TPL = {
+            "bullish": [
+                "确认多空: 评分 ≥65 + 趋势确认 + 量能配合, 5 状态机判定为多头",
+                f"买点: 回调至 {e_lo:.2f}~{e_hi:.2f} 区间分批建仓 (各 1/2 仓); 放量突破 {tp1:.2f} 可加仓",
+                f"卖点: 达 {tp1:.2f} 卖 1/2 锁利 → {tp2:.2f} 再减半 → {tp3:.2f} 或趋势走弱清剩余",
+                f"止损: 收盘跌破 {st:.2f} (现价下 -{plan['stop_loss_pct']:.1f}%) 即离场, 不补仓摊平",
+                f"仓位: {plan['position']} | 周期 {plan['period']}",
+            ],
+            "mild_bull": [
+                "确认多空: 评分 55-64 + 趋势偏多, 5 状态机判定为轻多 (震荡偏多)",
+                f"买点: 回调至 {e_lo:.2f} 附近小仓低吸 (1/3 仓); 突破 {tp1:.2f} 站稳再加 1/3",
+                f"卖点: 达 {tp1:.2f} 减 1/3 锁利; 达 {tp2:.2f} 再减 1/3; 余仓看 {tp3:.2f}",
+                f"止损: 收盘跌破 {st:.2f} (现价下 -{plan['stop_loss_pct']:.1f}%) 即减半; 破 {e_lo:.2f} 全走",
+                f"仓位: {plan['position']} | 周期 {plan['period']} (轻多, 严控仓位)",
+            ],
+            "neutral": [
+                "确认多空: 评分 45-54 + 多空信号混杂, 5 状态机判定为中性 (区间震荡)",
+                f"买点: 仅在 {e_lo:.2f}~{e_hi:.2f} 支撑区低吸, 上轨 {tp1:.2f} 附近不过量追高",
+                f"卖点: 反弹至 {tp1:.2f} 一带减仓; 跌破 {st:.2f} 转空离场; 放量站稳 {tp1:.2f} 再看多",
+                f"止损: {st:.2f} 为区间底沿, 收盘破位即走, 不猜底",
+                f"仓位: {plan['position']} | 以低吸高抛为主, 周期 {plan['period']}",
+            ],
+            "mild_bear": [
+                "确认多空: 评分 35-44 + 趋势偏空, 5 状态机判定为轻空 (震荡偏空)",
+                f"买点: 严控 — 仅在 {e_lo:.2f} 附近且出现放量反转 K 线小仓 (1/4 仓) 抢短; 否则不动",
+                f"卖点: 已有持仓反弹至 {tp1:.2f} 一带分批减仓; 跌破 {st:.2f} 清仓; 不抢反弹",
+                f"止损: {st:.2f} 上方不留幻想仓, 反弹即减, 跌穿即走",
+                f"仓位: {plan['position']} | 周期 {plan['period']} (轻空, 逢反减)",
+            ],
+            "bearish": [
+                "确认多空: 评分 <35 + 趋势空头, 5 状态机判定为空头 (下跌趋势)",
+                "买点: ❌ 不买入 / 不补仓 / 不抄底; 空仓者观望等底部放量企稳信号",
+                f"卖点: 反弹至压力位 {tp1:.2f} 一带分批减仓; 持仓者跌破 {st:.2f} 清仓; 不抢反弹",
+                f"止损: 反弹减仓/清仓纪律优先, 止损 {st:.2f} 上方不留幻想仓",
+                "仓位: 清仓回避 / 极轻仓短线者当日进出",
+            ],
+        }
+        items = CHECKLIST_TPL.get(state_key, CHECKLIST_TPL["neutral"])
+        for it in items:
+            L.append(f"- [ ] {it}")
     else:
-        L.append("> ⚠️ 无三价位, 检查清单不可用, 观望为主。")
+        L.append("- [ ] ⚠️ 无三价位, 检查清单不可用, 观望为主")
     L.append("")
 
     # ================= 6 块新内容 =================
