@@ -70,6 +70,21 @@ _ANALYSIS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _ANALYSIS_DIR not in sys.path:
     sys.path.insert(0, _ANALYSIS_DIR)
 
+# ============================================================
+# P2-A 模块拆分 (2026-09-12): 工具函数/常量从 v3 提到独立模块
+# v3 内 def 函数体已删除, 通过 import 透传 (§1 '不修改业务口径')
+# 向后兼容: from analysis.quant_analyzer_v3 import _json_default 仍能拿到 (在 utils)
+# ============================================================
+from analysis.utils import (
+    _json_default, _fmt_time, _to_float, _num_or_none,
+    _clean, _fnum, _fpct, _interpret_yoy, _interpret_qoq, _finance_talk,
+)
+from analysis.constants import (
+    _SRC_DESC, OPERATION_TEMPLATES, _STATE_DISPLAY,
+)
+
+
+
 import quant_analyzer_v2 as v2  # noqa: E402
 from sections import enabled_sections  # noqa: E402  # Phase 1: Section Registry (irm §10.1)
 
@@ -109,23 +124,6 @@ REPORTS_ROOT = os.path.normpath(os.path.join(_ANALYSIS_DIR, "..", "reports"))
 # 数据源标签 — 全链路 11+4 类 (run_log.sources 全列)
 # ============================================================
 # V2 内嵌 10 类 + V3 追加: 融资融券 + 研报/公告/财务/新闻
-_SRC_DESC = {
-    "行情":       "腾讯实时行情 qt.gtimg.cn",
-    "估值一致预期": "同花顺一致预期 basic.10jqka.com.cn",
-    "概念板块":     "东财概念板块 slist",
-    "当日资金流":   "东财当日分钟资金流 fflow",
-    "估值历史分位": "baostock 估值历史(近3年)",
-    "解禁日历":     "东财数据中心 RPT_LIFT_STAGE",
-    "龙虎榜":       "东财数据中心 RPT_DAILYBILLBOARD_DETAILSNEW",
-    "宏观底色":     "同花顺北向 + 东财行业 + 同花顺强势股",
-    "筹码K线":      "baostock 前复权日K(筹码计算用)",
-    "申万分类":     "申万行业分类表 swsresearch",
-    "融资融券":     "东财数据中心 RPTA_WEB_RZRQ_GGMX",
-    "研报观点":     "东财研报 reportapi / 同花顺降级",
-    "公告":         "东财公告 / 巨潮 cninfo",
-    "财务摘要":     "东财数据中心 RPT_F10_FINANCE_MAINFINADATA",
-    "新闻舆情":     "东财个股新闻",
-}
 _V2_FN_TO_SRC = {
     "fetch_tencent_quote": "行情",
     "fetch_full_valuation": "估值一致预期",
@@ -197,46 +195,6 @@ def _format_peg_talk(peg: float) -> str:
     return "PEG > 3, 极贵（成长股例外：壁垒深可能合理）"
 
 
-# 5 状态独立模板：每条都包含"结论+操作+风险"三段（用 `｜` 分段，Markdown 表格不破）。
-# 占位符 {score}/{stop_loss}/{stop_loss_pct}/{entry_low}/{tp1} 由调用方 .format 注入。
-OPERATION_TEMPLATES = {
-    "bullish": (
-        "【结论】综合评分 {score} ≥ 65，多头格局占优，看多确立 ｜ "
-        "【操作】现价分两批进场、持有 3-6 个月 ｜ "
-        "【风险】收盘跌破止损 {stop_loss}（-{stop_loss_pct}%）无条件离场，不补仓摊薄"
-    ),
-    "mild_bull": (
-        "【结论】综合评分 {score} 处于 55-65 区间，结构偏多但需确认 ｜ "
-        "【操作】轻仓试探 10-20%，等综合评分回升至 65+ 确认后加仓 ｜ "
-        "【风险】若跌破止损 {stop_loss} 立即降仓至 10% 以下，不抢涨"
-    ),
-    "neutral": (
-        "【结论】综合评分 {score} 处于 45-55 区间，多空平衡、震荡格局 ｜ "
-        "【操作】区间操作 — 上沿 {tp1} 减仓、下沿 {entry_low} 低吸、严格止损 {stop_loss} ｜ "
-        "【风险】单边突破区间则按突破方向顺势操作，不预判方向"
-    ),
-    "mild_bear": (
-        "【结论】综合评分 {score} 处于 35-45 区间，空头压力偏大 ｜ "
-        "【操作】减仓至轻仓（≤10%），反弹遇压力位 {tp1} 不再加仓 ｜ "
-        "【风险】若继续跌破止损 {stop_loss} 直接清仓，不抄底"
-    ),
-    "bearish": (
-        "【结论】综合评分 {score} < 35，空头主导、看空确立 ｜ "
-        "【操作】清仓回避 — 等待综合评分回升至 45+ 再评估进场 ｜ "
-        "【风险】不抢反弹、不抄底；套牢者按计划止损，不补仓摊薄"
-    ),
-}
-
-# 状态 → 中文/图标 给 MD/HTML/DOCX 渲染层复用（避免各自再写一遍 if-elif-else）
-_STATE_DISPLAY = {
-    "bullish":   ("看多", "🟢"),
-    "mild_bull": ("轻多", "🟢"),
-    "neutral":   ("震荡", "🟡"),
-    "mild_bear": ("轻空", "🔴"),
-    "bearish":   ("看空", "🔴"),
-}
-
-
 # ============================================================
 # 三价位表 (债 2 修法, Task 5.2) — 4 候选取最近者
 # ============================================================
@@ -302,19 +260,6 @@ def _series_recent_low(series, n=60):
         return None
     window = series[-n:] if len(series) >= n else series
     return min(s["low"] for s in window)
-
-
-def _to_float(v):
-    """健壮 float 转换；None / NaN / 不可解析 → None"""
-    if v is None:
-        return None
-    try:
-        f = float(v)
-    except (TypeError, ValueError):
-        return None
-    if f != f:  # NaN
-        return None
-    return f
 
 
 def compute_three_levels(quote, chip_data, trading_plan=None):
@@ -500,64 +445,6 @@ def _classify_north_scope(north_data) -> tuple:
     return ("unknown", "北向数据口径未明")
 
 
-def _json_default(obj):
-    """P1-C 规范整改 (2026-09-11, §3): 显式 JSON 序列化默认处理。
-
-    替代禁用的 default=str 静默序列化 (规范 §3 '禁止静默使用 default=str 掩盖未定义
-    的序列化类型; 应显式转换日期、数值和模型')。
-
-    支持类型:
-      - datetime/date:  → ISO 8601 字符串 (含时区)
-      - Decimal:        → 浮点 (金融场景常见)
-      - Path:           → 字符串
-      - set/frozenset:  → 排序后的 list (确定性 JSON)
-      - bytes:          → hex 编码
-      - Exception:      → type 名称 + 消息
-      - Enum:           → value
-
-    未知类型: raise TypeError (强制显式声明, 不静默字符串化)
-    """
-    if hasattr(obj, "isoformat"):
-        # datetime / date / time
-        try:
-            return obj.isoformat()
-        except (TypeError, ValueError):
-            pass
-    if isinstance(obj, set):
-        try:
-            return sorted(list(obj))
-        except TypeError:
-            return list(obj)
-    if isinstance(obj, bytes):
-        return obj.hex()
-    if isinstance(obj, Exception):
-        return f"{type(obj).__name__}: {obj}"
-    try:
-        from decimal import Decimal
-        if isinstance(obj, Decimal):
-            return float(obj)
-    except ImportError:
-        pass
-    from pathlib import Path
-    if isinstance(obj, Path):
-        return str(obj)
-    try:
-        from enum import Enum
-        if isinstance(obj, Enum):
-            return obj.value
-    except ImportError:
-        pass
-    # 兜底: 强制显式, 不静默
-    raise TypeError(
-        f"object of type {type(obj).__name__} is not JSON serializable; "
-        f"显式转换或加进 _json_default 列表 (规范 §3)"
-    )
-
-
-def _fmt_time(ts: float) -> str:
-    return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
-
-
 def _patch_v2_timers():
     """包装 v2 的 10 个取数函数: 记录每次调用的耗时与时点 (不改变行为)。"""
     saved = {}
@@ -588,40 +475,6 @@ def _restore_v2(saved: dict):
 # ============================================================
 # 通用工具
 # ============================================================
-def _clean(s: str, n: int = 60) -> str:
-    """去竖线/换行, 防 markdown 表格破坏; 截断。"""
-    if s is None:
-        return "—"
-    s = str(s).replace("|", "／").replace("\n", " ").replace("\r", " ").strip()
-    return s if len(s) <= n else s[: n - 1] + "…"
-
-
-def _fnum(x, nd: int = 2) -> str:
-    """数值 → 显示串; None/NaN/inf → '—'。"""
-    if x is None:
-        return "—"
-    try:
-        x = float(x)
-    except (TypeError, ValueError):
-        return "—"
-    if x != x or x in (float("inf"), float("-inf")):
-        return "—"
-    return f"{x:,.{nd}f}"
-
-
-def _fpct(x, nd: int = 1, sign: bool = True) -> str:
-    """百分比显示; None → '—'"""
-    if x is None:
-        return "—"
-    try:
-        x = float(x)
-    except (TypeError, ValueError):
-        return "—"
-    if x != x:
-        return "—"
-    return f"{x:+.{nd}f}%" if sign else f"{x:.{nd}f}%"
-
-
 def _short_iso(iso: Optional[str]) -> str:
     """ISO8601 → 'YYYY-MM-DD HH:MM:SS'"""
     if not iso:
@@ -774,14 +627,6 @@ def _fetch_margin_history(code: str, n: int = 8) -> dict:
         return {"rows": out, "as_of": datetime.now().strftime("%Y-%m-%d")}
     except Exception as e:
         return {"error": str(e), "rows": []}
-
-
-def _num_or_none(x):
-    try:
-        f = float(x)
-        return f if f == f else None
-    except (TypeError, ValueError):
-        return None
 
 
 def _fetch_concept_peers(code: str, blocks: list, max_concepts: int = 6) -> dict:
@@ -1342,76 +1187,6 @@ def _dump_run_log(code: str, name: str, run_log: dict):
     os.makedirs(day_dir, exist_ok=True)
     with open(os.path.join(day_dir, f"run_log-{datetime.now().strftime('%H%M')}.json"), "w", encoding="utf-8") as f:
         json.dump(run_log, f, ensure_ascii=False, indent=2, default=_json_default)
-
-
-# ============================================================
-# 数据块解读 (人话)
-# ============================================================
-def _interpret_yoy(growth, kind: str) -> str:
-    """增速 → 人话。kind: '营收'/'净利'"""
-    if growth is None:
-        return f"{kind}同比 — (数据未披露/无上年同期基数)"
-    g = float(growth)
-    if g >= 30:
-        return f"{kind}同比 **+{g:.1f}%** — 高速增长(🔥)"
-    if g >= 10:
-        return f"{kind}同比 **+{g:.1f}%** — 稳健增长"
-    if g >= 0:
-        return f"{kind}同比 **+{g:.1f}%** — 微增"
-    return f"{kind}同比 **{g:.1f}%** — 负增长(⚠️ 需排查原因)"
-
-
-def _interpret_qoq(growth, kind: str) -> str:
-    if growth is None:
-        return ""
-    g = float(growth)
-    return f"单季环比 **{g:+.1f}%**" + ("(环比提速)" if g > 0 else "(环比转弱)")
-
-
-def _finance_talk(fin: dict) -> list:
-    """财务体检一句人话点评 → 若干 bullet (数据从 fetcher 实取, 无则 '—')。"""
-    if not fin or not isinstance(fin, dict) or "latest" not in fin:
-        return ["> ⚠️ 财务摘要数据缺失, 无法体检 (不编造)"]
-    lt = fin.get("latest") or {}
-    out = [f"- 最新报告期 **{lt.get('report_date','—')}** 财务体检:"]
-    out.append(f"- {_interpret_yoy(lt.get('yoy_revenue'), '营收')} | "
-               f"{_interpret_yoy(lt.get('yoy_profit'), '净利')}")
-    qr, qp = lt.get("qoq_revenue"), lt.get("qoq_profit")
-    if qr is not None or qp is not None:
-        parts = []
-        if qr is not None:
-            parts.append(f"营收单季环比 **{qr:+.1f}%**")
-        if qp is not None:
-            parts.append(f"净利单季环比 **{qp:+.1f}%**")
-        out.append("- 环比动能: " + " / ".join(parts))
-    # 盈利质量
-    roe, gm, debt = lt.get("roe"), lt.get("gross_margin"), lt.get("debt_ratio")
-    bits = []
-    if roe is not None:
-        bits.append(f"ROE(加权) {_fnum(roe)}%" +
-                    ("(≥15% 回报强)" if roe >= 15 else ("(8~15% 中等)" if roe >= 8 else "(<8% 偏弱)")))
-    if gm is not None:
-        bits.append(f"毛利率 {_fnum(gm)}%" +
-                    ("(≥40% 高毛利)" if gm >= 40 else ("(20~40% 中等)" if gm >= 20 else "(<20% 薄利)")))
-    if debt is not None:
-        bits.append(f"资产负债率 {_fnum(debt)}%" +
-                    ("(≤50% 稳健)" if debt <= 50 else ("(50~70% 中性)" if debt <= 70 else "(>70% 高杠杆🚨)")))
-    if bits:
-        out.append("- " + " | ".join(bits))
-    # 一句人话总结
-    profit_yi = lt.get("profit_yi")
-    yoy_p = lt.get("yoy_profit")
-    if profit_yi is not None and profit_yi < 0:
-        verdict = "最新一期仍处亏损状态, 首要看点是扭亏进度与现金流"
-    elif yoy_p is not None and yoy_p < 0:
-        verdict = "净利同比负增长是当前最大财务风险点, 需盯紧后续季报能否收窄"
-    elif yoy_p is not None:
-        verdict = "盈利同比正增长, 当前主业经营数据未见明显恶化"
-    else:
-        verdict = "同比基数缺失(披露窗口外), 以绝对额与环比为准"
-    out.append(f"> 📝 人话点评: 最新一期**净利同比 {_fpct(yoy_p)}**、营收同比 "
-               f"{_fpct(lt.get('yoy_revenue'))}, {verdict}")
-    return out
 
 
 def _next_report_window(latest_date: Optional[str]) -> str:
