@@ -1,0 +1,149 @@
+[project]
+name = "da-a-data"
+version = "0.16.0"
+description = "A 股多因子量化分析器 V3 — 报告主分析器 (V3.7.2 era 报告层升级)"
+readme = "docs/00-项目总览.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Swartea"}
+]
+keywords = ["quant", "a-stock", "report", "valuation", "multi-factor"]
+
+# 显式声明包 (§2 模块边界 + setuptools 自动发现需要)
+[tool.setuptools]
+packages = ["analysis"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# 运行时依赖 (按 venv 实际装的列表 + 已探明的版本范围)
+dependencies = [
+    "requests>=2.30,<3.0",
+    "beautifulsoup4>=4.12,<5.0",
+    "lxml>=5.0,<7.0",
+    "openpyxl>=3.1,<4.0",
+    "baostock>=1.0,<2.0",        # K 线 (前复权, V2 筹码)
+    "mootdx>=0.10,<1.0",         # 通达信本地行情 (备用)
+    "python-docx>=1.1,<2.0",     # DOCX 渲染
+    "mdown>=0.1",                # 备用 (Mermaid 流程图嵌入)
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0,<10.0",
+    "pytest-cov>=4.0,<7.0",
+    "pytest-mock>=3.10,<4.0",
+]
+dev = [
+    "ruff>=0.5,<1.0",            # 静态检查
+    "black>=24.0,<26.0",         # 格式化
+    "mypy>=1.10,<2.0",           # 类型检查
+]
+
+[project.scripts]
+da-a-analyze = "analysis.quant_analyzer_v3:main"
+
+# ============================================================
+# pytest 配置
+# ============================================================
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "-ra",
+]
+# 收集时忽略的目录
+norecursedirs = [
+    ".git", ".tox", "venv", "reports",
+    "analysis/sections", "analysis/templates",
+]
+# 自定义标记 (后续可加)
+markers = [
+    "slow: 慢测试 (端到端 + 网络)",
+    "integration: 集成测试 (需真实数据源)",
+    "unit: 单元测试 (mock + fixture)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:baostock.*",
+    "ignore::DeprecationWarning:mootdx.*",
+]
+
+# ============================================================
+# ruff 配置
+# ============================================================
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = [
+    "venv",
+    "reports",
+    "tests/sections",
+    "analysis/sections",
+    "analysis/templates",
+]
+
+[tool.ruff.lint]
+# 与项目规范对齐: §3 显式/§5 安全/§7 报告/§8 日志
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "SIM",   # flake8-simplify
+]
+# 显式排除: 框架常规/可控异常
+ignore = [
+    "E501",  # line-too-long (项目内一行有时很长, 跟 §3 注释冲突)
+    "B904",  # raise from (V3 大量 except Exception: pass 模式)
+    "B008",  # function call in default argument
+    "C901",  # function complexity (V3 单文件函数长)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["analysis", "tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# 安全相关: verify=False 在 v3 已被禁 (P0-C), 但脚本/section 仍可能有
+"scripts/*.py" = ["E402", "F401"]
+"analysis/sections/*.py" = ["E402", "F401", "F811"]
+"tests/*.py" = ["E402", "F401", "F811", "B011"]
+
+# ============================================================
+# black 配置 (项目代码风格)
+# ============================================================
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+include = '\.pyi?$'
+exclude = '''
+(
+    venv
+    | reports
+)
+'''
+
+# ============================================================
+# mypy 配置
+# ============================================================
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+# 项目不强制 (渐进式):
+ignore_missing_imports = true
+ignore_errors = false
+# 排除 (P0-C 后我们保持 verify=False 不在 v3 出现, 但 v2 旧代码可能)
+exclude = [
+    "venv",
+    "reports",
+    "tests/sections",
+    "analysis/sections",
+]

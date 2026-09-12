@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>大A数据 v0.15 项目流程图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:24px;line-height:1.6}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{color:#38bdf8;border-bottom:2px solid #1e293b;padding-bottom:8px}
+  h2{color:#a78bfa;margin-top:36px}
+  h3{color:#fbbf24;margin-top:20px}
+  .meta{background:#1e293b;padding:12px 16px;border-radius:8px;color:#94a3b8;font-size:13px;margin-bottom:24px}
+  .mermaid{background:#fff;border-radius:8px;padding:18px;margin:20px 0;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:#1e293b;border-radius:6px;overflow:hidden}
+  th{background:#334155;color:#38bdf8;text-align:left;padding:8px 12px;font-weight:600}
+  td{padding:6px 12px;border-top:1px solid #334155}
+  code{background:#334155;padding:1px 6px;border-radius:3px;color:#fbbf24;font-size:12.5px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11.5px;font-weight:600;margin-right:4px}
+  .p0{background:#dc2626;color:#fff}.p1{background:#f59e0b;color:#fff}.done{background:#16a34a;color:#fff}
+  .net-ok{background:#16a34a;color:#fff;padding:2px 6px;border-radius:3px;font-size:11.5px}
+  .net-err{background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px;font-size:11.5px}
+  .legend{background:#1e293b;padding:10px 14px;border-radius:6px;margin:10px 0;font-size:12.5px;color:#cbd5e1}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>大A数据 v0.15 项目流程图</h1>
+<div class="meta">
+  范围: V3 端到端单票全流程 · v0.15 Phase 2 (报告接线债) 实施后状态<br>
+  日期: 2026-09-11 · 主入口: <code>analysis/quant_analyzer_v3.py &lt;code&gt; [name]</code> · 6 件套输出<br>
+  关联文档: <code>docs/01</code> 架构 / <code>docs/02</code> 执行 / <code>docs/04</code> 模板债 / <code>docs/05</code> 报告升级 / <code>docs/06</code> 排版
+</div>
+
+<h2>1. 顶层调用链 (主流程 + 6 件套渲染)</h2>
+<div class="mermaid">
+flowchart TD
+  USER(["👤 老板: <code>quant_analyzer_v3.py 600693 东百集团</code>"]):::start
+  CLI["<b>CLI 入口</b><br/>main() / sys.argv"]:::cli
+  A0["<b>analyze_single_v3(code, name)</b><br/>V3 主分析器"]:::core
+
+  V2["<b>v2.analyze_single</b><br/>10 数据类底座"]:::v2
+  SWFIX["<b>申万 SSL 直连补丁</b><br/>requests.get verify=False<br/>(swsresearch.com)"]:::patch
+  Q["<b>三价位 + 多空状态机</b><br/>compute_three_levels<br/>_score_to_state (5 状态)"]:::core
+
+  R["result dict<br/>(含 30+ 字段:<br/>quote/valuation_hist/<br/>blocks/finance/margin/<br/>dragon/news/research/<br/>announcements/...)"]:::data
+
+  EMIT["<b>_emit()</b><br/>5 阶段产物落盘"]:::emit
+
+  MD["📝 MD 报告<br/><code>write_markdown_report_v3</code><br/>43 节 H1+H2+H3<br/>(决策卡→风险→checklist→6 维)"]:::md
+  JSON["📦 result_v3-{HHMM}.json"]:::json
+  HTML["🎨 HTML 报告<br/><code>html_report_v3.write_html_report_v3</code><br/>ECharts 5 图 + 双主题"]:::html
+  DOCX["📄 DOCX<br/><code>md_to_docx</code> 直接 import<br/>失败 → subprocess 兜底"]:::docx
+  PDF["📑 PDF<br/>Chrome headless 渲染<br/>(_render_html_to_pdf)"]:::pdf
+  LOG["📋 run_log-{HHMM}.json<br/>sources 状态 + guard +<br/>artifacts 落盘信息"]:::log
+
+  DONE(["✅ 6 件套落盘 reports/{code}_{name}/{date}/"]):::done
+
+  USER --> CLI --> A0
+  A0 -->|3 次重试 时间盒| V2
+  V2 --> SWFIX
+  SWFIX --> Q
+  Q --> R
+  R --> EMIT
+  EMIT --> MD
+  EMIT --> JSON
+  EMIT --> HTML
+  EMIT --> DOCX
+  HTML -.->|写完 HTML 后| PDF
+  EMIT --> LOG
+  MD --> DONE
+  JSON --> DONE
+  HTML --> DONE
+  DOCX --> DONE
+  PDF --> DONE
+  LOG --> DONE
+
+  classDef start fill:#0ea5e9,stroke:#0369a1,color:#fff
+  classDef cli fill:#1e293b,stroke:#475569,color:#e2e8f0
+  classDef core fill:#7c3aed,stroke:#5b21b6,color:#fff
+  classDef v2 fill:#a78bfa,stroke:#6d28d9,color:#1e1b4b
+  classDef patch fill:#fbbf24,stroke:#d97706,color:#1e1b4b
+  classDef data fill:#1e40af,stroke:#1e3a8a,color:#fff
+  classDef emit fill:#0891b2,stroke:#155e75,color:#fff
+  classDef md fill:#16a34a,stroke:#14532d,color:#fff
+  classDef json fill:#475569,stroke:#1e293b,color:#fff
+  classDef html fill:#0d9488,stroke:#134e4a,color:#fff
+  classDef docx fill:#0891b2,stroke:#155e75,color:#fff
+  classDef pdf fill:#be123c,stroke:#881337,color:#fff
+  classDef log fill:#52525b,stroke:#27272a,color:#fff
+  classDef done fill:#16a34a,stroke:#14532d,color:#fff
+</div>
+
+<h2>2. V2 底座 10 数据类时序 (v2.analyze_single)</h2>
+<div class="mermaid">
+sequenceDiagram
+  participant V3 as analyze_single_v3
+  participant V2 as v2.analyze_single
+  participant TX as 腾讯行情<br/>(实时)
+  participant EM as 东财<br/>(push2/push2his/datacenter)
+  participant BS as baostock<br/>(K 线)
+  participant SW as 申万<br/>(swsresearch.com)
+
+  V3->>V2: 调用 (网络重试 3 次, 3s 间隔)
+  V2->>TX: [1/8] 实时行情 (现价/PE/PB/总市值)
+  TX-->>V2: ok
+  V2->>V2: [2/8] 计算估值 (一致预期/PE 消化/PEG)
+  V2->>EM: [3/8] 概念板块归属 (slist)
+  EM-->>V2: ok (本地 slist 风控持续 fallback)
+  V2->>EM: [4/8] 当日资金流 (fflow, push2his)<span class="net-err">SSL EOF</span>
+  EM-->>V2: error
+  V2->>BS: [5/10] 估值历史 (前复权)
+  BS-->>V2: ok
+  V2->>EM: [6/10] 解禁日历
+  V2->>EM: [7/10] 龙虎榜近 30 日
+  V2->>EM: [8/10] 宏观环境 (北向/行业/强势股)
+  V2->>BS: [9/10] 筹码分布 (前复权K线)
+  V2->>SW: [10/10] 申万行业分类表<span class="net-err">SSL EOF</span>
+  SW-->>V2: error
+  V2-->>V3: base_result
+
+  V3->>V3: 申万 SSL 失败时 verify=False 重试
+  V3->>V3: 多空状态机 + 三价位 (5 状态 / 4+3 候选)
+  V3-->>V3: result_v3
+</div>
+
+<h2>3. V3 追加数据块 (Section Registry + 8 个 fetcher)</h2>
+<div class="mermaid">
+flowchart LR
+  V3["<b>[V3+] 追加数据块</b><br/>并行调用, 容错接管"]:::core
+
+  F1["<b>公告</b><br/>fetch_announcements<br/>东财 + 巨潮 cninfo"]:::fetcher
+  F2["<b>财务摘要</b><br/>fetch_finance_summary<br/>东财 RPT_F10_FINANCE_MAINFINADATA"]:::fetcher
+  F3["<b>研报观点</b><br/>fetch_research_reports<br/>东财 reportapi + 同花顺"]:::fetcher
+  F4["<b>新闻舆情</b><br/>fetch_news_em<br/>新浪 sina_stock_news<br/>(退避 0.8+1.2×attempt)"]:::fetcher
+
+  F5["<b>融资融券</b><br/>v2.fetch_margin_trading"]:::fetcher
+  F6["<b>5 日主力</b><br/>_fetch_fund_flow_daily<br/>push2his + 重试 3 次"]:::fetcher
+  F7["<b>两融历史</b><br/>_fetch_margin_history<br/>datacenter RPTA_WEB_RZRQ_GGMX"]:::fetcher
+  F8["<b>同业对比</b><br/>_fetch_concept_peers<br/>push2 clist f37+f105"]:::fetcher
+
+  REG["<b>Section Registry</b><br/>5 sections 注册<br/>(holders/dividend/<br/>board/dragon/irm)"]:::reg
+
+  SUPP["<b>supplements dict</b><br/>注入 result.*"]:::data
+
+  V3 --> F1 & F2 & F3 & F4
+  V3 --> F5 & F6 & F7 & F8
+  F5 & F6 & F7 & F8 --> SUPP
+  REG --> SUPP
+
+  classDef core fill:#7c3aed,stroke:#5b21b6,color:#fff
+  classDef fetcher fill:#16a34a,stroke:#14532d,color:#fff
+  classDef reg fill:#f59e0b,stroke:#d97706,color:#1e1b4b
+  classDef data fill:#1e40af,stroke:#1e3a8a,color:#fff
+</div>
+
+<h2>4. 报告层渲染 (write_markdown_report_v3 43 节)</h2>
+<div class="mermaid">
+flowchart TD
+  RESULT["result_v3 dict<br/>(30+ 字段)" ]:::data
+  ST["<b>多空状态机</b><br/>5 状态: bullish/mild_bull/<br/>neutral/mild_bear/bearish"]:::core
+  PLAN["<b>trading_plan</b><br/>entry_low/high + tp1/2/3 +<br/>stop_loss + position + period"]:::core
+
+  RPT["<b>write_markdown_report_v3(r)</b><br/>L.append 列表构造"]:::emit
+
+  H1["§1 30 秒决策卡<br/>(现价/PE/PB/分位/PEG)"]:::md
+  H2["§2 🚨 风险警报区<br/><b>5-7 行大表</b> (5 列)<br/>类别/描述/严重度/触发条件/应对"]:::md
+  H3["§3 ✅ 操作检查清单<br/><b>5 项 GFM checkbox</b><br/>(5 状态机各 1 套)"]:::md
+  H4["§4 📑 六维新增情报<br/>研报/公告/财务/新闻 + DRAGON/IRM"]:::md
+  H5["§5 三价位 + 💰 资金面<br/><b>5 日大表 6 列</b><br/>主力/大单+超大单/融资余额/收盘价/涨跌"]:::md
+  H6["§6 🆚 同业对比<br/><b>7 维表</b> PE/PB/市值/ROE/5 日涨跌"]:::md
+  H7["§7-N 财务/三表/分红/打板/<br/>互动问答/股东户数/..."]:::md
+  HLINK["§N 数据链路 + 运行记录<br/>(run_log 摘要)"]:::md
+
+  RESULT --> ST --> RPT
+  RESULT --> PLAN --> RPT
+  RPT --> H1 & H2 & H3 & H4 & H5 & H6 & H7 & HLINK
+
+  classDef data fill:#1e40af,stroke:#1e3a8a,color:#fff
+  classDef core fill:#7c3aed,stroke:#5b21b6,color:#fff
+  classDef emit fill:#0891b2,stroke:#155e75,color:#fff
+  classDef md fill:#16a34a,stroke:#14532d,color:#fff
+</div>
+
+<h2>5. HTML 渲染层 (html_report_v3)</h2>
+<div class="mermaid">
+flowchart TD
+  MD["<b>result_v3 dict</b><br/>(与 MD 共用 source)"]:::data
+
+  HERO["<b>_render_hero</b><br/>结论前置 (评分/状态机/趋势)"]:::render
+  CL["<b>_render_checklist</b><br/>6 行 chk + <b>5 项 GFM</b><br/>(state_key 5 状态传参)"]:::render
+  RISK["<b>_render_risk</b><br/><b>5-7 行大表</b><br/>(5 列 + 严重度色)"]:::render
+  CHARTS["<b>ECharts 5 图</b><br/>K 线 + MACD + KDJ +<br/>RSI + BOLL (markLine 3 条)"]:::render
+  THEME["<b>mingli30119 双主题</b><br/>暗/浅 CSS + JS 切换<br/>(localStorage 记忆)"]:::render
+
+  PDF["<b>Chrome headless PDF</b><br/>_render_html_to_pdf<br/>virtual_time_budget 15s"]:::pdf
+
+  OUT["v3 HTML 报告<br/>(含 5 图 + 双主题 +<br/>6 维新内容)"]:::out
+
+  MD --> HERO & CL & RISK & CHARTS
+  CHARTS --> THEME
+  HERO & CL & RISK & CHARTS & THEME --> OUT
+  OUT -.->|写盘后| PDF
+
+  classDef data fill:#1e40af,stroke:#1e3a8a,color:#fff
+  classDef render fill:#7c3aed,stroke:#5b21b6,color:#fff
+  classDef pdf fill:#be123c,stroke:#881337,color:#fff
+  classDef out fill:#16a34a,stroke:#14532d,color:#fff
+</div>
+
+<h2>6. 演进路线 (4-phase + 报告质量线 + v0.15 Phase 2)</h2>
+<div class="mermaid">
+timeline
+  title 大A数据 演进路线
+  2026-09-04 : 4-phase plan 立项 (Task 0.1-0.4)
+              : 解决 PEG 公式 / V3 命名 / push2 风控 / 新闻退避
+  2026-09-05 : 5 sections 端点补齐
+              : Section Registry + holders/dividend/board/dragon/irm
+  2026-09-08 : 报告质量线 6-task plan 立项
+              : 5 状态机 (Task 5.1) + 三价位 (5.2) + 北向口径 (5.3)
+  2026-09-09 : 报告质量线 3-task 落档
+              : commit e15be69 + 8f43eba
+              : V3 UI 升级 3 task (CSS/导航/ECharts)
+  2026-09-10 : 8845d2d feat(data): 5 sections 端点补齐
+              : 600693 + 002353 双端到端 12/12 pass
+              : v0.15 Phase 2 plan 立项 (4 fetcher 入仓 + 风险大表 + 资金/同业 7 维)
+  2026-09-11 : Phase 2 实施 4 task 全部完成
+              : b325cad 3 fetcher 入仓
+              : e0bdbac 风险大表 + 5 项 GFM checkbox
+              : 58388fe 资金面 6 列 + 同业 7 维
+              : 98141e8 docs/04 H 章节同步
+              : tag v0.15-report-quality-phase2
+</div>
+
+<h2>7. 数据源健康度 (9-11 冒烟实测)</h2>
+<table>
+<tr><th>端点</th><th>源</th><th>状态</th><th>网络层</th></tr>
+<tr><td>实时行情</td><td>腾讯 qt.gtimg.cn</td><td><span class="net-ok">OK</span></td><td>稳定</td></tr>
+<tr><td>估值历史 (前复权)</td><td>baostock</td><td><span class="net-ok">OK</span></td><td>稳定</td></tr>
+<tr><td>概念板块</td><td>东财 slist</td><td><span class="net-err">风控</span></td><td>持续返回 0 条</td></tr>
+<tr><td>资金流 (fflow)</td><td>东财 push2his</td><td><span class="net-err">SSL EOF</span></td><td>本机 CA 问题, 同 swsresearch</td></tr>
+<tr><td>解禁日历</td><td>东财 datacenter</td><td><span class="net-ok">OK</span></td><td>稳定</td></tr>
+<tr><td>龙虎榜</td><td>东财 datacenter</td><td><span class="net-ok">OK</span></td><td>稳定</td></tr>
+<tr><td>申万行业</td><td>swsresearch.com</td><td><span class="net-err">SSL EOF</span></td><td>verify=False 补丁</td></tr>
+<tr><td>公告</td><td>东财 / 巨潮</td><td><span class="net-ok">OK</span></td><td>~2s</td></tr>
+<tr><td>财务摘要</td><td>东财 datacenter RPT_F10</td><td><span class="net-ok">OK</span></td><td>~1.5s</td></tr>
+<tr><td>研报观点</td><td>东财 + 同花顺</td><td><span class="net-ok">OK</span></td><td>~2-4s</td></tr>
+<tr><td>新闻舆情</td><td>新浪 sina_stock_news</td><td><span class="net-ok">OK</span></td><td>~10-40s 慢</td></tr>
+<tr><td>融资融券</td><td>东财 datacenter</td><td><span class="net-ok">OK</span></td><td>小盘无数据</td></tr>
+</table>
+
+<div class="legend">
+  <b>根因与修复</b>: push2his / swsresearch / 概念板块 slist 三者 SSL/风控问题同源 — 本机 CA 证书链过旧。修复: <code>pip install -U certifi</code>。7.3 资金面 5 日表 + 同业 7 维表数据非空验收在 SSL 修复后达成。
+</div>
+
+<h2>8. v0.15 Phase 2 实施总结</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Commit</th><th>改动</th><th>端到端</th></tr>
+<tr><td>7.1</td><td>3 fetcher 入仓</td><td><code>b325cad</code></td><td>分析/公告/财务/研报 (news_em 早期已入)</td><td>600693 + 002353 4 块全活</td></tr>
+<tr><td>7.2</td><td>风险大表 + 5 项 GFM checklist</td><td><code>e0bdbac</code></td><td>MD 5-7 行表 + HTML task-list CSS<br/>修 pre-existing state/state_key bug</td><td>600693 mild_bear<br/>002353 neutral<br/>605162 mild_bull</td></tr>
+<tr><td>7.3</td><td>资金面 6 列 + 同业 7 维</td><td><code>58388fe</code></td><td>_fetch_fund_flow_daily 扩 close+chg_pct + 重试 3 次<br/>_fetch_concept_peers 补 f37+f105</td><td>模板就绪, push2his SSL EOF 阻塞数据</td></tr>
+<tr><td>7.4</td><td>端到端回归 + docs/04 同步</td><td><code>98141e8</code></td><td>605162-1220 6 件套齐<br/>docs/04 H 章节归档</td><td>605162 新中港 全活</td></tr>
+</table>
+
+<div class="legend" style="margin-top:24px">
+  <b>下一步 (沿用 plan 范围外 parked)</b>: A 605162 三价位候选空 (数据层) · B PDF 优化 · C 浅色主题稳定性 · D 报告双主题切换 · E ifind 接入 · F PEG vs 分位矛盾提示
+
+<h2>9. v0.16 规范整改 (P0+P1 共 8 task 全部完成, 2026-09-11)</h2>
+<div class="mermaid">
+flowchart LR
+  P0A["<b>P0-A</b><br/>三价位语义统一<br/>支撑下沿/压力上沿<br/>+8 边界测试"]:::done
+  P0B["<b>P0-B</b><br/>fetcher 4 状态契约<br/>+from_legacy adapter<br/>21 契约测试"]:::done
+  P0C["<b>P0-C</b><br/>移除 verify=False<br/>TLS 修复建议<br/>推荐 certifi"]:::done
+  P1A["<b>P1-A</b><br/>6 件套 status<br/>complete/partial/failed<br/>PDF 状态暴露"]:::done
+  P1B["<b>P1-B</b><br/>报告首页<br/>分析时点+关键缺失<br/>+对结论影响"]:::done
+  P1C["<b>P1-C</b><br/>_json_default<br/>显式 JSONEncoder<br/>7 类型 + raise"]:::done
+  P1D["<b>P1-D</b><br/>HTML 转义加固<br/>4 漏点修复<br/>13 XSS 审计"]:::done
+  P1E["<b>P1-E</b><br/>conftest.py<br/>+7 fixture<br/>跨用户可跑"]:::done
+
+  P0A --> P0B --> P0C --> P1A --> P1B --> P1C --> P1D --> P1E
+  P1E -.->|下一步| P2["<b>P2 配套</b><br/>模块拆分<br/>+ CI (Ruff+pytest)<br/>+ docs 同步"]:::todo
+
+  classDef done fill:#16a34a,stroke:#14532d,color:#fff
+  classDef todo fill:#f59e0b,stroke:#d97706,color:#1e1b4b
+</div>
+
+<div class="legend" style="margin-top:12px">
+  <b>v0.16 规范整改累计</b>: 9 commits / 3 tags (p0 / p1 / p1-complete) / 179 测试通过 / 0 失败 / 6 跳过
+  <br><b>整改原则</b> (§1): 不修改业务口径, 只动结构/契约/可见性; §4 迁移期可适配器兼容
+  <br><b>OPEN</b>: push2his SSL EOF 跟 swsresearch 同根因, 一次性 <code>pip install -U certifi</code> 修复
+</div>
+</div>
+
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif',
+      fontSize: '14px',
+    },
+    flowchart: { curve: 'basis', padding: 12, nodeSpacing: 30, rankSpacing: 40 },
+    sequence: { actorMargin: 50, messageMargin: 35, boxMargin: 10 },
+    timeline: { padding: 30 },
+  });
+</script>
+</body>
+</html>
