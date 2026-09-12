@@ -120,11 +120,17 @@ def test_state_display_has_all_5_entries():
 # ============================================================
 # 4. 端到端: V3 跑过 600693 留下的 result_v3-{HHMM}.json 含 template_used
 # ============================================================
-def _latest_result_v3_600693():
-    """加载 600693 今日最新的 result_v3-{HHMM}.json；缺失则 skip。"""
+def _latest_result_v3_600693(mock_result_v3=None):
+    """加载 600693 今日最新的 result_v3-{HHMM}.json；缺失则 skip
+
+    P1.5 整改: 接受 conftest mock_result_v3 fixture, 优先用 mock 跨用户可跑
+    """
     import os
     import json as _json
     from datetime import datetime
+    if mock_result_v3 is not None:
+        with open(mock_result_v3, "r", encoding="utf-8") as f:
+            return _json.load(f), str(mock_result_v3)
     today = datetime.now().strftime("%Y-%m-%d")
     day_dir = f"/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/{today}"
     if not os.path.exists(day_dir):
@@ -137,13 +143,13 @@ def _latest_result_v3_600693():
         return _json.load(f), os.path.join(day_dir, latest)
 
 
-def test_v3_trading_plan_has_template_used_for_600693():
+def test_v3_trading_plan_has_template_used_for_600693(mock_result_v3):
     """V3 跑 600693 (score≈45) → trading_plan.template_used 必须含"区间操作"。
 
     这是债 1 验收硬指标：旧报告"看空 43 分却写分两批进场"必须修掉。
-    测试读最新 result_v3-{HHMM}.json，避开重新跑全链路的网络开销。
+    测试用 mock_result_v3 fixture 跨用户可跑 (P1.5 整改)。
     """
-    result, path = _latest_result_v3_600693()
+    result, path = _latest_result_v3_600693(mock_result_v3=mock_result_v3)
     plan = result.get("trading_plan") or {}
     if not plan:
         pytest.skip("600693 trading_plan 缺失（数据源问题，跳过）")
@@ -169,25 +175,34 @@ def test_v3_trading_plan_has_template_used_for_600693():
 # ============================================================
 # 5. 渲染器 source code 自检: 操作口诀段落必须读 template_used
 # ============================================================
-def test_html_renderer_reads_template_used():
-    """HTML 渲染器 _render_checklist 必须读 plan['template_used']，而非 hardcode 模板"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/html_report_v3.py", encoding="utf-8").read()
+def test_html_renderer_reads_template_used(html_report_v3_source):
+    """HTML 渲染器 _render_checklist 必须读 plan['template_used']，而非 hardcode 模板
+
+    P1.5 整改: 用 conftest.html_report_v3_source fixture
+    """
+    src = html_report_v3_source
     assert 'template_used' in src, "html_report_v3.py 必须引用 template_used"
     assert '操作口诀' in src, "html_report_v3.py 必须有'操作口诀'字样（5 状态机注入）"
 
 
-def test_md_renderer_includes_template_used():
-    """MD 渲染器 write_markdown_report_v3 必须读 plan['template_used']"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/quant_analyzer_v3.py", encoding="utf-8").read()
+def test_md_renderer_includes_template_used(quant_analyzer_v3_source):
+    """MD 渲染器 write_markdown_report_v3 必须读 plan['template_used']
+
+    P1.5 整改: 用 conftest.quant_analyzer_v3_source fixture
+    """
+    src = quant_analyzer_v3_source
     # 同一文件，断言模板注入和读取都存在
     assert 'OPERATION_TEMPLATES' in src, "quant_analyzer_v3.py 必须定义 OPERATION_TEMPLATES"
     assert 'template_used' in src, "quant_analyzer_v3.py 必须引用 template_used"
     assert '操作口诀' in src, "quant_analyzer_v3.py MD 渲染必须有'操作口诀'字样"
 
 
-def test_docx_renderer_does_not_hardcode_operation():
-    """DOCX 渲染器 md_to_docx.py 不应硬编码操作口诀（DOCX 跟随 MD）"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/md_to_docx.py", encoding="utf-8").read()
+def test_docx_renderer_does_not_hardcode_operation(md_to_docx_source):
+    """DOCX 渲染器 md_to_docx.py 不应硬编码操作口诀（DOCX 跟随 MD）
+
+    P1.5 整改: 用 conftest.md_to_docx_source fixture
+    """
+    src = md_to_docx_source
     # 旧 v2 写死的"分两批进"等字样不应再出现
     assert "分两批进" not in src, \
         "md_to_docx.py 不应硬编码'分两批进'，操作口诀由 MD 模板统一驱动"

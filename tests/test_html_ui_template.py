@@ -1,3 +1,8 @@
+import os
+from pathlib import Path
+
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", "/Users/swarteachou/Desktop/大A数据")).resolve()
+REPORTS_DIR = WORKDIR / "reports"
 """Task 6.1: V3 HTML UI 升级 — CSS 模板集成测试
 
 历史: docs/superpowers/plans/2026-09-09-html-ui-upgrade.md Task 6.1
@@ -17,7 +22,7 @@
   8. 端到端: 跑 600693, HTML 含 mingli CSS 字符串
 """
 import sys
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
+sys.path.insert(0, str(WORKDIR / "analysis"))
 
 import pytest
 
@@ -189,7 +194,7 @@ def test_e2e_600693_html_has_theme_toggle():
     import sys
     from pathlib import Path
 
-    report_dir = Path("/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团")
+    report_dir = Path(str(REPORTS_DIR / "600693_东百集团"))
     if not report_dir.exists():
         pytest.skip("600693 报告目录不存在, 跳过端到端测试")
 
@@ -324,7 +329,7 @@ def test_v3_render_kline_no_data_returns_empty():
 def test_e2e_600693_html_has_echarts_5_containers():
     """端到端: 600693 报告 HTML 应含 5 ECharts 容器 + markLine + markPoint。"""
     from pathlib import Path
-    report_dir = Path("/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团")
+    report_dir = Path(str(REPORTS_DIR / "600693_东百集团"))
     if not report_dir.exists():
         pytest.skip("600693 报告目录不存在")
     md_files = list(report_dir.glob("**/600693-东百集团-*.md"))
@@ -377,7 +382,7 @@ def test_render_html_to_pdf_handles_missing_file():
 def test_e2e_600693_pdf_generated():
     """端到端: 600693 最新报告应同时生成 PDF (与 HTML 同名前缀)。"""
     from pathlib import Path
-    report_dir = Path("/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团")
+    report_dir = Path(str(REPORTS_DIR / "600693_东百集团"))
     if not report_dir.exists():
         pytest.skip("600693 报告目录不存在")
     md_files = list(report_dir.glob("**/600693-东百集团-*.md"))

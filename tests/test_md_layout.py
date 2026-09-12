@@ -1,3 +1,8 @@
+import os
+from pathlib import Path
+
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", "/Users/swarteachou/Desktop/大A数据")).resolve()
+REPORTS_DIR = WORKDIR / "reports"
 """Task 6.6: V3 MD 排版美观优化测试
 
 历史: docs/superpowers/plans/2026-09-09-html-ui-upgrade.md 6.6 段
@@ -7,7 +12,7 @@
 - PEG 4 档阈值 (Task 5.5): 便宜/合理/偏贵/极贵
 """
 import sys
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
+sys.path.insert(0, str(WORKDIR))
 
 import pytest
 from pathlib import Path
@@ -18,7 +23,7 @@ from pathlib import Path
 # ============================================================
 def test_md_has_30s_decision_card():
     """MD 报告应含 30 秒决策卡大表 (7 列核心指标)。"""
-    md_files = list(Path("/Users/swarteachou/Desktop/大A数据/reports").glob("**/600693-东百集团-*.md"))
+    md_files = list(REPORTS_DIR.glob("**/600693-东百集团-*.md"))
     if not md_files:
         pytest.skip("无 600693 报告")
     latest = max(md_files, key=lambda p: p.stat().st_mtime)
@@ -40,7 +45,7 @@ def test_md_has_30s_decision_card():
 # ============================================================
 def test_md_has_three_levels_4row_table():
     """MD 报告三价位段应含 4 行大表 (现价 + 支撑/压力/止损)。"""
-    md_files = list(Path("/Users/swarteachou/Desktop/大A数据/reports").glob("**/600693-东百集团-*.md"))
+    md_files = list(REPORTS_DIR.glob("**/600693-东百集团-*.md"))
     if not md_files:
         pytest.skip("无 600693 报告")
     latest = max(md_files, key=lambda p: p.stat().st_mtime)
@@ -65,7 +70,7 @@ def test_md_has_three_levels_4row_table():
 # ============================================================
 def test_md_has_operation_proverb_5state():
     """MD 报告应含操作口诀段, 5 状态机 (3 段: 结论/操作/风险)。"""
-    md_files = list(Path("/Users/swarteachou/Desktop/大A数据/reports").glob("**/600693-东百集团-*.md"))
+    md_files = list(REPORTS_DIR.glob("**/600693-东百集团-*.md"))
     if not md_files:
         pytest.skip("无 600693 报告")
     latest = max(md_files, key=lambda p: p.stat().st_mtime)
@@ -94,7 +99,7 @@ def test_md_has_operation_proverb_5state():
 # ============================================================
 def test_md_peg_4tier_threshold():
     """MD 报告 PEG 列应含 4 档阈值标签 (便宜/合理/偏贵/极贵)。"""
-    md_files = list(Path("/Users/swarteachou/Desktop/大A数据/reports").glob("**/600693-东百集团-*.md"))
+    md_files = list(REPORTS_DIR.glob("**/600693-东百集团-*.md"))
     if not md_files:
         pytest.skip("无 600693 报告")
     latest = max(md_files, key=lambda p: p.stat().st_mtime)
@@ -111,7 +116,7 @@ def test_md_peg_4tier_threshold():
 # ============================================================
 def test_md_has_candidates_blockquote():
     """MD 报告三价位段应含 4 支撑 / 3 压力候选明细 (blockquote)。"""
-    md_files = list(Path("/Users/swarteachou/Desktop/大A数据/reports").glob("**/600693-东百集团-*.md"))
+    md_files = list(REPORTS_DIR.glob("**/600693-东百集团-*.md"))
     if not md_files:
         pytest.skip("无 600693 报告")
     latest = max(md_files, key=lambda p: p.stat().st_mtime)

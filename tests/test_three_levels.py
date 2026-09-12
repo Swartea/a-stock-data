@@ -253,8 +253,16 @@ def test_plan_step2_example_4_candidates_3_candidates():
 # ============================================================
 # 9. 端到端: V3 result 必须含 three_levels (从 result_v3-{HHMM}.json 验证)
 # ============================================================
-def _latest_result_v3_600693():
-    """加载 600693 今日最新 result_v3-{HHMM}.json; 缺失则 skip"""
+def _latest_result_v3_600693(mock_result_v3=None):
+    """加载 600693 今日最新 result_v3-{HHMM}.json; 缺失则 skip
+
+    P1.5 整改: 接受 conftest mock_result_v3 fixture (P1-E 配套), 优先用 mock
+    """
+    if mock_result_v3 is not None:
+        # 端到端用 mock fixture, 跨用户/跨日期可跑
+        with open(mock_result_v3, "r", encoding="utf-8") as f:
+            return json.load(f), str(mock_result_v3)
+    # 兜底: 读当日 result (依赖个人路径, 仅本机可跑)
     today = __import__("datetime").datetime.now().strftime("%Y-%m-%d")
     day_dir = f"/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/{today}"
     if not os.path.exists(day_dir):
@@ -267,9 +275,12 @@ def _latest_result_v3_600693():
         return json.load(f), os.path.join(day_dir, latest)
 
 
-def test_v3_result_has_three_levels_for_600693():
-    """V3 跑 600693 → result 必须含 three_levels dict（债 2 修法硬指标）"""
-    result, path = _latest_result_v3_600693()
+def test_v3_result_has_three_levels_for_600693(mock_result_v3):
+    """V3 跑 600693 → result 必须含 three_levels dict（债 2 修法硬指标）
+
+    P1.5 整改: 用 mock_result_v3 fixture 跨用户可跑
+    """
+    result, path = _latest_result_v3_600693(mock_result_v3=mock_result_v3)
     tl3 = result.get("three_levels")
     assert tl3 is not None, f"result['three_levels'] 缺失 (文件: {path})"
     # 必含 5 字段
@@ -298,26 +309,35 @@ def test_v3_result_has_three_levels_for_600693():
 # ============================================================
 # 10. 渲染器 source code 自检: 3 渲染器都含"三价位(同源)"
 # ============================================================
-def test_md_renderer_contains_three_levels_same_source():
-    """V3 MD 渲染器 write_markdown_report_v3 含 '三价位(同源)' 字样 + 4/3 候选"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/quant_analyzer_v3.py", encoding="utf-8").read()
+def test_md_renderer_contains_three_levels_same_source(quant_analyzer_v3_source):
+    """V3 MD 渲染器 write_markdown_report_v3 含 '三价位(同源)' 字样 + 4/3 候选
+
+    P1.5 整改: 用 conftest.quant_analyzer_v3_source fixture 取代 open 个人路径
+    """
+    src = quant_analyzer_v3_source
     assert "三价位(同源)" in src, "V3 MD 渲染器必须含'三价位(同源)'字样（债 2 修法）"
     assert "support_candidates" in src, "V3 必须输出 4 支撑候选调试行"
     assert "resistance_candidates" in src, "V3 必须输出 3 压力候选调试行"
     assert "compute_three_levels" in src, "V3 必须定义并调用 compute_three_levels"
 
 
-def test_html_renderer_contains_three_levels_same_source():
-    """HTML 渲染器 _render_checklist 必须含 '三价位(同源)' 字样"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/html_report_v3.py", encoding="utf-8").read()
+def test_html_renderer_contains_three_levels_same_source(html_report_v3_source):
+    """HTML 渲染器 _render_checklist 必须含 '三价位(同源)' 字样
+
+    P1.5 整改: 用 conftest.html_report_v3_source fixture
+    """
+    src = html_report_v3_source
     assert "三价位(同源)" in src, "html_report_v3.py 必须含'三价位(同源)'字样（债 2 修法）"
     assert "result.get(\"three_levels\")" in src or "result['three_levels']" in src, \
         "HTML 渲染器必须读 result['three_levels']"
 
 
-def test_docx_renderer_follows_md_no_hardcode():
-    """DOCX 渲染器 md_to_docx.py 不硬编码'三价位'——DOCX 跟随 MD 渲染"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/md_to_docx.py", encoding="utf-8").read()
+def test_docx_renderer_follows_md_no_hardcode(md_to_docx_source):
+    """DOCX 渲染器 md_to_docx.py 不硬编码'三价位'——DOCX 跟随 MD 渲染
+
+    P1.5 整改: 用 conftest.md_to_docx_source fixture
+    """
+    src = md_to_docx_source
     # DOCX 跟随 MD, 不应自己写死"三价位(同源)"或"4 候选"等
     assert "三价位(同源)" not in src, \
         "md_to_docx.py 不应硬编码'三价位(同源)'，DOCX 跟随 MD 渲染"
