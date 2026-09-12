@@ -4,6 +4,15 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Pip / setuptools / 打包产物
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.installed.cfg
+MANIFEST
+
 # 系统
 .DS_Store
 *.swp
@@ -14,6 +23,7 @@ __pycache__/
 .cache/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # 编辑器
 .idea/
