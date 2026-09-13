@@ -82,6 +82,10 @@ from analysis.utils import (
 from analysis.constants import (
     _SRC_DESC, OPERATION_TEMPLATES, _STATE_DISPLAY,
 )
+# P2-A Phase 2 (2026-09-13): 5 状态机 + plan 注入
+from analysis.trading_plan import (
+    _score_to_state, inject_state_to_plan, _state_display,
+)
 
 
 
@@ -153,22 +157,8 @@ _src_meta: dict = {}   # label -> {"ms":int,"at":"HH:MM:SS","status":str,"detail
 # 阈值与 analysis/references/report-design-principles.md:88-94 仓位建议 5 档对齐,
 # 但 state 拆分更细：≥65 多 / 55-65 轻多 / 45-55 中性 / 35-45 轻空 / <35 空。
 # 5 状态对应 5 套独立"结论+操作+风险"三段模板, 杜绝 V3 原报告"看空 43 分仍写分两批进场"矛盾。
+# 5 状态机映射已抽到 analysis.trading_plan.score_to_state (P2-A Phase 2, 2026-09-13)
 # ============================================================
-def _score_to_state(score: float) -> str:
-    """综合评分 → 多空状态映射（5 状态）。阈值与 plan 文档 Task 5.1 Step 2 一致。"""
-    try:
-        sc = float(score)
-    except (TypeError, ValueError):
-        sc = 0.0
-    if sc >= 65:
-        return "bullish"      # 看多（≥65）
-    if sc >= 55:
-        return "mild_bull"    # 轻多（55-65）
-    if sc >= 45:
-        return "neutral"      # 中性/震荡（45-55）
-    if sc >= 35:
-        return "mild_bear"    # 轻空（35-45）
-    return "bearish"          # 看空（<35）
 
 
 # ============================================================
@@ -758,19 +748,8 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     # ---- 2.1 多空状态机注入 (债 1 修法, Task 5.1) ----
     # 在 trading_plan 上加 state + template_used 两个字段,
     # 渲染层 (MD/HTML) 直接读 plan["template_used"] 即可, 不再各自写硬编码模板。
-    if plan:
-        state = _score_to_state(score_total)
-        plan["state"] = state
-        try:
-            plan["template_used"] = OPERATION_TEMPLATES[state].format(
-                score=score_total,
-                stop_loss=plan.get("stop_loss", "—"),
-                stop_loss_pct=plan.get("stop_loss_pct", "—"),
-                entry_low=plan.get("entry_low", "—"),
-                tp1=plan.get("tp1", "—"),
-            )
-        except (KeyError, IndexError):
-            plan["template_used"] = OPERATION_TEMPLATES[state]
+    # P2-A Phase 2 整改: 5 状态机映射 + template_used 注入统一在 trading_plan 模块
+    inject_state_to_plan(plan, score_total) if plan else None
     good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
 
     # ---- 2.2 三价位表 (债 2 修法, Task 5.2 + P0-A 规范整改, 2026-09-11): 支撑下沿/压力上沿 ----
