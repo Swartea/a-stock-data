@@ -94,6 +94,19 @@ def md_to_docx_source(analysis_dir: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="session")
+def report_md_source(analysis_dir: Path) -> str:
+    """report_md.py 全文 (P2-A Phase 5 Task 5.1 抽离, write_markdown_report_v3 宿主)
+
+    规范整改: MD 渲染逻辑已从 quant_analyzer_v3.py 抽离到 analysis/report_md.py,
+    v3 薄壳 re-export 透传。测试 MD 渲染行为应读 report_md_source 而非 v3。
+    """
+    p = analysis_dir / "report_md.py"
+    if not p.exists():
+        pytest.skip(f"report_md.py 不存在: {p}")
+    return p.read_text(encoding="utf-8")
+
+
 # ============================================================
 # mock result_v3 / run_log fixture (P1-E 取代读当日 result)
 # ============================================================

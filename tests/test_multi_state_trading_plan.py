@@ -185,16 +185,17 @@ def test_html_renderer_reads_template_used(html_report_v3_source):
     assert '操作口诀' in src, "html_report_v3.py 必须有'操作口诀'字样（5 状态机注入）"
 
 
-def test_md_renderer_includes_template_used(quant_analyzer_v3_source):
+def test_md_renderer_includes_template_used(report_md_source):
     """MD 渲染器 write_markdown_report_v3 必须读 plan['template_used']
 
     P1.5 整改: 用 conftest.quant_analyzer_v3_source fixture
+    P2-A Phase 5 (2026-09-13): 报告层抽离后改读 report_md_source (写 markdown 渲染的宿主)
     """
-    src = quant_analyzer_v3_source
+    src = report_md_source
     # 同一文件，断言模板注入和读取都存在
-    assert 'OPERATION_TEMPLATES' in src, "quant_analyzer_v3.py 必须定义 OPERATION_TEMPLATES"
-    assert 'template_used' in src, "quant_analyzer_v3.py 必须引用 template_used"
-    assert '操作口诀' in src, "quant_analyzer_v3.py MD 渲染必须有'操作口诀'字样"
+    assert 'OPERATION_TEMPLATES' in src, "report_md.py 必须 import OPERATION_TEMPLATES"
+    assert 'template_used' in src, "report_md.py 必须引用 template_used"
+    assert '操作口诀' in src, "report_md.py MD 渲染必须有'操作口诀'字样"
 
 
 def test_docx_renderer_does_not_hardcode_operation(md_to_docx_source):

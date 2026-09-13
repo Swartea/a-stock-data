@@ -84,6 +84,21 @@ def _fmt_time(ts: float) -> str:
     return fmt_time(ts)
 
 
+def short_iso(iso: Optional[str]) -> str:
+    """ISO8601 → 'YYYY-MM-DD HH:MM:SS'
+
+    P2-A Phase 5 整改: 从 V3 抽出 (§2 报告层)
+    """
+    if not iso:
+        return "—"
+    return str(iso)[:19].replace("T", " ")
+
+
+# 别名
+def _short_iso(iso: Optional[str]) -> str:
+    return short_iso(iso)
+
+
 # ============================================================
 # 数值转换 / 显示
 # ============================================================
@@ -250,3 +265,33 @@ def finance_talk(fin: dict) -> list:
 # 别名
 def _finance_talk(fin: dict) -> list:
     return finance_talk(fin)
+
+
+# ============================================================
+# PEG talk-text 4 档阈值 (D-3 修法, Task 5.5)
+# 对齐 analysis/references/report-design-principles.md:73-77
+# P2-A Phase 5 整改: 从 V3 抽出 (§2 报告层, §1 业务口径不变)
+# ============================================================
+def format_peg_talk(peg: float) -> str:
+    """PEG → 中文 talk-text (4 档阈值, 与 report-design-principles.md:73-77 严格对齐)
+
+    阈值规则:
+        < 1           → PEG < 1, 便宜区
+        [1, 1.5)      → PEG 1~1.5, 合理
+        [1.5, 3)      → PEG 1.5~3, 偏贵
+        >= 3          → PEG > 3, 极贵（成长股例外：壁垒深可能合理）
+
+    边界用 < (not <=): peg=1.0 → "合理", peg=1.5 → "偏贵", peg=3.0 → "极贵"。
+    """
+    if peg < 1:
+        return "PEG < 1, 便宜区"
+    if peg < 1.5:
+        return "PEG 1~1.5, 合理"
+    if peg < 3:
+        return "PEG 1.5~3, 偏贵"
+    return "PEG > 3, 极贵（成长股例外：壁垒深可能合理）"
+
+
+# 别名
+def _format_peg_talk(peg: float) -> str:
+    return format_peg_talk(peg)
