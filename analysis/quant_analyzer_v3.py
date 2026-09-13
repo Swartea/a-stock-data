@@ -95,41 +95,17 @@ from analysis.three_levels import (
 from analysis.data_fetcher import (
     _fetch_fund_flow_daily, _fetch_margin_history, _fetch_concept_peers,
 )
-
+# P2-A Phase 4 Task 4.2: 4 独立 fetcher 软导入 + 调度
+from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 
 
 import quant_analyzer_v2 as v2  # noqa: E402
 from sections import enabled_sections  # noqa: E402  # Phase 1: Section Registry (irm §10.1)
 
-# ---------------------------------------------------------------
-# 4 个新 fetcher — 容错 import (并行开发中, 未落盘不许崩整脚本)
-# ---------------------------------------------------------------
-_NEW_IMPORTS = {  # label -> {"ok": bool, "err": str, "fn": callable}
-    "公告":    {"ok": False, "err": "", "fn": None},
-    "财务":    {"ok": False, "err": "", "fn": None},
-    "研报":    {"ok": False, "err": "", "fn": None},
-    "新闻":    {"ok": False, "err": "", "fn": None},
-}
-try:
-    from fetch_announcements import fetch_announcements as _fn_ann
-    _NEW_IMPORTS["公告"]["ok"], _NEW_IMPORTS["公告"]["fn"] = True, _fn_ann
-except Exception as e:  # noqa: BLE001
-    _NEW_IMPORTS["公告"]["err"] = f"数据源暂缺: {e}"
-try:
-    from fetch_finance_summary import fetch_finance_summary as _fn_fin
-    _NEW_IMPORTS["财务"]["ok"], _NEW_IMPORTS["财务"]["fn"] = True, _fn_fin
-except Exception as e:  # noqa: BLE001
-    _NEW_IMPORTS["财务"]["err"] = f"数据源暂缺: {e}"
-try:
-    from fetch_research_reports import fetch_research_reports as _fn_res
-    _NEW_IMPORTS["研报"]["ok"], _NEW_IMPORTS["研报"]["fn"] = True, _fn_res
-except Exception as e:  # noqa: BLE001
-    _NEW_IMPORTS["研报"]["err"] = f"数据源暂缺: {e}"
-try:
-    from fetch_news_em import fetch_news_em as _fn_news
-    _NEW_IMPORTS["新闻"]["ok"], _NEW_IMPORTS["新闻"]["fn"] = True, _fn_news
-except Exception as e:  # noqa: BLE001
-    _NEW_IMPORTS["新闻"]["err"] = f"数据源暂缺: {e}"
+# 4 个独立 fetcher 软导入已抽到 analysis.fetcher_dispatcher (P2-A Phase 4 Task 4.2)
+# - 公告/财务/研报/新闻 4 块
+# - 失败容错, 不崩 v3 主流程
+# - 统一入口: call_fetcher(label, *args) / _NEW_IMPORTS 状态字典
 
 REPORTS_ROOT = os.path.normpath(os.path.join(_ANALYSIS_DIR, "..", "reports"))
 
