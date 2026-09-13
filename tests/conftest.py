@@ -107,6 +107,19 @@ def report_md_source(analysis_dir: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="session")
+def pipeline_source(analysis_dir: Path) -> str:
+    """pipeline.py 全文 (P2-A Phase 5 Task 5.2 抽离, analyze_single_v3 / _emit 宿主)
+
+    规范整改: V3 编排层 (analyze_single_v3 + _emit + 6 编排辅助) 已从 v3 抽到 analysis/pipeline.py,
+    v3 薄壳 re-export 透传。测试编排/落盘行为应读 pipeline_source 而非 v3。
+    """
+    p = analysis_dir / "pipeline.py"
+    if not p.exists():
+        pytest.skip(f"pipeline.py 不存在: {p}")
+    return p.read_text(encoding="utf-8")
+
+
 # ============================================================
 # mock result_v3 / run_log fixture (P1-E 取代读当日 result)
 # ============================================================

@@ -309,16 +309,17 @@ def test_v3_result_has_three_levels_for_600693(mock_result_v3):
 # ============================================================
 # 10. 渲染器 source code 自检: 3 渲染器都含"三价位(同源)"
 # ============================================================
-def test_md_renderer_contains_three_levels_same_source(quant_analyzer_v3_source):
+def test_md_renderer_contains_three_levels_same_source(pipeline_source):
     """V3 MD 渲染器 write_markdown_report_v3 含 '三价位(同源)' 字样 + 4/3 候选
 
     P1.5 整改: 用 conftest.quant_analyzer_v3_source fixture 取代 open 个人路径
+    P2-A Phase 5 (2026-09-13): 编排层抽离后改读 pipeline_source ('三价位(同源)' 字样在 _emit 打印行)
     """
-    src = quant_analyzer_v3_source
-    assert "三价位(同源)" in src, "V3 MD 渲染器必须含'三价位(同源)'字样（债 2 修法）"
-    assert "support_candidates" in src, "V3 必须输出 4 支撑候选调试行"
-    assert "resistance_candidates" in src, "V3 必须输出 3 压力候选调试行"
-    assert "compute_three_levels" in src, "V3 必须定义并调用 compute_three_levels"
+    src = pipeline_source
+    assert "三价位(同源)" in src, "pipeline.py _emit 必须含'三价位(同源)'字样（债 2 修法）"
+    assert "support_candidates" in src, "pipeline.py 必须输出 4 支撑候选调试行"
+    assert "resistance_candidates" in src, "pipeline.py 必须输出 3 压力候选调试行"
+    assert "compute_three_levels" in src, "pipeline.py 必须 import 并调用 compute_three_levels"
 
 
 def test_html_renderer_contains_three_levels_same_source(html_report_v3_source):
