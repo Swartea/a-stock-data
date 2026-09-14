@@ -409,6 +409,38 @@ body{font-family:var(--font-cjk);background:var(--bg);color:var(--ink-1);
 .missing-module .mm-row{margin-top:3px;color:var(--ink-2)}
 .missing-module .mm-row .mm-k{color:var(--ink-1);font-weight:600;
   margin-right:4px}
+/* ---------- §2.5 5 维评分构成卡片 (批次 C · 痛 7 修法, 2026-09-14) ---------- */
+.bd-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-1);
+  margin-bottom:var(--sp-1)}
+@media(max-width:600px){.bd-grid{grid-template-columns:repeat(2,1fr)}}
+.bd-col{background:var(--bg);border:1px solid var(--hairline);border-radius:var(--radius);
+  padding:var(--sp-1) 10px;display:flex;flex-direction:column;gap:4px;
+  border-top:3px solid var(--hairline)}
+.bd-col.dim-good{border-top-color:var(--good)}
+.bd-col.dim-warn{border-top-color:var(--warn)}
+.bd-col.dim-bad {border-top-color:var(--danger)}
+.bd-col .bd-l{font-size:12px;color:var(--ink-2);font-weight:600;letter-spacing:.5px}
+.bd-col .bd-bar{height:6px;background:var(--hairline);border-radius:3px;overflow:hidden}
+.bd-col .bd-fill{height:100%;border-radius:3px;background:var(--ink-3);
+  transition:width .3s ease}
+.bd-col.dim-good .bd-fill{background:var(--good)}
+.bd-col.dim-warn .bd-fill{background:var(--warn)}
+.bd-col.dim-bad  .bd-fill{background:var(--danger)}
+.bd-col .bd-score{font-family:var(--font-num);font-size:18px;font-weight:700;
+  color:var(--ink-1);line-height:1.1;margin-top:2px}
+.bd-col .bd-score small{font-size:11px;font-weight:400;color:var(--ink-3);
+  font-family:var(--font-num)}
+.bd-col .bd-pct{font-family:var(--font-num);font-size:11.5px;color:var(--ink-3)}
+.bd-col.dim-good .bd-pct{color:var(--good)}
+.bd-col.dim-warn .bd-pct{color:var(--warn)}
+.bd-col.dim-bad  .bd-pct{color:var(--danger)}
+.bd-col .bd-tip{font-size:10.5px;color:var(--ink-3);line-height:1.4;
+  font-family:var(--font-cjk);margin-top:2px}
+.bd-total{text-align:right;font-size:13px;color:var(--ink-2);
+  padding-top:var(--sp-1);border-top:1px solid var(--hairline);
+  font-family:var(--font-cjk)}
+.bd-total strong{font-family:var(--font-num);color:var(--ink-1);font-size:15px}
+.bd-total .bd-formula{color:var(--ink-3);font-size:11.5px;margin-left:6px}
 .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1)}
 @media(min-width:600px){.mini-grid{grid-template-columns:repeat(3,1fr)}}
 .kpi{background:var(--bg);border-radius:var(--radius);padding:var(--sp-1) 12px}
@@ -1223,6 +1255,96 @@ def _state_key_of(result):
     if sc >= 45: return "neutral"
     if sc >= 35: return "mild_bear"
     return "bearish"
+
+
+# ============================================================
+# 痛 7 修法 (报告质量债 2.0 批次 C, 2026-09-14): 5 维评分构成卡片
+# ============================================================
+# 位置: hero (30秒决策卡) 之下, 操作检查清单之上
+# 形态: 5 列进度条, 每列含 维度名/得分/满分/占比/颜色 (绿≥70% / 黄40-70% / 红<40%)
+# 数据: r["scoring_breakdown"] (由 analysis.pipeline._build_scoring_breakdown 注入)
+# 兜底: 老 result JSON 无 scoring_breakdown 字段 → "评分构成数据缺失" 占位
+# ============================================================
+_BREAKDOWN_RENDER_KEYS = (   # 渲染顺序固定
+    ("tech",      "技术"),
+    ("capital",   "资金"),
+    ("valuation", "估值"),
+    ("sentiment", "情绪"),
+    ("risk",      "风险"),
+)
+
+
+def _scoring_breakdown_color(pct):
+    """5 维评分构成颜色: ≥70% 绿 / 40-70% 黄 / <40% 红 (回报 CSS class)。"""
+    try:
+        p = float(pct)
+    except (TypeError, ValueError):
+        return "dim-warn"  # 缺失时降级为黄
+    if p >= 70:
+        return "dim-good"
+    if p >= 40:
+        return "dim-warn"
+    return "dim-bad"
+
+
+def _render_scoring_breakdown(result):
+    """5 维评分构成卡片 (痛 7 修法, 批次 C)。
+
+    返回 HTML 字符串 (含 <div class="card">)。失败/缺数据时降级占位。
+    """
+    bd = result.get("scoring_breakdown")
+    if not isinstance(bd, dict) or "total" not in bd:
+        # 兜底: 缺 scoring_breakdown 字段 (老 result JSON)
+        return ('<div class="card"><h2><span class="bar"></span>📊 5 维评分构成</h2>'
+                '<div class="missing-module">'
+                '<div class="mm-title">⚠️ 评分构成数据缺失</div>'
+                '<div class="mm-row">老 result JSON（批次 C 之前生成）未含 '
+                '<span class="mm-k">scoring_breakdown</span> 字段。'
+                '请重跑 V3（<span class="mm-k">analyze_single_v3</span>）'
+                '重新生成报告。综合评分仍可见, 5 维拆解暂不可用。</div>'
+                '</div></div>')
+
+    h = ['<div class="card" id="scoring-breakdown">'
+         '<h2><span class="bar"></span>📊 5 维评分构成 (技术/资金/估值/情绪/风险)</h2>'
+         '<div class="src-line">综合评分 = 5 维加总, 满分 100 · '
+         '颜色: 🟢 ≥70% / 🟡 40-70% / 🔴 &lt;40% · '
+         '来源: 本地 10 因子量化引擎, 5 维聚合 (与 v2 口径一致)</div>']
+    h.append('<div class="bd-grid">')
+    for k, label in _BREAKDOWN_RENDER_KEYS:
+        d = bd.get(k) or {}
+        score = d.get("score")
+        mx = d.get("max")
+        pct = d.get("pct", 0)
+        color = _scoring_breakdown_color(pct)
+        # 子维 (10 维) 文字提示
+        dims_dict = d.get("dims") or {}
+        dim_parts = []
+        for dk, dv in dims_dict.items():
+            dv_s = "—" if dv is None else _num(dv, 1)
+            dim_parts.append("%s %s" % (dk, dv_s))
+        dim_tip = " · ".join(dim_parts) if dim_parts else "—"
+        h.append(
+            '<div class="bd-col %s" title="%s">'
+            '<div class="bd-l">%s</div>'
+            '<div class="bd-bar"><div class="bd-fill" style="width:%.1f%%"></div></div>'
+            '<div class="bd-score">%s<small>/%s</small></div>'
+            '<div class="bd-pct">%.1f%%</div>'
+            '<div class="bd-tip">%s</div>'
+            '</div>' % (color, _esc(dim_tip), _esc(label),
+                       max(0, min(100, pct)),
+                       _num(score, 1) or "—", _num(mx, 0) or "—",
+                       pct, _esc(dim_tip)))
+    h.append('</div>')  # /bd-grid
+    # 总分行
+    t = bd.get("total") or {}
+    h.append('<div class="bd-total">'
+             '综合 <strong>%s</strong> / %s · 占比 <strong>%.1f%%</strong>'
+             ' <span class="bd-formula">( = 5 维加总 )</span>'
+             '</div>' % (_num(t.get("score"), 1) or "—",
+                         _num(t.get("max"), 0) or "—",
+                         t.get("pct", 0)))
+    h.append('</div>')  # /card
+    return "\n".join(h)
 
 
 def _render_checklist(result, state):
@@ -2206,6 +2328,12 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
 
     # ---- a) 结论前置 hero ----
     html.append(hero_html)
+
+    # ---- a.1 痛 7 修法 (批次 C, 2026-09-14): 5 维评分构成卡片 ----
+    # 位置: hero (30秒决策卡) 之下, 操作检查清单之上
+    # 形态: 5 列进度条 (技术/资金/估值/情绪/风险), 颜色按占比 (绿≥70% / 黄40-70% / 红<40%)
+    # 兜底: 老 result JSON 无 scoring_breakdown 字段 → 降级占位提示重跑 V3
+    html.append(_render_scoring_breakdown(result))
 
     # ---- b) 操作检查清单 ----
     # 5 状态机 (债 1 修法, Task 5.1)：bullish/mild_bull/neutral/mild_bear/bearish

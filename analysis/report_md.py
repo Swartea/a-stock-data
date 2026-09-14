@@ -110,6 +110,155 @@ def _src_foot(lab: str, extra: Optional[dict] = None) -> str:
 
 
 # ============================================================
+# 痛 7 修法 (报告质量债 2.0 批次 C, 2026-09-14): 5 维评分构成渲染
+# ============================================================
+# 简版 + 完整版 共用的 5 维聚合数据来源: r["scoring_breakdown"]
+# (由 analysis.pipeline._build_scoring_breakdown 注入, 10 维 → 5 维聚合)
+# 5 维: 技术/资金/估值/情绪/风险, 总分 100, 让综合评分不再是黑盒
+# 兜底: 缺字段 (旧 result JSON) → "评分构成数据缺失" 降级占位
+# ============================================================
+_BREAKDOWN_KEYS = ("tech", "capital", "valuation", "sentiment", "risk")  # 渲染顺序固定
+
+# 5 维渲染顺序 → 中文 label (复用 breakdown 里的 label, 这里也备一份兜底)
+_BREAKDOWN_LABELS = {
+    "tech": "技术", "capital": "资金", "valuation": "估值",
+    "sentiment": "情绪", "risk": "风险",
+}
+
+# 子维 (10 维) → 中文 label (用于"包含的 10 维子项"列)
+_BREAKDOWN_DIM_LABELS = {
+    "trend": "趋势", "valuation": "估值", "valuation_pctile": "估值分位",
+    "capital": "资金", "momentum": "动量", "sentiment": "情绪",
+    "risk": "风险", "chip": "筹码", "sw_stability": "申万稳定", "dragon": "龙虎榜",
+}
+
+
+def _scoring_breakdown_summary(breakdown: dict) -> dict:
+    """从 breakdown 读 5 维聚合, 返回渲染所需的 list + 兜底缺失提示。
+
+    Returns:
+        {
+            "ok": True,  # 是否成功读出 breakdown
+            "rows": [{"key": "tech", "label": "技术", "score": 6, "max": 28, "pct": 21.4, "dims": {...}}, ...],
+            "total": {"score": 34, "max": 100, "pct": 34.0},
+        }
+        或 {"ok": False} — 兜底占位用
+    """
+    if not isinstance(breakdown, dict) or "total" not in breakdown:
+        return {"ok": False}
+    rows = []
+    for k in _BREAKDOWN_KEYS:
+        d = breakdown.get(k) or {}
+        if not isinstance(d, dict) or "score" not in d or "max" not in d:
+            return {"ok": False}
+        rows.append({
+            "key": k,
+            "label": d.get("label") or _BREAKDOWN_LABELS[k],
+            "score": d["score"],
+            "max": d["max"],
+            "pct": d.get("pct", 0),
+            "dims": d.get("dims") or {},
+        })
+    return {"ok": True, "rows": rows, "total": breakdown["total"]}
+
+
+def _scoring_breakdown_md_compact(breakdown: dict) -> list:
+    """简版"📊 评分构成"区: 一行汇总 + 5 维一行展开 (口袋版, 不进 markdown 完整块)。
+
+    位置: 30 秒决策卡下方, 三价位之前 (在 L.append("## 🎯 30 秒决策卡") 之后插入)
+    输出格式:
+        ## 📊 评分构成 (简版)
+        > **技术 6/28 + 资金 10/25 + 估值 10/29 + 情绪 3/8 + 风险 4/10 = 综合 34/100**
+        > 颜色提示: 🟢 ≥70%  黄 40-70%  🔴 <40% (技术 21%🔴 资金 40%黄 ...)
+    """
+    L: list = []
+    info = _scoring_breakdown_summary(breakdown)
+    if not info["ok"]:
+        # 兜底: 旧 result JSON 没 scoring_breakdown 字段
+        L.append("## 📊 评分构成")
+        L.append("")
+        L.append("> ⚠️ **评分构成数据缺失** (老 result JSON, 批次 C 之前生成; "
+                 "请重跑 V3 重新生成)。综合评分仍可见, 但 5 维拆解暂不可用。")
+        L.append("")
+        return L
+    L.append("## 📊 评分构成")
+    L.append("")
+    # 5 维一行汇总
+    parts = [f"**{r['label']} {r['score']}/{r['max']}**" for r in info["rows"]]
+    t = info["total"]
+    L.append("> " + " + ".join(parts) + f" = **综合 {t['score']}/{t['max']}**")
+    L.append("")
+    # 颜色提示: 按 pct 给每维打 emoji
+    def _pct_emoji(p):
+        if p >= 70: return "🟢"
+        if p >= 40: return "🟡"
+        return "🔴"
+    color_parts = [f"{_pct_emoji(r['pct'])} {r['label']} {r['pct']:.0f}%"
+                  for r in info["rows"]]
+    L.append("> 占比提示: " + " ｜ ".join(color_parts))
+    L.append("")
+    return L
+
+
+def _scoring_breakdown_md_full(breakdown: dict) -> list:
+    """完整版"📊 评分构成"区: 详细表 (5 行 + 子维展开)。
+
+    位置: 完整版 6 块之后, "10 因子打分明细" 之前 (与 HTML "5 维进度条卡片" 对齐)
+    输出格式:
+        ## 📊 评分构成 (5 维拆解, 满分 100)
+        | 维度 | 得分 | 满分 | 占比 | 包含的 10 维子项 |
+        |------|------|------|------|----------------|
+        | 🟡 技术 | 6 | 28 | 21.4% | 趋势 1 + 动量 1 + 筹码 4 |
+        ...
+    """
+    L: list = []
+    info = _scoring_breakdown_summary(breakdown)
+    if not info["ok"]:
+        L.append("## 📊 评分构成 (5 维拆解)")
+        L.append("")
+        L.append("> ⚠️ **评分构成数据缺失** (老 result JSON, 批次 C 之前生成; "
+                 "请重跑 V3 重新生成)。")
+        L.append("")
+        return L
+    L.append("## 📊 评分构成 (5 维拆解, 满分 100)")
+    L.append("")
+
+    def _pct_emoji(p):
+        if p >= 70: return "🟢"
+        if p >= 40: return "🟡"
+        return "🔴"
+
+    L += [
+        "| 维度 | 得分 | 满分 | 占比 | 包含的 10 维子项 |",
+        "|------|------|------|------|------------------|",
+    ]
+    for r in info["rows"]:
+        # 子维展开: "趋势 1 + 动量 1 + 筹码 4" 形式; 缺失子维标 "—"
+        dim_parts = []
+        for d_key, d_val in r["dims"].items():
+            d_lab = _BREAKDOWN_DIM_LABELS.get(d_key, d_key)
+            if d_val is None:
+                dim_parts.append(f"{d_lab} —(缺失按 50% 中性)")
+            else:
+                dim_parts.append(f"{d_lab} {d_val}")
+        dims_str = " + ".join(dim_parts)
+        L.append(f"| {_pct_emoji(r['pct'])} **{r['label']}** "
+                 f"| **{r['score']}** | {r['max']} | {r['pct']:.1f}% | {dims_str} |")
+    t = info["total"]
+    L.append(f"| **综合** | **{t['score']}** | **{t['max']}** | "
+             f"**{t.get('pct', 0):.1f}%** | 5 维之和 |")
+    L.append("")
+    L.append(f"> 📐 **维度定义** (5 维聚合规则, 与 v2 10 维口径一致):")
+    L.append("> • **技术** = 趋势 + 动量 + 筹码 (max 28)")
+    L.append("> • **资金** = 资金流 + 龙虎榜 (max 25)")
+    L.append("> • **估值** = 估值 + 估值分位 + 申万稳定 (max 29)")
+    L.append("> • **情绪** = 概念/北向情绪 (max 8)")
+    L.append("> • **风险** = 市值/PE/解禁 (max 10)")
+    L.append("")
+    return L
+
+
+# ============================================================
 # 痛 6 修法 (报告质量债 2.0 批次 A): ISO 时间戳 → 股民易读格式
 # ============================================================
 # 输入: ISO 时间字符串如 "2026-09-13T21:50:09+08:00"
@@ -263,6 +412,10 @@ def write_markdown_report_v3(r: dict) -> str:
         f"| {(pe_pct if pe_pct is not None else 0):.1f}% | {peg_str} |",
         "",
     ]
+    # ================= 痛 7 (报告质量债 2.0 批次 C, 2026-09-14): 评分构成 简版 =================
+    # 位置: 30 秒决策卡 7 列大表后, 三价位前 (简版唯一暴露位置, 一行汇总 + 占比)
+    L += _scoring_breakdown_md_compact(r.get("scoring_breakdown"))
+
     # 三价位 4 行大表 (支撑/压力/止损/现价, emoji 颜色)
     # P0-A 规范整改 (2026-09-11): 报告层同步"支撑下沿/压力上沿"新命名 + 规则文档引用
     L.append("### 🎯 三价位（V2 同源实时模型 · 支撑下沿/压力上沿）")
@@ -997,6 +1150,10 @@ def write_markdown_report_v3(r: dict) -> str:
         L.append("")
 
     # --- 因子明细 (V2) ---
+    # ================= 痛 7 (报告质量债 2.0 批次 C, 2026-09-14): 评分构成 完整版 =================
+    # 位置: 10 因子打分明细之前, 给读者先看 5 维聚合, 再看 10 维明细
+    L += _scoring_breakdown_md_full(r.get("scoring_breakdown"))
+
     L.append("## 🔬 10 因子打分明细")
     L += [
         "",
