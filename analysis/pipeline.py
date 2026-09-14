@@ -66,6 +66,7 @@ from analysis.data_fetcher import (
 )
 from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
+from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 
 # V2 同源复用 (只读引用, 不修改 v2)
 import quant_analyzer_v2 as v2  # noqa: E402
@@ -318,40 +319,6 @@ def _restore_v2(saved: dict):
 # _short_iso 已抽到 analysis.utils (P2-A Phase 5)
 # - v3 顶部 from analysis.utils import _short_iso 透传
 # ============================================================
-def _latest_trading_day() -> date:
-    """最新交易日估计: 周末→上周五; 工作日 9:30 前→上一工作日 (节假日不在库, 仅提示)。"""
-    now = datetime.now()
-    d = now.date()
-    if now.weekday() >= 5:                     # 周六/周日 → 上周五
-        d = d - timedelta(days=now.weekday() - 4)
-    elif now.time() < dtime(9, 30):            # 开盘前 → 上一工作日
-        d = d - timedelta(days=1)
-        while d.weekday() >= 5:
-            d = d - timedelta(days=1)
-    return d
-
-
-def _kline_freshness(chip_data: dict) -> dict:
-    """K线最后 bar vs 最新交易日 → ok / warn / na。"""
-    exp = _latest_trading_day().isoformat()
-    last_bar = None
-    note = ""
-    if chip_data and isinstance(chip_data, dict) and "error" not in chip_data:
-        klines = chip_data.get("kline") or []
-        if klines:
-            last_bar = str(klines[-1].get("date", ""))[:10]
-        if not last_bar:
-            last_bar = str(chip_data.get("window_end", ""))[:10] or None
-    if not last_bar:
-        err = (chip_data or {}).get("error", "无K线数据")
-        return {"last_bar": None, "expected": exp, "level": "na",
-                "text": f"无K线(筹码模块失败: {err}), 无法校验K线时点"}
-    if last_bar >= exp:
-        return {"last_bar": last_bar, "expected": exp, "level": "ok",
-                "text": f"K线最后交易日 {last_bar} 已到最新交易日, 新鲜"}
-    return {"last_bar": last_bar, "expected": exp, "level": "warn",
-            "text": f"K线停在 {last_bar}, 最新交易日 {exp} — 若为法定节假日/周末属正常, 否则需关注数据延迟"}
-
 
 def _retry_call(label: str, fn, *args, tries: int = 3, timeout: int = 60, **kw) -> tuple:
     """调用带重试(时间盒 tries 次), 返回 (值, 实际尝试次数, 状态串)。"""
