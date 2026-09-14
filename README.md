@@ -1,44 +1,118 @@
-<p align="center"><b>简体中文</b> | <a href="README_en.md">English</a></p>
+<p align="center"><b>简体中文</b> · <a href="README_en.md" title="English translation pending — PRs welcome">English</a></p>
 
 <h1 align="center">a-stock-data</h1>
 
 <p align="center">
-  <b>A 股全栈数据工具包 — 11 层架构 · 54 个端点 · 19 个数据源 · 零鉴权</b>
+  <b>A 股全栈数据工具包 — 11 层架构 · 54 端点 · 19 数据源 · 零鉴权 · V3 报告层 · CLI 量化分析器</b>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white" alt="Python">
-  <a href="https://github.com/simonlin1212/a-stock-data/stargazers"><img src="https://img.shields.io/github/stars/simonlin1212/a-stock-data?style=social" alt="Stars"></a>
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white" alt="Python">
+  <a href="https://github.com/Swartea/a-stock-data/stargazers"><img src="https://img.shields.io/github/stars/Swartea/a-stock-data?style=social" alt="Stars"></a>
   <br>
   <img src="https://img.shields.io/badge/layers-11-2ea44f.svg" alt="Layers">
   <img src="https://img.shields.io/badge/endpoints-54-2ea44f.svg" alt="Endpoints">
   <img src="https://img.shields.io/badge/sources-19-2ea44f.svg" alt="Sources">
   <img src="https://img.shields.io/badge/auth-zero-success.svg" alt="Zero Auth">
+  <img src="https://img.shields.io/badge/report-V3-informational.svg" alt="V3 Report Layer">
+  <img src="https://img.shields.io/badge/CLI-da--a--analyze-blue.svg" alt="CLI">
+  <img src="https://img.shields.io/badge/sample%20reports-4-success.svg" alt="Sample Reports">
 </p>
 
 <p align="center">
-  <a href="#架构">架构</a> ·
+  <a href="#核心能力">核心能力</a> ·
   <a href="#快速开始">快速开始</a> ·
+  <a href="#实战演示">实战演示</a> ·
+  <a href="#架构">架构</a> ·
   <a href="#54-个端点能力清单">端点清单</a> ·
   <a href="#使用示例">使用示例</a> ·
   <a href="#faq">FAQ</a> ·
   <a href="./CHANGELOG.md">更新日志</a>
 </p>
 
-一个自包含的 Skill 文件，把分散在 19 个数据源里的 A 股原始数据整合成 AI 编程助手直接能用的工具集。你不用再背 mootdx 的 K 线参数、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权——全部封装好了。主源被封还有「备用源速查」可降级。
+一个自包含的 Skill 文件 + 一套报告渲染工具链，把分散在 19 个数据源里的 A 股原始数据整合成 AI 编程助手直接能用的工具集，再加 V3 量化分析器一键出个股决策报告。你不用再背 mootdx 的 K 线参数、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权——全部封装好了。主源被封还有「备用源速查」可降级。
 
-> 兼容 [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw)
+> 兼容 [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw) · Cursor · Hermes · WorkBuddy · Doubao · Coze
 >
-> Skill 文件本质是结构化 Markdown + 内嵌 Python，任何支持上下文注入的 AI 编程助手都能用。
+> 数据层（SKILL.md）本质是结构化 Markdown + 内嵌 Python；报告层是 `da-a-analyze` CLI + HTML/DOCX 渲染管线。任何支持上下文注入的 AI 编程助手都能用，任何机器装上 Python 3.10+ 也能独立跑。
 
 ---
 
-## 作者正在寻找工作机会
+## 核心能力
 
-作者目前关注腾讯等大型科技企业在深圳的 AI 相关岗位，希望加入一支热爱 AI 开发的团队，继续从事 AI / Agent 产品开发、应用落地及 AI 咨询工作。
+| 你想做的事 | 怎么用 |
+|---|---|
+| **一键出个股决策报告**（基本面+技术面+资金面+筹码+估值+宏观，HTML/DOCX 双格式） | `da-a-analyze 002353` → `reports/002353_杰瑞股份/` 下生成报告目录 |
+| **批量对比** N 只股票横向排列 | `da-a-analyze --compare 600519,000858,601318` |
+| **让 AI 助手帮你查/分析** | 装 SKILL.md → 一句「帮我看看 688017 的估值」自动激活 |
+| **直接拿原始数据写自己的策略** | SKILL.md 内嵌 Python 段落可单独复制，零中间封装 |
+| **主源被封时** | SKILL.md「备用源速查 & 降级策略」章节给出每类数据的独立备胎（沪深交易所官方 / 新浪 / HKEX） |
 
-联系：[simonlin0423@gmail.com](mailto:simonlin0423@gmail.com)
+---
+
+## 快速开始
+
+两条路径，选一条：
+
+### 路径 A · 5 分钟看报告（推荐先走这条）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/Swartea/a-stock-data.git
+cd a-stock-data
+
+# 2. 创建虚拟环境并安装（以 pyproject.toml 为单一可信源）
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+
+# 3. 一句话出报告
+da-a-analyze 002353
+# 报告目录: reports/002353_杰瑞股份/{timestamp}/
+#           ├── report.html          ← 浏览器直接打开
+#           ├── report.docx          ← Word 可编辑
+#           └── report.md            ← 源 markdown
+```
+
+4 只样本票（实盘验证）已存在 `reports/`，跑完后可直接对照：
+
+- `reports/002353_杰瑞股份/` · `reports/600693_东百集团/` · `reports/603319_美湖股份/` · `reports/605162_新中港/`
+
+### 路径 B · 装成 AI 编程助手 Skill
+
+```bash
+# 1. 创建 skill 目录
+mkdir -p ~/.claude/skills/a-stock-data
+
+# 2. 把 SKILL.md 放进去
+curl -o ~/.claude/skills/a-stock-data/SKILL.md \
+  https://raw.githubusercontent.com/Swartea/a-stock-data/main/SKILL.md
+
+# 3. 安装依赖（SKILL.md 运行时需要的最小集合）
+pip install mootdx requests beautifulsoup4 lxml baostock python-docx openpyxl
+```
+
+启动 Claude Code（或 Codex / OpenClaw / Cursor 等），说一句「帮我看看 688017 的估值」，自动激活。
+
+> **Codex / OpenClaw / Cursor / Hermes / WorkBuddy / Doubao / Coze 用户：** 把 SKILL.md 的内容贴入你的系统 prompt 或项目上下文文件即可，内嵌的 Python 代码可直接执行。
+
+---
+
+## 实战演示
+
+`reports/` 目录下 4 只样本票由 V3 量化分析器实跑产出，每只都是「真实数据 + 真实决策」：
+
+| 票名 | 代码 | 跑报告命令 | 报告维度（11 层全覆盖） |
+|---|---|---|---|
+| 杰瑞股份 | 002353 | `da-a-analyze 002353` | K 线/估值/资金/筹码/板块/研报/公告/新闻/财务/风险/宏观 |
+| 东百集团 | 600693 | `da-a-analyze 600693` | 同上 |
+| 美湖股份 | 603319 | `da-a-analyze 603319` | 同上 |
+| 新中港 | 605162 | `da-a-analyze 605162` | 同上 |
+
+每个报告目录包含 HTML（浏览器可视化）/ DOCX（Word 可编辑 / 转发）/ MD（源 markdown，方便二次处理）三套产物。
+
+> 报告层 V3 基于 SKILL.md 数据层 —— 11 层 × 54 端点 × 19 数据源全部可调，决策结论的每一条都能追溯到原始数据源和抓取时刻。
 
 ---
 
@@ -67,27 +141,7 @@ A 股全栈数据 · 十一层架构 · V3.7.2
 
 > ★V3.4 十一层之外另附**备用源速查 & 降级策略**：沪深交易所官方 + 新浪 + HKEX——龙虎榜/资金流/公告官方备胎函数 + 各层降级速查表，主源被封时用（见 SKILL.md 对应章节）。
 
----
-
-## 快速开始
-
-**3 步，2 分钟。**
-
-```bash
-# 1. 创建 skill 目录
-mkdir -p ~/.claude/skills/a-stock-data
-
-# 2. 把 SKILL.md 放进去
-curl -o ~/.claude/skills/a-stock-data/SKILL.md \
-  https://raw.githubusercontent.com/simonlin1212/a-stock-data/main/SKILL.md
-
-# 3. 安装依赖（V3.0 不再需要 akshare）
-pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
-```
-
-启动 Claude Code，说一句「帮我看看 688017 的估值」，自动激活。
-
-> **Codex / OpenClaw 用户：** 把 SKILL.md 的内容贴入你的系统 prompt 或项目上下文文件即可，内嵌的 Python 代码可直接执行。
+> ★V3.7.2 era 在数据层之上新增**报告层 V3**（`analysis/`）：量化分析器 da-a-analyze CLI、HTML/DOCX/MD 三格式报告渲染、Section Registry 模板系统，详见 [docs/01-策划方案.md](./docs/01-策划方案.md)。
 
 ---
 
@@ -252,6 +306,22 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | **行业变迁** | 「000001 在 2016 年属于哪个申万行业，跟现在一样吗」 |
 | **宏观环境** | 「最新社融和 PMI 什么水平，现在流动性是宽还是紧」 |
 
+### CLI 命令行（不依赖 AI 助手）
+
+```bash
+# 单票决策报告（HTML + DOCX + MD 三格式）
+da-a-analyze 002353
+
+# 批量对比
+da-a-analyze --compare 600519,000858,601318
+
+# 只看某一层（例如只看筹码和资金面）
+da-a-analyze 002353 --layers chip,fund
+
+# 报告保存路径自定义
+da-a-analyze 002353 --output-dir ./my_reports/
+```
+
 ### 内置 4 套调研流程
 
 | 流程 | 做什么 | 耗时 |
@@ -262,7 +332,6 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | 新标的调研 | 机构覆盖 → 估值 → 概念板块 → 资金流向 → 龙虎榜 → 解禁 → 两融 | 1 分钟 |
 
 ---
-
 
 ## V3.7 亮点
 
@@ -279,6 +348,15 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 
 > ⚠️ **新增依赖：** `numpy baostock xlrd openpyxl`。baostock 是 TCP 客户端库（免注册免 key），
 > **不支持北交所** —— 4/8/92/920 号段会被服务端拒绝，本工具包在登录前就拦截并抛 `ValueError`。
+
+### V3.7.1 / V3.7.2 补丁
+
+| 版本 | 修了什么 | 影响面 |
+|---|---|---|
+| **v3.7.2** | `_natural_market()` / `_anomaly_market()` 与 `get_prefix()` 北交所号段判定统一为 `4/8/92` 三前缀 | 不改变现有标的判定结果；修一致性，让 921 段启用后不必再改 |
+| **v3.7.1** | `get_prefix()` 新增 `.SH/.SZ/.BJ` 后缀识别 | 修复 `000016.SH` 被静默路由到深市的严重错票问题（21/21 回归通过） |
+
+完整 changelog 见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -309,6 +387,14 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 ---
 
 ## FAQ
+
+**按主题分组：**
+
+- **代码与工具链** —— [Q3 SKILL.md 太大费 token？](#q-skillmd-太大agent-每次加载很费-token) · [Q8 iwencai 401？](#q-iwencai-返回-401) · [Q13 不用 Claude Code 能用吗？](#q-不用-claude-代码能用吗)
+- **数据源相关** —— [Q1 北交所](#q-查北交所股票拿不到研报--行情价格明显不对) · [Q2 传 SH600519 查不到数据？](#q-传-sh600519--600519sh-查不到数据) · [Q4 东财 403？](#q-东财接口-403--连接重置是被封了怎么办) · [Q5 财联社下线了吗？](#q-财联社快讯不是-v32-标注下线了吗) · [Q6 mootdx 停更了？](#q-mootdx-库听说停更了还能用吗) · [Q7 mootdx/httpx 冲突？](#q-pip-install-mootdx-把-httpx-降到-0252和-mcp要-httpx0271冲突-30) · [Q9 mootdx 和腾讯有什么区别？](#q-mootdx-和腾讯有什么区别) · [Q10 海外服务器 mootdx 超时？](#q-在海外服务器跑mootdx-超时) · [Q12 akshare 移除原因？](#q-v30-为什么移除-akshare) · [Q14 行业板块为什么换东财？](#q-行业板块为什么从同花顺换成东财) · [Q17 北向资金历史只有几天？](#q-北向资金历史只有几天)
+- **字段与数据细节** —— [Q11 腾讯 API 字段 43？](#q-腾讯-api-字段-43-是-pb-吗) · [Q15 同花顺热点 reason 为空？](#q-同花顺热点-reason-字段为空) · [Q16 百度 ResultCode 不稳定？](#q-百度股市通-resultcode-不稳定) · [Q18 东财资金流偶尔空？](#q-东财资金流个股新闻偶尔返回空或-http-000-18)
+
+---
 
 **Q: 查北交所股票拿不到研报 / 行情价格明显不对？**
 北交所老号段（`43x`/`83x`/`87x`）已基本作废。2026-07-31 实测：在市 342 只中 **336 只已迁至 `920xxx`**（锦波生物 `832982`→`920982`、贝特瑞 `835185`→`920185`）。老码最坑的地方是**不报错**——东财研报静默返回 0 篇（看着像"这票没研报"），腾讯行情返回定格在迁移日的**僵尸报价**（成交量 0，与真实价差 17%~100%+）。V3.6.0 起：`tencent_quote()` 返回 `is_stale` / `stale_reason` 标志，`eastmoney_reports()` 遇老码直接抛 `ValueError` 而不是返回空。**拿新码**：用 push2 北交所全量清单 `fs=m:0+t:81+s:2048` 按名称反查。
@@ -364,7 +450,7 @@ akshare 本质是对东财/同花顺/新浪等公开 API 的封装，中间层�
 V2.1 改为本地自缓存。每次调用自动积累，越跑越丰富。首次运行只有当天数据。
 
 **Q: 不用 Claude Code，能用吗？**
-能。SKILL.md 本质是 Markdown + 内嵌 Python 代码。Codex、OpenClaw 或任何 AI 编程助手都能读取。你也可以直接把 Python 代码段复制出来在自己的脚本里跑。
+能。SKILL.md 本质是 Markdown + 内嵌 Python 代码。Codex、OpenClaw、Cursor、Hermes、WorkBuddy、Doubao、Coze 或任何 AI 编程助手都能读取。报告层 `da-a-analyze` CLI 更不依赖 AI 助手——装好 Python 3.10+ 即可直接跑。
 
 ---
 
@@ -388,12 +474,20 @@ V2.1 改为本地自缓存。每次调用自动积累，越跑越丰富。首次
   <a href="https://buymeacoffee.com/simonlin1212"><img src="./assets/bmc-qr.png" width="180" alt="Buy Me a Coffee"></a>
 </p>
 
-> 想要什么数据端点？欢迎开 [Issue](https://github.com/simonlin1212/a-stock-data/issues) 提需求，赞助者的 Issue 优先处理。
+> 想要什么数据端点？欢迎开 [Issue](https://github.com/Swartea/a-stock-data/issues) 提需求，赞助者的 Issue 优先处理。
+
+---
+
+## 关于原作者
+
+本仓库基于 [simonlin1212/a-stock-data](https://github.com/simonlin1212/a-stock-data) V3.7.2 数据层进行二次开发，V3 报告层（`analysis/`）+ 量化分析器 CLI 由当前维护者在 V3.7 数据层之上增量构建。
+
+原作者 Simon 林正在寻找工作机会，关注腾讯等大型科技企业在深圳的 AI 相关岗位，希望加入一支热爱 AI 开发的团队，继续从事 AI / Agent 产品开发、应用落地及 AI 咨询工作。
+
+联系（原作者）：[simonlin0423@gmail.com](mailto:simonlin0423@gmail.com) · X [@linsizhen](https://x.com/linsizhen)
 
 ---
 
 ## License
 
 [Apache License 2.0](./LICENSE) — 自由使用，注明出处即可。
-
-**作者：** Simon 林 · X [@linsizhen](https://x.com/linsizhen) · 邮箱：[simonlin0423@gmail.com](mailto:simonlin0423@gmail.com)
