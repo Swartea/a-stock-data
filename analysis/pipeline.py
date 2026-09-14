@@ -465,14 +465,17 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     q = base_result["quote"]; v = base_result["valuation"]
     score = base_result["score"]; score_total = score["total"]
     chip_data = base_result["chip_data"]
+    vh = base_result.get("valuation_hist") or {}
 
     # ---- 2. 三价位 (V2 同源模型: 腾讯实时价 + baostock 筹码K线, 债4) ----
     plan = v2._make_trading_plan(q, v, chip_data, score_total)
-    # ---- 2.1 多空状态机注入 (债 1 修法, Task 5.1) ----
-    # 在 trading_plan 上加 state + template_used 两个字段,
+    # ---- 2.1 多空状态机注入 (债 1 修法, Task 5.1 + 批次 E 痛 3 PE 旁路) ----
+    # 在 trading_plan 上加 state + template_used + state_after_pe_bypass + bypass_applied 字段,
     # 渲染层 (MD/HTML) 直接读 plan["template_used"] 即可, 不再各自写硬编码模板。
-    # P2-A Phase 2 整改: 5 状态机映射 + template_used 注入统一在 trading_plan 模块
-    inject_state_to_plan(plan, score_total) if plan else None
+    # 批次 E 痛 3: PE 分位 > 85% 时, 把 bullish/mild_bull 强切到 mild_bear/neutral
+    #            (防"PE 高估时给中性偏多"自相矛盾, 典型例子: 杰瑞 53 分 + PE 87.8%)
+    pe_pctile = vh.get("pe_percentile_3y")
+    inject_state_to_plan(plan, score_total, pe_pctile) if plan else None
     good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
 
     # ---- 2.2 三价位表 (债 2 修法, Task 5.2 + P0-A 规范整改, 2026-09-11): 支撑下沿/压力上沿 ----

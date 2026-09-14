@@ -300,9 +300,13 @@ def write_markdown_report_v3(r: dict) -> str:
     signals = r.get("signals") or {}
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # 决策状态 — 5 状态机 (债 1 修法, Task 5.1)；优先读 plan["state"]（trading_plan 注入），
-    # 兜底 _score_to_state()，再兜底 3 态旧逻辑（plan 缺失时）。
-    if plan and plan.get("state"):
+    # 决策状态 — 5 状态机 (债 1 修法, Task 5.1)；优先读 plan["state_after_pe_bypass"]（批次 E 痛 3 旁路后），
+    # 兜底 plan["state"]（原始）, 兜底 _score_to_state()。
+    # 批次 E 痛 3: PE 分位 > 85% 时, plan["state"] 会被压低到 plan["state_after_pe_bypass"]
+    if plan and plan.get("state_after_pe_bypass"):
+        state_key = plan["state_after_pe_bypass"]
+        state, state_icon = _STATE_DISPLAY.get(state_key, ("中性", "🟡"))
+    elif plan and plan.get("state"):
         state_key = plan["state"]
         state, state_icon = _STATE_DISPLAY.get(state_key, ("中性", "🟡"))
     else:
@@ -383,6 +387,23 @@ def write_markdown_report_v3(r: dict) -> str:
     # 综合判定行 (block + 强语气)
     L.append(f"> **{r['emoji']} {r['advice']}** ｜ 多空三态: **{state_icon} {state}** ｜ "
              f"综合评分 **{score_total}/100** ｜ 一句话: **{r.get('detail','')}**")
+    # 批次 E 痛 3: PE 旁路提示 (PE 分位 > 85% 时, 显示原状态 → 旁路后)
+    pe_pctile_val = (plan or {}).get("valuation_pctile") if plan else None
+    if pe_pctile_val is not None and pe_pctile_val > 85:
+        original_state_key = (plan or {}).get("state", "—")
+        original_state_label = _STATE_DISPLAY.get(original_state_key, ("—", ""))[0]
+        bypassed_label = state  # state 已经是旁路后
+        changed = (original_state_key != state_key)
+        if changed:
+            L.append(
+                f"> ⚠️ **PE 估值旁路 (批次 E 痛 3)**: PE 分位 {pe_pctile_val:.1f}% > 85%, "
+                f"原状态 `{original_state_key}` ({original_state_label}) → 强切到 `{state_key}` ({bypassed_label})"
+            )
+        else:
+            L.append(
+                f"> ⚠️ **PE 估值偏高 (批次 E 痛 3 提示)**: PE 分位 {pe_pctile_val:.1f}% > 85%, "
+                f"原状态已是 `{state_key}` ({bypassed_label}) (旁路无变化), 但操作仍按 PE 高估处理 — 严格止损, 不建议加仓"
+            )
     L.append("")
     # 核心指标 7 列大表 (1 屏读完所有核心数据)
     vh = r.get("valuation_hist") or {}
@@ -417,12 +438,13 @@ def write_markdown_report_v3(r: dict) -> str:
     L += _scoring_breakdown_md_compact(r.get("scoring_breakdown"))
 
     # 三价位 4 行大表 (支撑/压力/止损/现价, emoji 颜色)
-    # P0-A 规范整改 (2026-09-11): 报告层同步"支撑下沿/压力上沿"新命名 + 规则文档引用
-    L.append("### 🎯 三价位（V2 同源实时模型 · 支撑下沿/压力上沿）")
+    # 批次 E 痛 1 修法 (2026-09-14): 操作位 (3 候选距现价 5-25% 最近) + 参考位 (60 日极值) 分行显示
+    L.append("### 🎯 三价位（V2 同源实时模型 · 远/近期位分层）")
     L.append("")
-    L.append("> 📐 **命名约定** (P0-A 规范整改 v1.0): 支撑 = **支撑下沿** (4 候选最小, 过滤>1.05×价); "
-             "压力 = **压力上沿** (3 候选最大, 过滤<0.95×价); 允许跨现价 5% (与 §6 标准'最近'不同)。"
-             "完整规则+例子: `analysis/references/three-levels-rules.md`")
+    L.append("> 📐 **命名约定** (P0-A 规范整改 v1.0 + 批次 E 痛 1, 2026-09-14): "
+             "操作位 = 3 候选(ma60/chip_peak/boll) 距现价 5-25% 范围最近; "
+             "参考位 = 60 日最低/最高 (远端极值, 不筛选, 仅供参考, 不是操作位)。"
+             "完整规则: `analysis/references/three-levels-rules.md`")
     L.append("")
     if plan:
         tl3 = r.get("three_levels") or {}
@@ -431,18 +453,31 @@ def write_markdown_report_v3(r: dict) -> str:
         tl_sl = tl3.get("stop_loss") or plan.get("stop_loss")
         sup_cands = tl3.get("support_candidates") or {}
         res_cands = tl3.get("resistance_candidates") or {}
+        # 批次 E 痛 1: 操作位/参考位字段
+        sup_op_key = tl3.get("support_op_key", "—")
+        res_op_key = tl3.get("resistance_op_key", "—")
+        sup_recent_pct = tl3.get("support_recent_pct")
+        res_recent_pct = tl3.get("resistance_recent_pct")
+        sup_extreme = tl3.get("support_extreme")
+        res_extreme = tl3.get("resistance_extreme")
+        sup_extreme_label = tl3.get("support_extreme_label", "60日最低")
+        res_extreme_label = tl3.get("resistance_extreme_label", "60日最高")
         if tl_sup is not None and tl_res is not None:
-            # 4 行大表: 现价(参考) + 支撑下沿 + 压力上沿 + 止损, 距现价百分比
+            # 6 行大表: 现价 + 操作位(支撑/压力) + 参考位(支撑/压力) + 止损
             L += [
                 "| 价位 | 数值 | 距现价 | 来源 / 触发动作 |",
                 "|------|------|--------|---------------|",
                 f"| 💰 **现价** | **{price:.2f}** | 0% (参考) | 腾讯实时行情 (报告日 {r.get('report_date','')}) |",
-                f"| 🟢 **支撑位（支撑下沿）** | **{tl_sup:.2f}** | {(tl_sup-price)/price*100:+.1f}% | "
-                f"4 支撑候选最小 · 过滤>1.05×现价 · 60 日最低 {sup_cands.get('recent_low', 0):.2f} |",
-                f"| 🔴 **压力位（压力上沿）** | **{tl_res:.2f}** | {(tl_res-price)/price*100:+.1f}% | "
-                f"3 压力候选最大 · 过滤<0.95×现价 · 60 日最高 {res_cands.get('recent_high', 0):.2f} |",
+                f"| 🟢 **操作支撑位** | **{tl_sup:.2f}** | {(tl_sup-price)/price*100:+.1f}% | "
+                f"3 候选(ma60/chip_peak/boll) 距现价 5-25% 范围最近 · 当前来源: `{sup_op_key}` |",
+                f"| 🔴 **操作压力位** | **{tl_res:.2f}** | {(tl_res-price)/price*100:+.1f}% | "
+                f"3 候选(ma250/boll_upper/recent_high) 距现价 5-25% 范围最近 · 当前来源: `{res_op_key}` |",
+                f"| 📌 **参考支撑位** ({sup_extreme_label}) | **{sup_extreme:.2f}** | {(sup_extreme-price)/price*100:+.1f}% | "
+                f"远端极值, 不作为操作依据 (仅作'如果跌穿 X 形态破位'的参考线) |" if sup_extreme else "| 📌 参考支撑位 | — | — | 60日数据不足 |",
+                f"| 📌 **参考压力位** ({res_extreme_label}) | **{res_extreme:.2f}** | {(res_extreme-price)/price*100:+.1f}% | "
+                f"远端极值, 不作为操作依据 (仅作'如果涨穿 X 形态突破'的参考线) |" if res_extreme else "| 📌 参考压力位 | — | — | 60日数据不足 |",
                 f"| 🟡 **止损位** | **{tl_sl:.2f}** | {(tl_sl-price)/price*100:+.1f}% | "
-                f"复用 trading_plan.stop_loss (V2 同源) · 5 状态机锁定 · 跌破必走 |",
+                f"{'复用 trading_plan.stop_loss' if tl3.get('stop_loss_method') == 'trading_plan' else '强切到 支撑×0.97 (防 V2 止损过紧倒挂)'} · 5 状态机锁定 · 跌破必走 |",
                 "",
             ]
             # 候选明细 (次要信息, blockquote 折叠)

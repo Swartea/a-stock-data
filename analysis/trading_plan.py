@@ -26,6 +26,18 @@ _THRESHOLDS = (
     (35, "mild_bear"),     # 轻空 (35-44)
 )
 
+# 批次 E 痛 3: PE 分位旁路阈值
+# 当估值分位 (3 年 PE 分位) > 此值时, 强切状态机: 不允许 bullish/mild_bull
+PE_PCTL_BYPASS_THRESHOLD = 85  # 估值分位 > 85% 触发旁路 (防"PE 高估时给中性偏多"自相矛盾)
+
+# 批次 E 痛 3: 旁路映射
+# 估值高估时, 把"看多"压低到"中性", "轻多"压低到"中性"
+_PE_BYPASS_DOWNGRADE = {
+    "bullish": "mild_bear",    # 看多 → 轻空 (估值已极贵)
+    "mild_bull": "neutral",    # 轻多 → 中性 (估值偏高, 减仓为主)
+    # neutral / mild_bear / bearish 保持原状
+}
+
 
 def score_to_state(score: Any) -> str:
     """综合评分 → 多空状态映射 (5 状态机, 债 1 修法, Task 5.1 锁定)。
@@ -54,17 +66,46 @@ def _score_to_state(score: Any) -> str:
     return score_to_state(score)
 
 
-def inject_state_to_plan(plan: Dict[str, Any], score: Any) -> Dict[str, Any]:
-    """5 状态机注入到 trading_plan 字典 (P1-B/P1-D 配套, 债 1 修法)。
+def apply_pe_pctl_bypass(state: str, valuation_pctile: Optional[float]) -> str:
+    """批次 E 痛 3: PE 分位旁路 (防 PE 高估时给中性偏多自相矛盾)
 
-    在 trading_plan 上加 2 字段:
-        state:         5 状态机 key (bullish/mild_bull/neutral/mild_bear/bearish)
-        template_used: 对应状态的"结论+操作+风险"三段模板 (from OPERATION_TEMPLATES),
-                       用 {score}/{stop_loss}/... 占位符 .format() 注入
+    当估值分位 (3 年 PE 分位) > 85% 时, 强切状态机:
+      - bullish → mild_bear (估值已极贵, 不允许看多)
+      - mild_bull → neutral (估值偏高, 减仓为主)
+      - neutral / mild_bear / bearish 保持原状
 
     入参:
-        plan:  V2 _make_trading_plan 返回的字典
+        state: 5 状态机 key
+        valuation_pctile: PE 分位百分数 (0-100), None 表示缺失
+
+    返回: 旁路后状态 (可能等于入参, 表示无旁路)
+    """
+    if valuation_pctile is None:
+        return state
+    try:
+        pct = float(valuation_pctile)
+    except (TypeError, ValueError):
+        return state
+    if pct <= PE_PCTL_BYPASS_THRESHOLD:
+        return state
+    # 触发旁路
+    return _PE_BYPASS_DOWNGRADE.get(state, state)
+
+
+def inject_state_to_plan(plan: Dict[str, Any], score: Any,
+                          valuation_pctile: Optional[float] = None) -> Dict[str, Any]:
+    """5 状态机注入到 trading_plan 字典 (P1-B/P1-D 配套, 债 1 修法 + 批次 E 痛 3 PE 旁路)。
+
+    在 trading_plan 上加 4 字段:
+        state:         5 状态机 key (bullish/mild_bull/neutral/mild_bear/bearish) — 原始
+        state_after_pe_bypass: 旁路后状态 (PE 分位 > 85% 时压低; 否则 = state)
+        bypass_applied: bool, 是否触发了 PE 旁路
+        template_used: 对应 state_after_pe_bypass 的"结论+操作+风险"三段模板
+
+    入参:
+        plan: V2 _make_trading_plan 返回的字典
         score: 综合评分 (会原样注入到 template_used 的 {score} 占位符)
+        valuation_pctile: PE 分位百分数 (0-100), 缺省 None 不旁路
 
     返回: 同一 plan 字典 (in-place 改 + 返回, 链式调用友好)
 
@@ -73,9 +114,18 @@ def inject_state_to_plan(plan: Dict[str, Any], score: Any) -> Dict[str, Any]:
     if not plan:
         return plan
     state = score_to_state(score)
+    # 批次 E 痛 3: PE 分位旁路
+    state_after_bypass = apply_pe_pctl_bypass(state, valuation_pctile)
+    bypass_applied = (state_after_bypass != state)
+
     plan["state"] = state
+    plan["state_after_pe_bypass"] = state_after_bypass
+    plan["bypass_applied"] = bypass_applied
+    if valuation_pctile is not None:
+        plan["valuation_pctile"] = valuation_pctile
+    # template_used 用旁路后状态
     try:
-        plan["template_used"] = OPERATION_TEMPLATES[state].format(
+        plan["template_used"] = OPERATION_TEMPLATES[state_after_bypass].format(
             score=score,
             stop_loss=plan.get("stop_loss", "—"),
             stop_loss_pct=plan.get("stop_loss_pct", "—"),
@@ -84,7 +134,7 @@ def inject_state_to_plan(plan: Dict[str, Any], score: Any) -> Dict[str, Any]:
         )
     except (KeyError, IndexError):
         # 模板占位符不全时, 降级用未格式化的模板 (保留状态名信息)
-        plan["template_used"] = OPERATION_TEMPLATES[state]
+        plan["template_used"] = OPERATION_TEMPLATES[state_after_bypass]
     return plan
 
 
