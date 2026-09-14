@@ -10,20 +10,14 @@ authors = [
 ]
 keywords = ["quant", "a-stock", "report", "valuation", "multi-factor"]
 
-# 显式声明包 (§2 模块边界 + setuptools 自动发现需要)
-[tool.setuptools]
-packages = ["analysis"]
-
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
-
-# 运行时依赖 (按 venv 实际装的列表 + 已探明的版本范围)
+# 运行时依赖 (必须属于 [project]；否则 pip install -e . 不会安装)
 dependencies = [
     "requests>=2.30,<3.0",
     "beautifulsoup4>=4.12,<5.0",
     "lxml>=5.0,<7.0",
     "openpyxl>=3.1,<4.0",
+    "numpy>=1.24,<3.0",
+    "pandas>=2.0,<3.0",
     "baostock>=1.0,<2.0",        # K 线 (前复权, V2 筹码)
     "mootdx>=0.10,<1.0",         # 通达信本地行情 (备用)
     "python-docx>=1.1,<2.0",     # DOCX 渲染
@@ -44,6 +38,14 @@ dev = [
 
 [project.scripts]
 da-a-analyze = "analysis.quant_analyzer_v3:main"
+
+# 自动发现 analysis 下的子包，避免 wheel/正式安装漏掉 analysis.sections.*
+[tool.setuptools.packages.find]
+include = ["analysis*"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 # ============================================================
 # pytest 配置
