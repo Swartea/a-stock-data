@@ -42,7 +42,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lint-diagnostics
-          path: reports/ruff.txt
+          path: |
+            reports/ruff.txt
+            analysis/pipeline.py
           retention-days: 7
 
       - name: Black --check
