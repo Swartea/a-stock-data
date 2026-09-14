@@ -1,0 +1,75 @@
+name: Phase0 Pipeline Patch
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  patch-pipeline:
+    if: github.head_ref == 'phase0-ci-stabilization'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Apply exact Phase 0 pipeline patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('analysis/pipeline.py')
+          text = path.read_text(encoding='utf-8')
+
+          old_import = 'from datetime import datetime, date, timedelta'
+          new_import = 'from datetime import date, datetime, time as dtime, timedelta'
+          if old_import in text:
+              if text.count(old_import) != 1:
+                  raise SystemExit(f'unexpected datetime import count: {text.count(old_import)}')
+              text = text.replace(old_import, new_import, 1)
+          elif new_import not in text:
+              raise SystemExit('expected datetime import not found')
+
+          block = '''# P0-B 规范整改 (2026-09-11, 规范 §4): 统一 fetcher 返回契约
+          # (与 v3 line 50-64 镜像, 让 _call_new 内 status_of() 等可用)
+          try:
+              from fetcher_contract import (
+                  status_of, is_error as _is_error_fc, is_ok, is_empty, is_unsupported,
+                  from_legacy as _from_legacy,
+                  STATUS_OK, STATUS_EMPTY, STATUS_ERROR, STATUS_UNSUPPORTED,
+              )
+              _HAS_FETCHER_CONTRACT = True
+          except Exception:  # noqa: BLE001
+              _HAS_FETCHER_CONTRACT = False
+              # 兜底: 保持老 ad-hoc 检测逻辑
+              def status_of(blob):
+                  if isinstance(blob, dict) and "error" in blob and isinstance(blob["error"], str):
+                      return "error"
+                  return "ok"
+
+          '''
+          count = text.count(block)
+          if count == 2:
+              first = text.find(block)
+              second = text.find(block, first + len(block))
+              text = text[:second] + text[second + len(block):]
+          elif count != 1:
+              raise SystemExit(f'unexpected fetcher_contract block count: {count}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit only if changed
+        run: |
+          if git diff --quiet -- analysis/pipeline.py; then
+            echo "pipeline.py already patched"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add analysis/pipeline.py
+          git commit -m "fix: repair pipeline import and duplicate contract block"
+          git push origin HEAD:${{ github.head_ref }}
