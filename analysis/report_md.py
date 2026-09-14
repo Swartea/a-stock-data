@@ -27,6 +27,7 @@
 """
 
 import os
+import re as _re
 import sys
 from datetime import datetime, date
 from typing import Optional
@@ -109,6 +110,34 @@ def _src_foot(lab: str, extra: Optional[dict] = None) -> str:
 
 
 # ============================================================
+# 痛 6 修法 (报告质量债 2.0 批次 A): ISO 时间戳 → 股民易读格式
+# ============================================================
+# 输入: ISO 时间字符串如 "2026-09-13T21:50:09+08:00"
+# 输出: "2026-09-13（周日）21:50" (中文括号 + 24h 时间)
+# 失败时降级回原 ISO 字符串 (不崩, 保证 docx/html 链路过)
+_WEEK_CN = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+_FMT_GEN_TIME_RE = _re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2})?(?:[+-]\d{2}:?\d{2})?$"
+)
+
+
+def fmt_gen_time(iso_str: str) -> str:
+    """ISO 时间戳 → 2026-09-13（周日）21:50 格式 (痛 6 修法, 批次 A)。"""
+    if not iso_str:
+        return iso_str or ""
+    s = str(iso_str).strip()
+    m = _FMT_GEN_TIME_RE.match(s)
+    if not m:
+        return s  # 降级: 解析失败回原值
+    y, mo, d, hh, mi = m.groups()
+    try:
+        wd = date(int(y), int(mo), int(d)).weekday()  # 0=周一 6=周日
+        return f"{y}-{mo}-{d}（{_WEEK_CN[wd]}）{hh}:{mi}"
+    except Exception:  # noqa: BLE001
+        return s  # 降级: 日期无效回原值
+
+
+# ============================================================
 # V3 Markdown 报告 — 结论前置 + 新6块 + 检查清单 + 风险警报区 + V2 保留块
 # ============================================================
 def write_markdown_report_v3(r: dict) -> str:
@@ -153,6 +182,7 @@ def write_markdown_report_v3(r: dict) -> str:
     failed_key = [(k, src_status.get(k, "—")) for k in KEY_SRCS if "error" in str(src_status.get(k, "ok"))]
     failed_incr = [(k, src_status.get(k, "—")) for k in INCR_SRCS if "error" in str(src_status.get(k, "ok"))]
     gen_time = rl.get("finished_at") or datetime.now().astimezone().isoformat(timespec="seconds")
+    gen_time = fmt_gen_time(gen_time)  # 痛 6: ISO → "2026-09-13（周日）21:50"
     guard = rl.get("guard") or {}
     kf = guard.get("kline_freshness")
     # kf 可能是 dict (旧) 或 str (新); 提取 last_bar
@@ -456,6 +486,25 @@ def write_markdown_report_v3(r: dict) -> str:
     else:
         L.append("- [ ] ⚠️ 无三价位, 检查清单不可用, 观望为主")
     L.append("")
+
+    # ================= 痛 8 (报告质量债 2.0 批次 A): 简版(口袋版) vs 完整版 =================
+    # 默认: 简版 — 30秒决策卡 + 三价位 + 操作口诀 + 风险警报 = "口袋版" (看完即决策)
+    # 开关: r.get("_md_full", False) 触发完整版 (含 6 块 + V2 保留块 + Section Registry + 链路记录)
+    # 职责分工: 完整内容进 HTML (html_report_v3.py 不动); markdown 走"看完即决策"路径
+    # 注: 现有 pipeline.py:638 默认调用无 _md_full, 自动得到简版 markdown,
+    #     docx 走同一份 markdown → 简版 docx 也满足"口袋版"诉求
+    if not r.get("_md_full", False):
+        L += [
+            "---",
+            "",
+            "📎 **完整报告**: 研报 / 公告 / 财务 / 同业 / 资金面 / 新闻 / 筹码 / 估值历史 / 龙虎榜 / "
+            "因子明细 / 数据链路 → 看 `*-v3-*.html` 报告",
+            "",
+            "⚠️ 免责声明: 本报告基于公开数据的多因子量化模型生成, 不构成投资建议。"
+            f" 数据时点 {now}, 市场随时变化, 请独立判断。",
+            "",
+        ]
+        return "\n".join(L)
 
     # ================= 6 块新内容 =================
     L.append("---")
