@@ -1,0 +1,61 @@
+name: phase1b-wire-helpers
+
+on:
+  push:
+    branches: [phase0-ci-stabilization]
+    paths:
+      - .github/workflows/phase1b-wire-helpers.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase0-ci-stabilization
+          fetch-depth: 0
+
+      - name: Wire helpers into pipeline
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('analysis/pipeline.py')
+          text = path.read_text(encoding='utf-8')
+
+          anchor = 'from analysis.report_md import write_markdown_report_v3\n'
+          import_line = 'from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness\n'
+          if import_line not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'import anchor count != 1: {text.count(anchor)}')
+              text = text.replace(anchor, anchor + import_line, 1)
+
+          pattern = re.compile(
+              r'\ndef _latest_trading_day\(\) -> date:.*?\n\ndef _retry_call',
+              re.S,
+          )
+          text, count = pattern.subn('\n\ndef _retry_call', text, count=1)
+          if count != 1:
+              raise SystemExit(f'helper block match count != 1: {count}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate minimal diff
+        run: |
+          git diff --check
+          git diff -- analysis/pipeline.py
+          python -m py_compile analysis/pipeline.py analysis/orchestration/helpers.py
+
+      - name: Commit patch
+        run: |
+          git config user.name "Swartea"
+          git config user.email "131281605+Swartea@users.noreply.github.com"
+          git add analysis/pipeline.py
+          git diff --cached --quiet && { echo 'No changes'; exit 1; }
+          git commit -m "refactor(pipeline): wire freshness helpers"
+          git push origin HEAD:phase0-ci-stabilization
