@@ -16,12 +16,13 @@ import os
 import sys
 from pathlib import Path
 
-# 绝对 import: ROOT 加入 sys.path, 让 `from analysis.xxx import yyy` 生效
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
+# 使用仓库/CI 工作目录, 不绑定个人 Mac 路径
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", Path(__file__).resolve().parents[1])).resolve()
+sys.path.insert(0, str(WORKDIR))
 
 import pytest
 
-REPORTS_DIR = Path("/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/2026-09-08")
+REPORTS_ROOT = WORKDIR / "reports" / "600693_东百集团"
 
 # 5 sections 各自 title (来自 analysis/sections/*/meta.py)
 SECTION_TITLES = {
@@ -34,9 +35,10 @@ SECTION_TITLES = {
 
 
 def _latest_md() -> Path:
-    """取报告目录最新 MD 文件 (动态读, 避免 stale snapshot)"""
-    md_files = list(REPORTS_DIR.glob("600693-东百集团-*.md"))
-    assert md_files, f"未找到 MD 报告 in {REPORTS_DIR}"
+    """取仓库中最新 MD 报告；CI 未携带历史实盘产物时明确跳过。"""
+    md_files = list(REPORTS_ROOT.glob("*/600693-东百集团-*.md"))
+    if not md_files:
+        pytest.skip(f"未提供历史 MD 报告 fixture: {REPORTS_ROOT}")
     return max(md_files, key=lambda p: p.stat().st_mtime)
 
 

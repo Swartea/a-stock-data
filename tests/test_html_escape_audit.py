@@ -9,10 +9,12 @@
 import os
 import re
 import sys
+from pathlib import Path
 
-# P1-D 测试: 直接 cd 到 analysis/ 目录, 让 import html_report_v3 找到相邻 html_report
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
+# P1-D 测试: 使用仓库/CI 工作目录, 不绑定个人 Mac 路径
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", Path(__file__).resolve().parents[1])).resolve()
+sys.path.insert(0, str(WORKDIR / "analysis"))
+sys.path.insert(0, str(WORKDIR))
 
 from html_report_v3 import _esc
 
@@ -99,7 +101,7 @@ def test_esc_event_handlers():
 # ============================================================
 def test_audit_checklist_5state_uses_esc():
     """P1-A 7.2 加的 5 项 GFM checklist 必须 _esc(label) + _esc(txt)"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/html_report_v3.py", encoding="utf-8").read()
+    src = (WORKDIR / "analysis" / "html_report_v3.py").read_text(encoding="utf-8")
     # 找 _render_checklist 末尾的 task-list-item
     import re
     m = re.search(r"for label, txt in items5:.*?</ul>", src, re.DOTALL)
@@ -111,7 +113,7 @@ def test_audit_checklist_5state_uses_esc():
 
 def test_audit_risk_table_uses_esc():
     """P1-A 7.2 加的风险大表 5 列必须 _esc"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/html_report_v3.py", encoding="utf-8").read()
+    src = (WORKDIR / "analysis" / "html_report_v3.py").read_text(encoding="utf-8")
     # 找 _render_risk 函数 (line 1393-1434)
     m = re.search(r"def _render_risk\(rows\):(.*?)return.*?join\(h\)", src, re.DOTALL)
     assert m, "_render_risk 未找到"
@@ -123,7 +125,7 @@ def test_audit_risk_table_uses_esc():
 
 def test_audit_no_unscaped_user_text_in_template():
     """html_report_v3.py 全文审计: 报告层不允许出现 (1) result.get(...) 未 _esc + (2) 直接 % 拼接"""
-    src = open("/Users/swarteachou/Desktop/大A数据/analysis/html_report_v3.py", encoding="utf-8").read()
+    src = (WORKDIR / "analysis" / "html_report_v3.py").read_text(encoding="utf-8")
     # 找 h.append(<...%...>) 形式且包含 result.get / it.get / a.get / x.get / b.get
     import re
     # 简单的字符串审计, 找 result.get 直接在 h.append % 后面 (没 _esc)
