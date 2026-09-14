@@ -37,7 +37,7 @@ import os
 import sys
 import json
 import time
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, time as dtime, timedelta
 from typing import Optional
 
 # 兄弟目录加 sys.path (与 v3 / report_md 一致, 让 v2 / html_report_v3 / md_to_docx 裸 import 可解析)
@@ -72,23 +72,6 @@ import quant_analyzer_v2 as v2  # noqa: E402
 
 # Section Registry (P1 §10.1, 5 sections 渲染列表, 与 v3 line 108 一致)
 from sections import enabled_sections  # noqa: E402
-
-# P0-B 规范整改 (2026-09-11, 规范 §4): 统一 fetcher 返回契约
-# (与 v3 line 50-64 镜像, 让 _call_new 内 status_of() 等可用)
-try:
-    from fetcher_contract import (
-        status_of, is_error as _is_error_fc, is_ok, is_empty, is_unsupported,
-        from_legacy as _from_legacy,
-        STATUS_OK, STATUS_EMPTY, STATUS_ERROR, STATUS_UNSUPPORTED,
-    )
-    _HAS_FETCHER_CONTRACT = True
-except Exception:  # noqa: BLE001
-    _HAS_FETCHER_CONTRACT = False
-    # 兜底: 保持老 ad-hoc 检测逻辑
-    def status_of(blob):
-        if isinstance(blob, dict) and "error" in blob and isinstance(blob["error"], str):
-            return "error"
-        return "ok"
 
 # P0-B 规范整改 (2026-09-11, 规范 §4): 统一 fetcher 返回契约
 # (与 v3 line 50-64 镜像, 让 _call_new 内 status_of() 等可用)
