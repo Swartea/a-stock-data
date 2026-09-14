@@ -156,8 +156,9 @@ jobs:
           DA_A_DATA_DIR: ${{ github.workspace }}
           PYTHONPATH: ${{ github.workspace }}/analysis:${{ github.workspace }}
         run: |
-          # 端到端冒烟: 跑 600693 验证 6 件套完整
-          bash scripts/run_in_venv.sh analysis/quant_analyzer_v3.py 600693 东百集团 \
+          set -o pipefail
+          # 端到端冒烟: 使用 Actions 当前 Python 环境，验证 600693 的 6 件套完整
+          python analysis/quant_analyzer_v3.py 600693 东百集团 \
             2>&1 | tail -20
 
           # 验证当日目录与 6 件套落盘，不写死年月
