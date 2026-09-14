@@ -1,4 +1,4 @@
-"""analysis/ 三价位层 (P2-A Phase 3, 2026-09-13; 批次 D 债 2 修法, 2026-09-14)
+"""analysis/ 三价位层 (P2-A Phase 3, 2026-09-13; 批次 D 债 2 修法, 2026-09-14; 批次 E 痛 1 修法, 2026-09-14)
 
 按规范 §2 模块边界 + P0-A 三价位规范整改, 把 compute_three_levels + 5 辅助函数
 抽到 three_levels.py:
@@ -24,11 +24,25 @@ P0-A 命名 (2026-09-11 整改, 与 §6 规范对齐):
   - 新增字段 stop_loss_method: "trading_plan" / "support_buffer" / "max_of_both"
   - 杰瑞类 (V2 > 支撑) 数值不变, 仅 method 标签化, 报告层可据此注明计算来源
 
+批次 E 痛 1 修法 (2026-09-14):
+  - 远/近期位分层: 拆"操作位" (近, 5-25% 范围) + "参考位" (远, 60 日极值)
+  - support / resistance 字段语义升级为"操作位":
+      - 操作支撑 = 4 候选中"距现价 5-25% 范围 且 < 现价 且距现价最近"者
+      - 操作压力 = 3 候选中"距现价 5-25% 范围 且 > 现价 且距现价最近"者
+      - 旧行为作为 fallback: 操作位无候选时, 用原 ±5% 过滤后取最近 (保持向后兼容)
+  - 新增 4 字段:
+      - support_recent / resistance_recent (float)  : 操作位距现价百分比
+      - support_extreme / resistance_extreme (float) : 参考位 (60 日最低 / 最高)
+      - support_extreme_label / resistance_extreme_label (str) : 标签
+      - operational_band_pct (tuple) : 操作位允许范围 (5.0, 25.0)
+
 向后兼容: v3 顶层 `from analysis.three_levels import compute_three_levels, ...`,
           老 `from analysis.quant_analyzer_v3 import compute_three_levels` 仍能找到 (re-export)。
 
 §1 '不修改业务口径' — 4 支撑/3 压力候选 + ±5% 过滤 + 候选键名 照搬, 仅搬位置。
    批次 D 改 stop_loss 计算口径 (债 2), 但 4 支撑/3 压力候选逻辑零变更。
+   批次 E 痛 1 改 support/resistance 字段语义 (4 候选中"操作位"语义), 但
+   fallback 路径与原 ±5% 过滤行为一致, 旧调用方拿到 support/resistance 仍可用。
 """
 from __future__ import annotations
 
@@ -209,17 +223,66 @@ def compute_three_levels(quote: Optional[Dict], chip_data: Optional[Dict],
     }
     res_valid = {k: v for k, v in res_raw.items() if v is not None}
 
-    # ---- 过滤 ±5% + 取最近者 (支撑下沿/压力上沿, P0-A 命名统一) ----
-    support = None
-    if price is not None and sup_valid:
-        eligible = {k: v for k, v in sup_valid.items() if v <= price * 1.05}
-        if eligible:
-            support = min(eligible.values())  # 支撑下沿 = 区间内最低 (允许跨价 5%)
-    resistance = None
-    if price is not None and res_valid:
-        eligible = {k: v for k, v in res_valid.items() if v >= price * 0.95}
-        if eligible:
-            resistance = max(eligible.values())  # 压力上沿 = 区间内最高 (允许跨价 5%)
+    # ---- 过滤 + 取操作位 (批次 E 痛 1 修法, 2026-09-14) ----
+    # 操作位 = ma60 / chip_peak / boll 三类近期候选中"距现价 5-25% 范围"的最近者
+    #   痛点: 旧版用 recent_low (60 日最低) 距现价 28% 形同"画饼"
+    #   修法: 近期位只在均线/筹码/布林中挑, 远端极值移到参考位
+    #   边界: 5-25% 范围无候选 → 兜底用 ±5% 旧行为 (保持向后兼容)
+    OP_BAND = (5.0, 25.0)  # 操作位距现价允许范围 (%)
+    op_sup_candidates = ["ma60", "chip_peak", "boll_lower"]  # 支撑: 均线/筹码/布林下
+    op_res_candidates = ["ma250_or_ma120", "boll_upper", "recent_high"]  # 压力: 长期均线/布林上/60日高
+
+    def _pick_operational(cand_dict, op_keys, price, want):
+        """want="min" → 支撑 (操作位选距现价最近, 5-25% 范围)
+        want="max" → 压力 (操作位选距现价最近, 5-25% 范围)
+        兜底: 5-25% 无候选 → ±5% 范围内距现价最近
+        兜底2: 全部无候选 → None
+        边界: v == price (d_pct == 0) 允许入选 (d_pct ≤ 0 / ≥ 0 包含 0)
+        """
+        if price is None or not cand_dict:
+            return None, None
+        # 严格 5-25% 范围
+        band_strict = {}
+        for k in op_keys:
+            v = cand_dict.get(k)
+            if v is None:
+                continue
+            d_pct = (v - price) / price * 100
+            if want == "min" and d_pct <= 0 and OP_BAND[0] <= abs(d_pct) <= OP_BAND[1]:
+                band_strict[k] = (v, abs(d_pct))
+            elif want == "max" and d_pct >= 0 and OP_BAND[0] <= abs(d_pct) <= OP_BAND[1]:
+                band_strict[k] = (v, abs(d_pct))
+        if band_strict:
+            # 距现价最近 (|d_pct| 最小)
+            k_pick = min(band_strict.items(), key=lambda kv: kv[1][1])[0]
+            return band_strict[k_pick][0], k_pick
+        # 兜底: ±5% 范围
+        band_loose = {}
+        for k in op_keys:
+            v = cand_dict.get(k)
+            if v is None:
+                continue
+            d_pct = (v - price) / price * 100
+            if want == "min" and d_pct <= 0 and abs(d_pct) <= 5.0:
+                band_loose[k] = (v, abs(d_pct))
+            elif want == "max" and d_pct >= 0 and abs(d_pct) <= 5.0:
+                band_loose[k] = (v, abs(d_pct))
+        if band_loose:
+            k_pick = min(band_loose.items(), key=lambda kv: kv[1][1])[0]
+            return band_loose[k_pick][0], k_pick
+        return None, None
+
+    support, support_op_key = _pick_operational(sup_valid, op_sup_candidates, price, "min")
+    resistance, resistance_op_key = _pick_operational(res_valid, op_res_candidates, price, "max")
+
+    # ---- 参考位 (批次 E 痛 1 修法): 60 日极值 + 布林, 远端不筛选 ----
+    # 60 日最低/最高永远取极端值, 不管距现价多远, 报告层明确标"参考位"vs"操作位"
+    ref_support = series_recent_low(series, 60) if series else None  # recent_low 平铺
+    ref_resistance = series_recent_high(series, 60) if series else None
+    # 布林上下轨
+    boll = series_boll(series, 20, 2) if series else None
+    boll_lower_val = boll[0] if boll else None
+    boll_upper_val = boll[1] if boll else None
 
     # ---- stop_loss: 批次 D 债 2 修法 (2026-09-14) ----
     # 旧版: 严格复用 trading_plan.stop_loss (V2 同源, 不重算)
@@ -259,9 +322,25 @@ def compute_three_levels(quote: Optional[Dict], chip_data: Optional[Dict],
         "stop_loss_method": stop_loss_method,
         "support_candidates": {k: round(v, 2) for k, v in sup_valid.items()},
         "resistance_candidates": {k: round(v, 2) for k, v in res_valid.items()},
-        "method": (f"4 候选取最近者 (P0-A 命名: 支撑下沿/压力上沿; "
-                   f"4 候选 → 支撑下沿 (取最小, 过滤>1.05×价); "
-                   f"3 候选 → 压力上沿 (取最大, 过滤<0.95×价); "
+        "method": (f"支撑下沿(操作位, ma60/chip_peak/boll 三候选距现价 5-25% 范围最近者, 批次 E 痛 1 修法, 2026-09-14); "
+                   f"压力上沿(操作位, ma250_or_ma120/boll_upper 二候选距现价 5-25% 范围最近者); "
+                   f"参考位 = 60 日最低/最高 + 布林, 远端不筛选; "
                    f"止损 = max(支撑×0.97, V2 计划止损) [批次 D 债 2 修法, 2026-09-14]; "
-                   f"N={n} 根K线)"),
+                   f"N={n} 根K线"),
+        # 批次 E 痛 1 新增字段 (远/近期位分层)
+        "support_op_key": support_op_key,           # 操作支撑的来源候选 (e.g. "boll_lower")
+        "resistance_op_key": resistance_op_key,      # 操作压力的来源候选
+        "support_recent_pct": (                        # 操作支撑距现价百分比 (负数, 因为低于现价)
+            round((support - price) / price * 100, 2) if (support is not None and price) else None
+        ),
+        "resistance_recent_pct": (                     # 操作压力距现价百分比 (正数)
+            round((resistance - price) / price * 100, 2) if (resistance is not None and price) else None
+        ),
+        "support_extreme": round(ref_support, 2) if ref_support is not None else None,
+        "resistance_extreme": round(ref_resistance, 2) if ref_resistance is not None else None,
+        "support_extreme_label": "60日最低" if ref_support is not None else None,
+        "resistance_extreme_label": "60日最高" if ref_resistance is not None else None,
+        "boll_lower": round(boll_lower_val, 2) if boll_lower_val is not None else None,
+        "boll_upper": round(boll_upper_val, 2) if boll_upper_val is not None else None,
+        "operational_band_pct": OP_BAND,             # (5.0, 25.0)
     }
