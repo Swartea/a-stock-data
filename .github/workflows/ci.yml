@@ -157,26 +157,35 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/analysis:${{ github.workspace }}
         run: |
           set -o pipefail
-          # 端到端冒烟: 使用 Actions 当前 Python 环境，验证 600693 的 6 件套完整
+          # 端到端冒烟: 使用 Actions 当前 Python 环境运行完整 V3 流程。
           python analysis/quant_analyzer_v3.py 600693 东百集团 \
             2>&1 | tail -20
 
-          # 验证当日目录与 6 件套落盘，不写死年月
           day_dir="reports/600693_东百集团/$(date +%Y-%m-%d)"
           test -d "$day_dir" || { echo "✗ 当日报告目录不存在: $day_dir"; exit 1; }
 
-          for pattern in '*.md' '*.html' '*.docx' '*.pdf' 'result_v3-*.json' 'run_log-*.json'; do
+          # 与 pipeline._emit 契约对齐：3 个必需交付物必须成功。
+          for pattern in '*.md' 'result_v3-*.json' 'run_log-*.json'; do
             if compgen -G "$day_dir/$pattern" > /dev/null; then
-              echo "✓ $pattern 落盘"
+              echo "✓ 必需件 $pattern 落盘"
             else
-              echo "✗ $pattern 缺失"
+              echo "✗ 必需件 $pattern 缺失"
               exit 1
             fi
           done
 
-          # 验证 deliverable_status = complete
+          # HTML / DOCX / PDF 属于允许降级的可选交付物，只记录状态，不阻断 CI。
+          for pattern in '*.html' '*.docx' '*.pdf'; do
+            if compgen -G "$day_dir/$pattern" > /dev/null; then
+              echo "✓ 可选件 $pattern 落盘"
+            else
+              echo "⚠ 可选件 $pattern 未生成（允许降级，状态应写入 result/run_log）"
+            fi
+          done
+
+          # failed 才表示核心交付失败；partial 表示至少一个可选件降级。
           latest=$(ls -t "$day_dir"/result_v3-*.json | head -1)
-          python -c "import json; d=json.load(open('${latest}', encoding='utf-8')); assert d.get('deliverable_status')=='complete', d.get('deliverable_status')"
+          python -c "import json; d=json.load(open('${latest}', encoding='utf-8')); s=d.get('deliverable_status'); rf=d.get('_files',{}).get('status',{}).get('required_failed',[]); assert s in ('complete','partial'), s; assert not rf, rf; print('deliverable_status=', s, 'required_failed=', rf)"
 
       - name: Upload smoke report
         if: always()
