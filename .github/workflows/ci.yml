@@ -32,7 +32,18 @@ jobs:
           python -m pip install -e ".[test,dev]"
 
       - name: Ruff check
-        run: ruff check analysis tests
+        run: |
+          mkdir -p reports
+          set -o pipefail
+          ruff check analysis tests --output-format=concise 2>&1 | tee reports/ruff.txt
+
+      - name: Upload lint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-diagnostics
+          path: reports/ruff.txt
+          retention-days: 7
 
       - name: Black --check
         run: black --check analysis tests
