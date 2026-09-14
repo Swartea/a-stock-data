@@ -115,6 +115,9 @@ jobs:
       - name: Pytest
         env:
           DA_A_DATA_DIR: ${{ github.workspace }}
+          # 兼容当前代码中的历史裸 import（quant_analyzer_v3 / html_report_v3 / sections）。
+          # Phase 1 再统一收口为 analysis.* 包导入。
+          PYTHONPATH: ${{ github.workspace }}/analysis:${{ github.workspace }}
         run: |
           pytest tests/ -v --tb=short -ra \
             --junitxml=reports/ci-junit-${{ matrix.os }}-py${{ matrix.python-version }}.xml
@@ -151,6 +154,7 @@ jobs:
       - name: Smoke test 600693
         env:
           DA_A_DATA_DIR: ${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}/analysis:${{ github.workspace }}
         run: |
           # 端到端冒烟: 跑 600693 验证 6 件套完整
           bash scripts/run_in_venv.sh analysis/quant_analyzer_v3.py 600693 东百集团 \
