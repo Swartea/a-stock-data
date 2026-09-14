@@ -50,7 +50,15 @@ jobs:
           git diff --check
           git diff -- analysis/pipeline.py
           python -m py_compile analysis/pipeline.py analysis/analytics/scope.py
-          python -m pytest tests/analytics/test_scope.py -q
+          python - <<'PY'
+          from analysis.analytics.scope import _classify_north_scope
+
+          assert _classify_north_scope(None) == ('unknown', '北向数据缺失')
+          assert _classify_north_scope({'total_yi': 3.0})[0] == 'market'
+          assert _classify_north_scope({'stock_change_pct': 1.0})[0] == 'stock'
+          assert _classify_north_scope({'total_yi': 3.0, 'stock_change_pct': 1.0})[0] == 'mixed'
+          print('scope classifier direct assertions: ok')
+          PY
 
       - name: Commit patch and remove helper workflow
         run: |
