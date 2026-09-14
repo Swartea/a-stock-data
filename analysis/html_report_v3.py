@@ -136,6 +136,109 @@ def _svg_safe(fn, *args, **kwargs):
         return ""
 
 
+# ============================================================
+# 批次 B · 痛 5 修法（2026-09-14）— 统一缺失模块降级占位
+# 详见 docs/09-报告质量债2.0-plan.md (commit 2 / 痛 4 + 痛 5)
+# ============================================================
+
+# 模块 → 评分占比 (0-1 范围, 0 表示不影响综合评分)
+# 评分由 10 维 0-10 分组成 (trend/valuation/valuation_pctile/capital/momentum/
+# sentiment/risk/chip/sw_stability/dragon), 每维各 10% 权重。
+# 缺失模块按中性 50 分计 → 贡献 5/10 分。
+_MODULE_SCORE_WEIGHT = {
+    "research": 0.10,        # 研报观点 → sentiment
+    "announcements": 0.0,     # 公告速览 → 不参与评分
+    "finance": 0.0,           # 财务体检 → 不参与评分 (参考用)
+    "peer": 0.10,             # 同业对比 / 申万分类 → sw_stability
+    "margin": 0.10,           # 资金面 / 融资融券 → capital
+    "news": 0.10,             # 新闻舆情 → sentiment
+    "dragon": 0.10,           # 龙虎榜 → dragon
+}
+
+
+def _blob_to_error_str(val):
+    """run_log.sources[name] 可能是 dict(含 error 字段) 或 str(以 "error:" 开头)"""
+    if isinstance(val, dict):
+        if val.get("error"):
+            return str(val["error"])
+    elif isinstance(val, str) and val.startswith("error:"):
+        # 形如 "error:申万表加载失败, 0ms" → 切到第一个逗号前
+        return val[6:].split(",", 1)[0].strip()
+    return ""
+
+
+def _source_error_msg(run_log, key_hints):
+    """从 run_log.sources 找第一个匹配 key_hints 的 error 字符串"""
+    if not isinstance(run_log, dict):
+        return ""
+    srcs = run_log.get("sources")
+    if not isinstance(srcs, dict):
+        return ""
+    # 精确匹配优先
+    for hint in key_hints:
+        if hint in srcs:
+            err = _blob_to_error_str(srcs[hint])
+            if err:
+                return err[:80]
+    # 关键字子串扫描
+    for name, val in srcs.items():
+        if any(h in str(name) for h in key_hints):
+            err = _blob_to_error_str(val)
+            if err:
+                return err[:80]
+    return ""
+
+
+def _extract_error_msg(blob, run_log=None, key_hints=None):
+    """从 blob 抽 error 字符串, 兜底从 run_log.sources 找 (批次 B · 痛 5)"""
+    if isinstance(blob, dict):
+        if blob.get("error"):
+            return str(blob["error"])[:80]
+        if blob.get("status") == "error" and blob.get("message"):
+            return str(blob["message"])[:80]
+    if run_log and key_hints:
+        return _source_error_msg(run_log, key_hints) or "数据源异常"
+    return "数据源异常"
+
+
+def _render_missing_module(module_name, error_msg, score_weight,
+                            fix_suggestion="补 fetcher 后重跑"):
+    """统一缺失模块占位卡片（批次 B · 痛 5 修法）
+
+    显示:
+      ⚠️ [模块名] 数据缺失
+      影响：评分按中性计 50 分（5/10 分，占总分 10%）
+      原因：[error 摘要]
+      建议：运行前先检查 [修复建议]
+
+    Args:
+        module_name: 模块中文名（"研报观点"、"申万分类"）
+        error_msg: 错误摘要（短）
+        score_weight: 评分占比 (0.10 = 10%); 0 表示不影响综合评分
+        fix_suggestion: 修复建议（默认 "补 fetcher 后重跑"）
+
+    Returns:
+        仅 body HTML (不含 card 包装), 供 _module_* 函数嵌入既有卡片内
+    """
+    if score_weight and score_weight > 0:
+        weight_pct = "%.0f%%" % (score_weight * 100)
+        # 该维度满分 10 分（10 个 1 分点），按 50% 中性 → 5/10 分
+        neutral_dim_score = 5  # 50% × 10 (维度满分)
+        score_impact = "%d/10 分" % neutral_dim_score
+        impact_line = ("评分按中性 50%% 计（%s，占总分 %s）"
+                       % (score_impact, weight_pct))
+    else:
+        impact_line = "评分不受影响（仅信息缺失，不参与综合分）"
+    return (
+        '<div class="missing-module">'
+        '<div class="mm-title">⚠️ %s 数据缺失</div>'
+        '<div class="mm-row"><span class="mm-k">影响：</span>%s</div>'
+        '<div class="mm-row"><span class="mm-k">原因：</span>%s</div>'
+        '<div class="mm-row"><span class="mm-k">建议：</span>%s</div>'
+        '</div>'
+    ) % (_esc(module_name), impact_line, _esc(error_msg), _esc(fix_suggestion))
+
+
 # ------------------------------------------------------------
 # 数据来源 + 时点标注
 # ------------------------------------------------------------
@@ -297,6 +400,15 @@ body{font-family:var(--font-cjk);background:var(--bg);color:var(--ink-1);
 .no-data{color:var(--ink-3);font-size:13px;padding:var(--sp-2);text-align:center;
      background:var(--bg);border:1px dashed var(--hairline);border-radius:var(--radius)}
 .src-line{font-size:11.5px;color:var(--ink-3);margin:-4px 0 var(--sp-1);line-height:1.5}
+/* ---------- §2.4 缺失模块占位 (批次 B · 痛 5 修法, 2026-09-14) ---------- */
+.missing-module{background:var(--warn-bg);border:1px dashed var(--warn);
+  border-radius:var(--radius);padding:10px 14px;font-size:12.5px;
+  color:var(--ink-2);line-height:1.7;margin-top:4px}
+.missing-module .mm-title{color:var(--neutral-ink);font-weight:700;
+  font-size:13.5px;margin-bottom:6px;letter-spacing:.3px}
+.missing-module .mm-row{margin-top:3px;color:var(--ink-2)}
+.missing-module .mm-row .mm-k{color:var(--ink-1);font-weight:600;
+  margin-right:4px}
 .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1)}
 @media(min-width:600px){.mini-grid{grid-template-columns:repeat(3,1fr)}}
 .kpi{background:var(--bg);border-radius:var(--radius);padding:var(--sp-1) 12px}
@@ -1353,19 +1465,52 @@ def _risk_items(result, report_date):
             "trigger": "PE 分位 > 80%",
             "action": "分批减仓, 等待估值修复",
         })
-    # 3) 龙虎榜大额净卖
+    # 3) 龙虎榜大额净卖 (痛 4 修法, 2026-09-14): 显示"上榜 N 次 / 上榜日均净卖"
+    #    旧版 "近 30 日均净卖 X 万" 口径不清 (没区分"上榜 N 次" vs "近 30 日交易日均")
+    #    N=0 仍展示一行: "近 30 日未上榜, 无游资接力迹象"
     dragon = result.get("dragon") or {}
-    if not _is_error(dragon) and dragon.get("records"):
-        nbs = [x.get("net_buy_wan", 0) or 0 for x in dragon["records"]]
-        if nbs and sum(nbs) / len(nbs) < -1000:
-            avg = sum(nbs) / len(nbs)
+    if not _is_error(dragon) and isinstance(dragon, dict):
+        records = dragon.get("records") or []
+        # 上榜次数: 优先 n_records, 兜底 len(records)
+        n_records = dragon.get("n_records")
+        if n_records is None:
+            n_records = len(records) if records else 0
+        try:
+            n_records = int(n_records)
+        except (TypeError, ValueError):
+            n_records = 0
+        if n_records <= 0:
+            # 近 30 日无上榜: 显式标注, severity=🟡低 (中性信号, 非风险)
             rows.append({
                 "category": "龙虎榜",
-                "desc": "近 30 日平均净卖出 %s 万元" % _num(avg, 0),
-                "severity": "🟠中",
-                "trigger": "近 30 日均净卖 > 1000 万",
-                "action": "游资撤退, 谨慎追涨",
+                "desc": "近 30 日未上榜, 无游资接力迹象",
+                "severity": "🟡低",
+                "trigger": "近 30 日 0 次上榜",
+                "action": "无游资接力信号, 中性观察",
             })
+        elif records:
+            nbs = [float(x.get("net_buy_wan", 0) or 0) for x in records]
+            avg = sum(nbs) / len(nbs) if nbs else 0
+            if avg < -1000:
+                rows.append({
+                    "category": "龙虎榜",
+                    "desc": "上榜 %d 次 / 近 30 日上榜日均净卖 %s 万"
+                            % (n_records, _num(avg, 2)),
+                    "severity": "🟠中" if avg >= -5000 else "🔴高",
+                    "trigger": "近 30 日上榜日均净卖 > 1000 万",
+                    "action": "游资撤退, 谨慎追涨",
+                })
+    elif _is_error(dragon):
+        # 龙虎榜数据源异常: 计入风险行, 但 5 状态机/综合分仍按缺失模块
+        # (NOTE: 严重度统一为 🟠中, 不参与评分扣分)
+        err = _extract_error_msg(dragon, result.get("run_log"), ["龙虎榜", "dragon"])
+        rows.append({
+            "category": "龙虎榜",
+            "desc": "数据源异常, 无法判断游资动向",
+            "severity": "🟠中",
+            "trigger": (err or "数据源异常")[:30],
+            "action": "补 fetcher 后重跑",
+        })
     # 4) 减持公告
     anns = (result.get("announcements") or {}).get("announcements") or []
     for a in anns[:10]:
@@ -1450,7 +1595,11 @@ def _module_research(result, report_date, run_log):
     asof = _first(blob, "as_of", "fetched_at", default=None) \
         or _source_time(run_log, ["research", "研报"], report_date)
     if _is_error(blob) or not blob:
-        return _src_tag(None, None), '<div class="no-data">📭 研报数据源暂缺</div>'
+        err = _extract_error_msg(blob, run_log, ["research", "研报观点"])
+        return (_src_tag(None, None),
+                _render_missing_module(
+                    "研报观点", err, _MODULE_SCORE_WEIGHT["research"],
+                    "补 ths/eastmoney 研报 fetcher 后重跑"))
     rpts = blob.get("reports") or []
     dist = blob.get("rating_dist") or {}
     if isinstance(dist, dict) and not dist:
@@ -1518,7 +1667,11 @@ def _module_announcements(result, report_date, run_log):
         or _source_time(run_log, ["announcements", "公告"], report_date)
     src = blob.get("source")
     if not blob or "error" in blob:
-        return _src_tag(None, None), '<div class="no-data">📭 公告数据源暂缺</div>'
+        err = _extract_error_msg(blob, run_log, ["announcements", "公告"])
+        return (_src_tag(None, None),
+                _render_missing_module(
+                    "公告速览", err, _MODULE_SCORE_WEIGHT["announcements"],
+                    "补 eastmoney 巨潮资讯 fetcher 后重跑"))
     anns = blob.get("announcements") or []
     if not anns:
         return _src_tag(src, asof), '<div class="no-data">近 30 日无公告</div>'
@@ -1570,7 +1723,11 @@ def _module_finance(result, report_date, run_log):
         or _source_time(run_log, ["finance", "财务", "三表"], report_date)
     src = blob.get("source")
     if not blob or "error" in blob:
-        return _src_tag(None, None), '<div class="no-data">📭 财务数据源暂缺</div>'
+        err = _extract_error_msg(blob, run_log, ["finance", "财务摘要"])
+        return (_src_tag(None, None),
+                _render_missing_module(
+                    "财务体检", err, _MODULE_SCORE_WEIGHT["finance"],
+                    "补 eastmoney datacenter RPT_F10_FINANCE_MAINFINADATA 后重跑"))
     rpts = blob.get("reports") or []
     if not rpts:
         return _src_tag(src, asof), '<div class="no-data">📭 财务报告期数据源暂缺</div>'
@@ -1623,18 +1780,40 @@ def _module_finance(result, report_date, run_log):
 
 
 def _module_peer(result, report_date, run_log):
-    """同业对比 · 行业定位 (申万行业表 + 估值历史)"""
+    """同业对比 · 行业定位 (申万行业表 + 估值历史)
+
+    痛 5 修法 (2026-09-14): 申万 / 估值历史 二者可独立缺失
+      - sw_data 缺失 → 顶部插 1 张占位卡 (10% 权重, sw_stability 维度)
+      - vh 缺失 → 顶部插 1 张占位卡 (10% 权重, valuation_pctile 维度)
+      - 二者全缺 → 合并为 1 张占位卡
+    """
     sw = result.get("sw_data") or {}
     vh = result.get("valuation_hist") or {}
     q = result.get("quote") or {}
     asof = _first(vh, "data_end", default=None) \
         or _source_time(run_log, ["sw", "申万", "估值"], report_date)
-    if _is_error(sw) and _is_error(vh):
-        return (_src_tag(None, None),
-                '<div class="no-data">📭 同业对比数据源暂缺（sw_data / valuation_hist）</div>')
+    sw_err = _is_error(sw)
+    vh_err = _is_error(vh)
+
+    # 痛 5: 缺失子源占位 (申万 / 估值历史)
+    missing_blocks = []
+    if sw_err:
+        err = _extract_error_msg(sw, run_log, ["sw", "申万", "申万分类"])
+        missing_blocks.append(_render_missing_module(
+            "申万分类", err, 0.10,
+            "补 sw_industry_history fetcher 后重跑"))
+    if vh_err:
+        err = _extract_error_msg(vh, run_log, ["valuation", "估值历史分位", "baostock"])
+        missing_blocks.append(_render_missing_module(
+            "估值历史", err, 0.10,
+            "补 baostock 估值历史 fetcher 后重跑"))
+
+    if sw_err and vh_err:
+        # 二者全缺: 不渲染主表, 直接 2 张占位卡
+        return _src_tag(None, None), "\n".join(missing_blocks)
 
     rows = []
-    if isinstance(sw, dict) and not _is_error(sw):
+    if isinstance(sw, dict) and not sw_err:
         l1 = sw.get("current_l1")
         l2 = sw.get("current_l2")
         rows.append(["申万行业", "%s%s" % (_esc(l1 or ""),
@@ -1650,7 +1829,7 @@ def _module_peer(result, report_date, run_log):
         since = sw.get("since")
         if since:
             rows.append(["当前行业自", "%s 起" % _esc(since)])
-    if isinstance(vh, dict) and not _is_error(vh):
+    if isinstance(vh, dict) and not vh_err:
         cp = vh.get("pe_percentile_3y")
         if cp is not None:
             rows.append(["PE 3 年分位（本票自身）", "%s%%（相对本票过去 3 年）" % _num(cp, 1)])
@@ -1669,14 +1848,19 @@ def _module_peer(result, report_date, run_log):
     def _has_cjk(t):
         return any("一" <= ch <= "鿿" for ch in str(t))
 
-    inner = ['<table class="v3-tbl"><thead><tr><th style="width:38%">定位项</th>'
-             '<th>数值 / 说明</th></tr></thead><tbody>']
-    for k, v in rows:
-        cls = "" if _has_cjk(v) else " class=\"num\""
-        inner.append("<tr><td>%s</td><td%s>%s</td></tr>" % (k, cls, v))
-    inner.append('</tbody></table>')
-    if not rows:
-        inner = ['<div class="no-data">📭 同业对比数据源暂缺</div>']
+    inner = []
+    if missing_blocks:
+        # 顶部先放占位卡, 再放主表
+        inner.extend(missing_blocks)
+    if rows:
+        inner.append('<table class="v3-tbl"><thead><tr><th style="width:38%">定位项</th>'
+                     '<th>数值 / 说明</th></tr></thead><tbody>')
+        for k, v in rows:
+            cls = "" if _has_cjk(v) else " class=\"num\""
+            inner.append("<tr><td>%s</td><td%s>%s</td></tr>" % (k, cls, v))
+        inner.append('</tbody></table>')
+    elif not missing_blocks:
+        inner.append('<div class="no-data">📭 同业对比数据源暂缺</div>')
     src = "申万行业表 + baostock 估值历史"
     return _src_tag(src, asof), "\n".join(inner)
 
@@ -1686,7 +1870,11 @@ def _module_margin(result, report_date, run_log):
     blob = result.get("margin") or {}
     if not isinstance(blob, dict) or _is_error(blob):
         asof = _source_time(run_log, ["margin", "融资", "两融"], report_date)
-        return _src_tag("东财数据中心", asof), '<div class="no-data">📭 两融数据源暂缺</div>'
+        err = _extract_error_msg(blob, run_log, ["margin", "融资融券"])
+        return (_src_tag("东财数据中心", asof),
+                _render_missing_module(
+                    "资金面（融资融券）", err, _MODULE_SCORE_WEIGHT["margin"],
+                    "补 eastmoney-datacenter 融资融券 fetcher 后重跑"))
     asof = _first(blob, "as_of", "fetched_at", default=None) \
         or _source_time(run_log, ["margin", "融资", "两融"], blob.get("date") or report_date)
     rzye = blob.get("rzye_yi")
@@ -1735,7 +1923,11 @@ def _module_news(result, report_date, run_log):
         or _source_time(run_log, ["news", "新闻"], report_date)
     src = blob.get("source")
     if not blob or "error" in blob:
-        return _src_tag(None, None), '<div class="no-data">📭 新闻舆情数据源暂缺</div>'
+        err = _extract_error_msg(blob, run_log, ["news", "新闻舆情"])
+        return (_src_tag(None, None),
+                _render_missing_module(
+                    "新闻舆情", err, _MODULE_SCORE_WEIGHT["news"],
+                    "补 sina_stock_news / eastmoney 新闻 fetcher 后重跑"))
 
     def render_items(rows, color, icon):
         if not rows:
