@@ -149,11 +149,14 @@ def _sample_result_v3() -> Dict[str, Any]:
         },
         "three_levels": {
             "support": 7.16, "resistance": 12.20, "stop_loss": 9.23,
+            # 批次 D 债 2 修法 (2026-09-14): 新增 stop_loss_method 字段
+            # 9.23 > 7.16*0.97=6.95, V2 赢, method=trading_plan (杰瑞类)
+            "stop_loss_method": "trading_plan",
             "support_candidates": {"ma60": 8.96, "recent_low": 7.16,
                                    "chip_peak": 11.30, "boll_lower": 8.00},
             "resistance_candidates": {"ma250_or_ma120": 9.76, "recent_high": 12.20,
                                       "boll_upper": 11.78},
-            "method": "4 候选取最近者 (P0-A 命名: 支撑下沿/压力上沿; 支撑 ≤ 1.05×价; 压力 ≥ 0.95×价; N=260 根K线)",
+            "method": "4 候选取最近者 (P0-A 命名: 支撑下沿/压力上沿; 支撑 ≤ 1.05×价; 压力 ≥ 0.95×价; 止损 = max(支撑×0.97, V2 计划止损) [批次 D 债 2 修法, 2026-09-14]; N=260 根K线)",
         },
         "run_log": {
             "sources": {
@@ -213,14 +216,15 @@ def mock_run_log_json(tmp_path: Path) -> Path:
 # ============================================================
 @pytest.fixture
 def sample_three_levels() -> Dict[str, Any]:
-    """单元测试用三价位样例"""
+    """单元测试用三价位样例 (批次 D 包含 stop_loss_method)"""
     return {
         "support": 7.16, "resistance": 12.20, "stop_loss": 9.23,
+        "stop_loss_method": "trading_plan",  # 批次 D 新增
         "support_candidates": {"ma60": 8.96, "recent_low": 7.16,
                                "chip_peak": 11.30, "boll_lower": 8.00},
         "resistance_candidates": {"ma250_or_ma120": 9.76, "recent_high": 12.20,
                                   "boll_upper": 11.78},
-        "method": "4 候选取最近者 (P0-A 命名: 支撑下沿/压力上沿)",
+        "method": "4 候选取最近者 (P0-A 命名: 支撑下沿/压力上沿; 止损 = max(支撑×0.97, V2 计划止损) [批次 D 债 2 修法, 2026-09-14])",
     }
 
 

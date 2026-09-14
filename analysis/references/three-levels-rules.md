@@ -1,9 +1,9 @@
 # 三价位 (支撑/压力/止损) 计算规则
 
-> 范围: `analysis/quant_analyzer_v3.py:compute_three_levels`
+> 范围: `analysis/three_levels.py:compute_three_levels`
 > 规范: 《08-项目代码规范与验收要求》§6 计算与数据质量 + §12 P0 修法
-> 版本: v1.0 (2026-09-11, P0-A 整改落地)
-> 状态: ✅ 命名统一 + 边界测试已加
+> 版本: v1.1 (2026-09-14, 批次 D 债 2 修法)
+> 状态: ✅ 命名统一 + 边界测试已加 + 止损 max 规则已加
 
 ## 一、术语
 
@@ -52,10 +52,29 @@
 2. 在剩余候选中取**最大值** → 即"压力上沿"
 3. 若无候选通过过滤 → `resistance = None`
 
-## 四、止损
+## 四、止损 (批次 D 债 2 修法, 2026-09-14)
 
-**不复算**，直接复用 `trading_plan.stop_loss`（V2 同源 1.5 步产出，Task 5.1 锁定字段）。
-若 `trading_plan` 缺失或 `stop_loss` 字段为 `None` → `stop_loss = None`（报告注明"无止损参考"）。
+**新版规则**: `stop_loss = max(支撑 × 0.97, trading_plan.stop_loss)` — 取高者, 防 V2 过紧"倒挂"。
+
+**目的**: 避免 V2 按现价-7% 反推的止损与"技术位支撑"口径不一致:
+- V2 止损 >= 支撑 × 0.97: V2 是合理的大止损 (杰瑞类), 用 V2
+- V2 止损 < 支撑 × 0.97: V2 过紧 (突破支撑即走, 没缓冲), 强切到 支撑 × 0.97
+
+**边界**:
+- `trading_plan` 缺失或 `stop_loss=None` → `stop_loss = None` (不编造, method=None)
+- 支撑为 None 但 plan.stop_loss 有值 → 用 plan.stop_loss (method="trading_plan")
+- 两者都有 → max() 规则
+  - plan.stop_loss >= 支撑 × 0.97 → 用 plan.stop_loss (method="trading_plan")
+  - 支撑 × 0.97 > plan.stop_loss → 用 支撑 × 0.97 (method="support_buffer")
+  - 相等 → 任意, method="max_of_both"
+
+**stop_loss_method 字段** (批次 D 新增, 4 类之一):
+- `"trading_plan"`: 用了 V2 计划止损 (杰瑞类)
+- `"support_buffer"`: 用了 支撑×0.97 (防倒挂触发)
+- `"max_of_both"`: 两源相等 (罕见)
+- `None`: plan.stop_loss 缺失, 不编造
+
+杰瑞类 (V2 止损 > 支撑, 数值不变) 仅 method 标签化, 报告层可据此注明计算来源。
 
 ## 五、返回契约
 
@@ -64,7 +83,9 @@
 class ThreeLevels:
     support: Optional[float]       # 支撑下沿 = 候选最小 (过滤 > 1.05×price)
     resistance: Optional[float]    # 压力上沿 = 候选最大 (过滤 < 0.95×price)
-    stop_loss: Optional[float]     # 止损 = trading_plan.stop_loss (不复算)
+    stop_loss: Optional[float]     # 止损 = max(支撑×0.97, trading_plan.stop_loss) [批次 D]
+    stop_loss_method: Optional[str] # 批次 D 新增: "trading_plan" | "support_buffer"
+                                   # | "max_of_both" | None
     support_candidates: Dict[str, float]    # 全部支撑候选 (未过滤)
     resistance_candidates: Dict[str, float] # 全部压力候选 (未过滤)
     method: str                              # 算法描述, 含 N=K线数
@@ -121,13 +142,37 @@ sup_raw = {ma60: 12.0, recent_low: 11.0, chip_peak: 12.5, boll_lower: 11.5}
 报告: "支撑候选全部高于现价 5%, 视为无有效支撑。"
 ```
 
+### 例子 5: 杰瑞类 (V2 > 支撑) — 批次 D 标签化场景, 数值不变
+
+```
+price = 118.94, support = 104.87 (recent_low), trading_plan.stop_loss = 110.61
+  → 支撑缓冲 = 104.87 × 0.97 = 101.72
+  → V2 止损 110.61 > 101.72 → V2 赢
+  → stop_loss = 110.61 (V2 止损, 与旧版相同)
+  → stop_loss_method = "trading_plan" (批次 D 新增字段, 让报告层注明"用了 V2 计划止损")
+报告: "止损 110.61 (V2 计划止损, 现价下 7%) — 注: 高于支撑 104.87, 是 V2 设的大止损"
+```
+
+### 例子 6: 防倒挂类 (V2 < 支撑 × 0.97) — 批次 D 修法核心场景
+
+```
+price = 10.00, support = 9.50, trading_plan.stop_loss = 9.00
+  → 支撑缓冲 = 9.50 × 0.97 = 9.215
+  → V2 止损 9.00 < 9.215 → 防倒挂触发, 强切到支撑缓冲
+  → stop_loss = 9.215 (向上取强切)
+  → stop_loss_method = "support_buffer" (批次 D 新增字段)
+旧版行为: stop_loss = 9.00 (止损 < 支撑, "突破即走" 风险)
+新版行为: stop_loss = 9.215 (止损在支撑下方 3% 缓冲处, 安全)
+```
+
 ## 七、报告层描述
 
 V3 报告 §"三价位 (V2 同源实时模型 · 4 候选取最近)" 段描述必须含:
 
 - "支撑下沿 (support) = 4 支撑候选最小值, 过滤 > 1.05×现价"
 - "压力上沿 (resistance) = 3 压力候选最大值, 过滤 < 0.95×现价"
-- "止损 (stop_loss) = 复用 V2 trading_plan, 不重算"
+- "止损 (stop_loss) = max(支撑 × 0.97, V2 计划止损) [批次 D 债 2 修法, 2026-09-14]"
+- "stop_loss_method 标签: trading_plan | support_buffer | max_of_both | 无"
 - "N = K 线根数, 0 表示无 K 线"
 - 候选全部缺失时: "三价位无法生成 (行情/筹码数据缺失), 请勿据此操作。"
 - 任一候选为空时: 报告"⚠️ {key} 候选缺失 (原因), 实际取最近 {n} 候选"。
@@ -138,6 +183,8 @@ V3 报告 §"三价位 (V2 同源实时模型 · 4 候选取最近)" 段描述�
 - 候选 chip_peak 来自 `chip_data.peak_price` 平铺字段 (v2 line 572), 不在 `cost_concentration` 子键
 - K 线字段在 `chip_data["kline"]` (v2 平铺), 不在 `technical.*`
 - boll = MA20 ± 2σ, σ = 20 日 close 标准差
+- 批次 D: 止损 = max(支撑 × 0.97, V2 stop_loss), 不覆盖 V2 stop_loss, 但可强切到支撑缓冲
+- 批次 D: stop_loss_method 字段是 advisory (报告层据此注明), 不影响 stop_loss 数值
 
 ## 九、回归测试
 
@@ -146,10 +193,17 @@ V3 报告 §"三价位 (V2 同源实时模型 · 4 候选取最近)" 段描述�
 - 候选为空 (N<60)
 - 跨价过滤
 - 止损复用 / 缺失
+- 止损 max 规则 / 防倒挂 (批次 D, 2026-09-14)
 
-P0-A 新增 (本轮):
+P0-A 新增 (2026-09-11):
 - 全部候选缺失 (N=0) → support/resistance/stop_loss 全 None
 - 候选全部 > 1.05×price → support = None, 边界说明
 - 候选全部 < 0.95×price → resistance = None, 边界说明
 - method 字段含 N=K线数
 - 候选名 + 数值一致性
+
+P0-D 批次 D 新增 (2026-09-14):
+- 杰瑞类 (V2 > 支撑) 数值不变, method=trading_plan
+- 防倒挂类 (V2 < 支撑 × 0.97) 强切到支撑 × 0.97, method=support_buffer
+- support=None 时, 用 V2 兜底 (method=trading_plan)
+- plan=None / plan.stop_loss=None 时, 不编造, stop_loss=None, method=None

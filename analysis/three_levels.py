@@ -1,4 +1,4 @@
-"""analysis/ 三价位层 (P2-A Phase 3, 2026-09-13)
+"""analysis/ 三价位层 (P2-A Phase 3, 2026-09-13; 批次 D 债 2 修法, 2026-09-14)
 
 按规范 §2 模块边界 + P0-A 三价位规范整改, 把 compute_three_levels + 5 辅助函数
 抽到 three_levels.py:
@@ -16,10 +16,19 @@ P0-A 命名 (2026-09-11 整改, 与 §6 规范对齐):
     §6 要求"若产品选择区间极值或允许跨越现价, 必须另行命名" — 本模块即采用此命名
   - 完整规则+例子+边界: analysis/references/three-levels-rules.md
 
+批次 D 债 2 修法 (2026-09-14):
+  - 止损 = max(支撑 × 0.97, trading_plan.stop_loss) [取高者, 防倒挂]
+  - "倒挂" 指 V2 按现价-7% 反推的止损与"技术位支撑"口径不一致:
+      - V2 > 支撑 (杰瑞 110.61 > 104.87): 接受 V2 (大止损, method="trading_plan")
+      - V2 < 支撑 × 0.97: 强切到 支撑 × 0.97 (止损过紧, method="support_buffer")
+  - 新增字段 stop_loss_method: "trading_plan" / "support_buffer" / "max_of_both"
+  - 杰瑞类 (V2 > 支撑) 数值不变, 仅 method 标签化, 报告层可据此注明计算来源
+
 向后兼容: v3 顶层 `from analysis.three_levels import compute_three_levels, ...`,
           老 `from analysis.quant_analyzer_v3 import compute_three_levels` 仍能找到 (re-export)。
 
 §1 '不修改业务口径' — 4 支撑/3 压力候选 + ±5% 过滤 + 候选键名 照搬, 仅搬位置。
+   批次 D 改 stop_loss 计算口径 (债 2), 但 4 支撑/3 压力候选逻辑零变更。
 """
 from __future__ import annotations
 
@@ -150,14 +159,28 @@ def compute_three_levels(quote: Optional[Dict], chip_data: Optional[Dict],
       - 压力: 过滤掉 < 0.95×现价 的候选, 剩余取最大
       - 任一过滤后无候选 → 对应字段 = None, 不填充
 
-    止损: 复用 trading_plan.stop_loss (V2 同源, 不重算, 防覆盖 Task 5.1 锁定字段)
-           trading_plan 缺失或 stop_loss=None → 字段 = None
+    止损 (批次 D 债 2 修法, 2026-09-14):
+      - 旧版: 严格复用 trading_plan.stop_loss (V2 同源)
+      - 新版: stop_loss = max(支撑 × 0.97, trading_plan.stop_loss), 取高者
+      - 目的: 防 V2 止损 < 支撑 × 0.97 的"倒挂" (即止损过紧, 突破即走, 没缓冲)
+      - 边界:
+          - trading_plan 缺失或 stop_loss=None → stop_loss = None (不编造)
+          - 支撑为 None 但 plan.stop_loss 有值 → 用 plan.stop_loss (method="trading_plan")
+          - 两者都有 → max() 规则
+              - plan.stop_loss >= 支撑 × 0.97 → 用 plan.stop_loss (method="trading_plan")
+              - 支撑 × 0.97 > plan.stop_loss  → 用 支撑 × 0.97 (method="support_buffer")
+              - 相等 → 任意, method="max_of_both"
+      - 杰瑞类 (V2 > 支撑) 数值不变, 仅 method 标签化, 报告层可据此注明
 
-    返回 dict (与 docs/references/three-levels-rules.md §五 一致):
+    返回 dict (与 docs/references/three-levels-rules.md §五 一致, 批次 D 新增 stop_loss_method):
         {
             "support": float|None,           # 支撑下沿
             "resistance": float|None,        # 压力上沿
-            "stop_loss": float|None,         # 止损 (复用 trading_plan)
+            "stop_loss": float|None,         # 止损 (max 规则或 None)
+            "stop_loss_method": str|None,    # 批次 D 新增: 计算来源
+                                            #   "trading_plan"  | 用了 V2 计划止损
+                                            #   "support_buffer"| 用了 支撑*0.97 (防倒挂)
+                                            #   "max_of_both"   | 两源相等 (罕见)
             "support_candidates": dict,      # 全部支撑候选 (未过滤)
             "resistance_candidates": dict,   # 全部压力候选 (未过滤)
             "method": str,                   # 算法描述, 含 N=K线数
@@ -198,18 +221,47 @@ def compute_three_levels(quote: Optional[Dict], chip_data: Optional[Dict],
         if eligible:
             resistance = max(eligible.values())  # 压力上沿 = 区间内最高 (允许跨价 5%)
 
-    # ---- stop_loss 复用 trading_plan.stop_loss (不重算, 防止覆盖 Task 5.1) ----
-    stop_loss = None
+    # ---- stop_loss: 批次 D 债 2 修法 (2026-09-14) ----
+    # 旧版: 严格复用 trading_plan.stop_loss (V2 同源, 不重算)
+    # 新版: stop_loss = max(支撑 * 0.97, trading_plan.stop_loss) — 取高者, 防倒挂
+    # 边界: plan.stop_loss 缺失 → None (不编造); support 缺失 → 用 plan.stop_loss
+    plan_stop_loss = None
     if isinstance(trading_plan, dict):
-        stop_loss = to_float(trading_plan.get("stop_loss"))
+        plan_stop_loss = to_float(trading_plan.get("stop_loss"))
+
+    stop_loss: Optional[float] = None
+    stop_loss_method: Optional[str] = None
+    if plan_stop_loss is not None:
+        if support is None:
+            # 无技术支撑, 兜底用 V2
+            stop_loss = plan_stop_loss
+            stop_loss_method = "trading_plan"
+        else:
+            support_buffer = support * 0.97  # 不提前 round, 末尾统一
+            if plan_stop_loss >= support_buffer:
+                # V2 止损 >= 支撑下方 3% 缓冲: V2 是合理的大止损 (杰瑞类)
+                stop_loss = plan_stop_loss
+                stop_loss_method = "trading_plan"
+            elif support_buffer > plan_stop_loss:
+                # V2 止损过紧 (< 支撑 × 0.97): 强切到 支撑 × 0.97 (防倒挂)
+                stop_loss = support_buffer
+                stop_loss_method = "support_buffer"
+            else:
+                # 罕见: 两者相等
+                stop_loss = support_buffer
+                stop_loss_method = "max_of_both"
+    # plan_stop_loss is None → stop_loss / stop_loss_method 保持 None (不编造)
 
     return {
         "support": round(support, 2) if support is not None else None,
         "resistance": round(resistance, 2) if resistance is not None else None,
         "stop_loss": round(stop_loss, 2) if stop_loss is not None else None,
+        "stop_loss_method": stop_loss_method,
         "support_candidates": {k: round(v, 2) for k, v in sup_valid.items()},
         "resistance_candidates": {k: round(v, 2) for k, v in res_valid.items()},
         "method": (f"4 候选取最近者 (P0-A 命名: 支撑下沿/压力上沿; "
                    f"4 候选 → 支撑下沿 (取最小, 过滤>1.05×价); "
-                   f"3 候选 → 压力上沿 (取最大, 过滤<0.95×价); N={n} 根K线)"),
+                   f"3 候选 → 压力上沿 (取最大, 过滤<0.95×价); "
+                   f"止损 = max(支撑×0.97, V2 计划止损) [批次 D 债 2 修法, 2026-09-14]; "
+                   f"N={n} 根K线)"),
     }
