@@ -1,0 +1,63 @@
+name: phase1c-wire-scope
+
+on:
+  push:
+    branches: [phase0-ci-stabilization]
+    paths:
+      - .github/workflows/phase1c-wire-scope.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase0-ci-stabilization
+          fetch-depth: 0
+
+      - name: Wire scope classifier into pipeline
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('analysis/pipeline.py')
+          text = path.read_text(encoding='utf-8')
+
+          anchor = 'from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness\n'
+          import_line = 'from analysis.analytics.scope import _classify_north_scope\n'
+          if import_line not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'import anchor count != 1: {text.count(anchor)}')
+              text = text.replace(anchor, anchor + import_line, 1)
+
+          pattern = re.compile(
+              r'\ndef _classify_north_scope\(north_data\) -> tuple:.*?\n\ndef _patch_v2_timers',
+              re.S,
+          )
+          text, count = pattern.subn('\n\ndef _patch_v2_timers', text, count=1)
+          if count != 1:
+              raise SystemExit(f'classifier block match count != 1: {count}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate minimal diff
+        run: |
+          git diff --check
+          git diff -- analysis/pipeline.py
+          python -m py_compile analysis/pipeline.py analysis/analytics/scope.py
+          python -m pytest tests/analytics/test_scope.py -q
+
+      - name: Commit patch and remove helper workflow
+        run: |
+          git config user.name "Swartea"
+          git config user.email "131281605+Swartea@users.noreply.github.com"
+          git add analysis/pipeline.py
+          git rm .github/workflows/phase1c-wire-scope.yml
+          git diff --cached --check
+          git commit -m "refactor(pipeline): wire northbound scope classifier"
+          git push origin HEAD:phase0-ci-stabilization
