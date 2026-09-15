@@ -67,6 +67,7 @@ from analysis.data_fetcher import (
 from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
+from analysis.orchestration.source_status import SourceStatusRecorder
 from analysis.analytics.scope import _classify_north_scope
 from analysis.analytics.scoring import _build_scoring_breakdown
 
@@ -121,7 +122,7 @@ _FIELD_OF = {
 _TOP_FIELD_OF = {fn: _FIELD_OF[lab] for fn, lab in _V2_FN_TO_SRC.items()}
 
 # 来源 label → meta dict (analyze_single_v3 内累计, 写盘前清空)
-_src_meta: dict = {}   # label -> {"ms":int,"at":"HH:MM:SS","status":str,"detail":str}
+_src_meta = SourceStatusRecorder()
 
 
 
