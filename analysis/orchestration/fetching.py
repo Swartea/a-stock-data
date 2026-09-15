@@ -156,3 +156,51 @@ def _fetch_margin(
         "detail": src_desc[label],
     }
     return margin
+
+
+def _fetch_supplements(
+    recorder: SourceStatusRecorder,
+    run_log: dict[str, Any],
+    fetched: dict[str, Any],
+    src_desc: dict[str, str],
+    fmt_time: Callable[[float], str],
+    code: str,
+    blocks: Any,
+    fund_flow_fetcher: Callable[..., Any],
+    margin_history_fetcher: Callable[..., Any],
+    peers_fetcher: Callable[..., Any],
+) -> None:
+    """Populate the three legacy supplement fetches without changing semantics.
+
+    Fund-flow and peer error dictionaries retry once after 1.5 seconds, while
+    margin-history error dictionaries do not retry. Raised exceptions are not
+    retried. A second error dictionary intentionally leaves the first error
+    payload in place, matching the former inline pipeline loop.
+    """
+    run_log["supplements"] = {}
+    for key, label, fetcher, args in (
+        ("fund_daily5", "资金面-5日主力", fund_flow_fetcher, (code,)),
+        ("margin_hist", "两融历史", margin_history_fetcher, (code,)),
+        ("peers", "同业对比", peers_fetcher, (code, blocks)),
+    ):
+        started = time.time()
+        try:
+            value = fetcher(*args)
+            if isinstance(value, dict) and "error" in value and key != "margin_hist":
+                time.sleep(1.5)
+                retry_value = fetcher(*args)
+                if not (isinstance(retry_value, dict) and "error" in retry_value):
+                    value = retry_value
+        except Exception as exc:  # noqa: BLE001
+            value = {"error": str(exc)}
+
+        meta = recorder.setdefault(label, {"at": fmt_time(time.time())})
+        meta["ms"] = round((time.time() - started) * 1000)
+        if isinstance(value, dict) and "error" in value:
+            meta["status"] = f"error:{str(value['error'])[:80]}, {meta['ms']}ms"
+        else:
+            meta["status"] = f"ok, {meta['ms']}ms"
+        meta["detail"] = src_desc.get(label, label)
+        run_log["source_meta"][label] = meta
+        run_log["supplements"][label] = meta["status"]
+        fetched[key] = value
