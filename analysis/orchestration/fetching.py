@@ -204,3 +204,30 @@ def _fetch_supplements(
         run_log["source_meta"][label] = meta
         run_log["supplements"][label] = meta["status"]
         fetched[key] = value
+
+
+def _fetch_sections(
+    run_log: dict[str, Any],
+    sections: Any,
+    code: str,
+    base_result: dict[str, Any],
+) -> dict[str, Any]:
+    """Execute enabled report sections with the pipeline's existing semantics."""
+    sections_data: dict[str, Any] = {}
+    run_log["sections_count"] = 0
+
+    for section in sections:
+        started = time.time()
+        try:
+            sections_data[section.label] = section.fetch(code, base_result)
+            ms = int((time.time() - started) * 1000)
+            run_log["sources"][section.label] = f"ok, {ms}ms"
+            run_log["sections_count"] += 1
+        except Exception as exc:  # noqa: BLE001
+            sections_data[section.label] = {"error": str(exc)}
+            run_log["sources"][section.label] = f"error: {exc}"
+            run_log.setdefault("fallback_chain", []).append(
+                f"{section.label}: {exc}"
+            )
+
+    return sections_data
