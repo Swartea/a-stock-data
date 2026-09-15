@@ -68,7 +68,12 @@ from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.source_status import SourceStatusRecorder
-from analysis.orchestration.fetching import _call_new, _fetch_margin, _fetch_supplements
+from analysis.orchestration.fetching import (
+    _call_new,
+    _fetch_margin,
+    _fetch_supplements,
+    _fetch_sections,
+)
 from analysis.orchestration.fetching import _retry_call as _retry_call  # noqa: F401
 from analysis.orchestration.legacy_bridge import (
     _V2_FN_TO_SRC,
@@ -266,20 +271,8 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         "新闻舆情", "新闻", code6,
     )
     # Section Registry: 5 新节走新路径（灰度老路径仍保留 4 旧 fetcher；spec §3.3）
-    sections_data = {}
     sections = enabled_sections()
-    run_log["sections_count"] = 0
-    for sec in sections:
-        sec_started = time.time()
-        try:
-            sections_data[sec.label] = sec.fetch(code6, base_result)
-            ms = int((time.time() - sec_started) * 1000)
-            run_log["sources"][sec.label] = f"ok, {ms}ms"
-            run_log["sections_count"] += 1
-        except Exception as e:  # noqa: BLE001
-            sections_data[sec.label] = {"error": str(e)}
-            run_log["sources"][sec.label] = f"error: {e}"
-            run_log.setdefault("fallback_chain", []).append(f"{sec.label}: {e}")
+    sections_data = _fetch_sections(run_log, sections, code6, base_result)
 
     margin = _fetch_margin(
         run_log,
