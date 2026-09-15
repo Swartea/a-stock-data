@@ -64,7 +64,10 @@ from analysis.data_fetcher import (
 )
 from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
-from analysis.orchestration.source_status import SourceStatusRecorder
+from analysis.orchestration.source_status import (
+    SourceStatusRecorder,
+    _record_v2_source_statuses,
+)
 from analysis.orchestration.fetching import (
     _call_new,
     _fetch_margin,
@@ -217,33 +220,13 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     three_levels = compute_three_levels(q, chip_data, plan)
 
     # ---- 3. 逐类状态判定 (V2 的 10 类) ----
-    results2 = base_result
-    for lab, field in _FIELD_OF.items():
-        data = results2.get(field)
-        meta = _src_meta.get(lab, {})
-        if isinstance(data, dict) and "error" in data:
-            status = f"error:{str(data['error'])[:60]}, {meta.get('ms','?')}ms"
-        elif lab == "行情" and not data:
-            status = f"error:行情为空, {meta.get('ms','?')}ms"
-        elif lab == "概念板块" and isinstance(data, list) and any(
-                isinstance(x, dict) and "error" in x for x in data):
-            status = f"error:接口异常, {meta.get('ms','?')}ms"
-        elif lab == "概念板块" and isinstance(data, list) and not data:
-            status = f"fallback:接口返回0条(可能风控), {meta.get('ms','?')}ms"
-        elif lab == "当日资金流" and isinstance(data, dict) and not data.get("klines"):
-            status = f"fallback:当日无成交或分钟数据, {meta.get('ms','?')}ms"
-        elif lab == "宏观底色" and isinstance(data, dict) and not any(
-                data.get(k) for k in ("hsgt", "industries", "hot_stocks")):
-            status = f"error:北向/行业/强势股子源全空, {meta.get('ms','?')}ms"
-        else:
-            status = f"ok, {meta.get('ms','?')}ms"
-        meta = dict(meta)
-        meta["status"] = status
-        meta["detail"] = _SRC_DESC.get(lab, lab)
-        run_log["sources"][lab] = status
-        run_log["source_meta"][lab] = meta
-        if not status.startswith("ok"):
-            run_log["fallback_chain"].append(f"{lab}: {status}")
+    _record_v2_source_statuses(
+        base_result,
+        _src_meta,
+        run_log,
+        _FIELD_OF,
+        _SRC_DESC,
+    )
 
     # ---- 4. V3 追加数据块: 4 新 fetcher + 两融 (逐个记录耗时/状态/实际源) ----
     fetched = {"announcements": None, "finance": None, "news": None,
