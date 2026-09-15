@@ -9,9 +9,9 @@
 - `_SCORING_BREAKDOWN_GROUPS`
 - `_SCORE_DIM_MAX`
 
-建议归属：`analysis/analytics/scoring.py`。
+归属：`analysis/analytics/scoring.py`。
 
-特点：逻辑相对纯，但属于评分业务语义。迁移时必须保留现有维度、满分、缺失值中性处理和输出结构，并复用现有 scoring tests 做契约保护。
+状态：**Phase 1D 已完成**。5 维聚合、子维满分、缺失值 50% 中性处理、clamp、中文 label、顶层 total 结构均保持原有契约；新增迁移等价测试后，`pipeline.py` 已改为 import `_build_scoring_breakdown` 并删除原地评分实现。
 
 ### 2. 北向资金口径分类
 - `_classify_north_scope`
@@ -83,8 +83,8 @@
 1. **Phase 1A ✅**：建立 `analysis/orchestration/helpers.py`，复制时间/新鲜度逻辑并补单测。
 2. **Phase 1B ✅**：`pipeline.py` 接线 helpers，删除原地重复定义；业务行为不变。
 3. **Phase 1C ✅**：建立 `analysis/analytics/scope.py`，为北向资金四类口径补契约测试并接线，删除原地 classifier。
-4. **Phase 1D（建议下一步）**：把 `_build_scoring_breakdown` 及其常量迁入 `analysis/analytics/scoring.py`；只移动，不调整评分口径。
-5. **Phase 1E**：引入 `SourceStatusRecorder`，把 `_src_meta` 从裸全局 dict 变成有边界的状态对象。
+4. **Phase 1D ✅**：建立 `analysis/analytics/scoring.py`，迁移 `_build_scoring_breakdown`、`_SCORING_BREAKDOWN_GROUPS`、`_SCORE_DIM_MAX`，新增新旧实现等价测试并完成 `pipeline.py` 接线。
+5. **Phase 1E（建议下一步）**：引入 `SourceStatusRecorder`，把 `_src_meta` 从裸全局 dict 变成有边界的状态对象；先建立兼容层和测试，不直接改 V2 monkey-patch 行为。
 6. **Phase 1F**：抽 V2 legacy bridge，保留行为但隔离 monkey-patch。
 7. **Phase 1G**：抽 artifact writer，保持 deliverable contract 不变。
 8. **Phase 1H**：最后再拆 `analyze_single_v3` 的 fetch / build / finalize 阶段。
