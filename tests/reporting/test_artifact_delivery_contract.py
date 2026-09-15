@@ -6,7 +6,10 @@ from datetime import datetime as RealDateTime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
+import pytest
+
 import analysis.pipeline as pipeline
+from analysis.reporting import artifact_writer
 
 
 FIXED_NOW = RealDateTime(2026, 9, 15, 22, 53, 0)
@@ -16,6 +19,11 @@ class FixedDateTime:
     @classmethod
     def now(cls):
         return FIXED_NOW
+
+
+@pytest.fixture(params=[pipeline, artifact_writer], ids=["pipeline", "artifact_writer"])
+def writer(request):
+    return request.param
 
 
 def _result():
@@ -35,11 +43,11 @@ def _result():
     }
 
 
-def _prepare_base(monkeypatch, tmp_path):
-    monkeypatch.setattr(pipeline, "REPORTS_ROOT", str(tmp_path))
-    monkeypatch.setattr(pipeline, "datetime", FixedDateTime)
+def _prepare_base(writer, monkeypatch, tmp_path):
+    monkeypatch.setattr(writer, "REPORTS_ROOT", str(tmp_path))
+    monkeypatch.setattr(writer, "datetime", FixedDateTime)
     monkeypatch.setattr(
-        pipeline,
+        writer,
         "write_markdown_report_v3",
         lambda _result: "# artifact contract\n",
     )
@@ -93,14 +101,15 @@ def _install_optional_failures(monkeypatch):
 
 
 def test_emit_complete_delivery_writes_timestamped_required_artifacts_and_final_state(
+    writer,
     monkeypatch,
     tmp_path,
 ):
-    _prepare_base(monkeypatch, tmp_path)
+    _prepare_base(writer, monkeypatch, tmp_path)
     _install_optional_success(monkeypatch)
     result = _result()
 
-    files = pipeline._emit("600693", "东百集团", result)
+    files = writer._emit("600693", "东百集团", result)
 
     day_dir = tmp_path / "600693_东百集团" / "2026-09-15"
     assert Path(files["day_dir"]) == day_dir
@@ -144,10 +153,11 @@ def test_emit_complete_delivery_writes_timestamped_required_artifacts_and_final_
 
 
 def test_emit_docx_subprocess_fallback_is_still_counted_as_complete(
+    writer,
     monkeypatch,
     tmp_path,
 ):
-    _prepare_base(monkeypatch, tmp_path)
+    _prepare_base(writer, monkeypatch, tmp_path)
     _install_optional_success(monkeypatch)
 
     docx_module = ModuleType("md_to_docx")
@@ -167,7 +177,7 @@ def test_emit_docx_subprocess_fallback_is_still_counted_as_complete(
     monkeypatch.setattr(subprocess, "run", fake_run)
     result = _result()
 
-    files = pipeline._emit("600693", "东百集团", result)
+    files = writer._emit("600693", "东百集团", result)
 
     assert files["status"]["docx"] == "ok(import失败→subprocess)"
     assert files["status"]["deliverable"] == "complete"
@@ -180,14 +190,15 @@ def test_emit_docx_subprocess_fallback_is_still_counted_as_complete(
 
 
 def test_emit_optional_failures_degrade_to_partial_without_failing_required_artifacts(
+    writer,
     monkeypatch,
     tmp_path,
 ):
-    _prepare_base(monkeypatch, tmp_path)
+    _prepare_base(writer, monkeypatch, tmp_path)
     _install_optional_failures(monkeypatch)
     result = _result()
 
-    files = pipeline._emit("600693", "东百集团", result)
+    files = writer._emit("600693", "东百集团", result)
 
     status = files["status"]
     assert status["md"] == "ok"
@@ -217,19 +228,20 @@ def test_emit_optional_failures_degrade_to_partial_without_failing_required_arti
 
 
 def test_emit_required_markdown_failure_makes_delivery_failed_even_if_optional_succeeds(
+    writer,
     monkeypatch,
     tmp_path,
 ):
-    _prepare_base(monkeypatch, tmp_path)
+    _prepare_base(writer, monkeypatch, tmp_path)
     _install_optional_success(monkeypatch)
 
     def fail_markdown(_result):
         raise RuntimeError("markdown boom")
 
-    monkeypatch.setattr(pipeline, "write_markdown_report_v3", fail_markdown)
+    monkeypatch.setattr(writer, "write_markdown_report_v3", fail_markdown)
     result = _result()
 
-    files = pipeline._emit("600693", "东百集团", result)
+    files = writer._emit("600693", "东百集团", result)
 
     status = files["status"]
     assert status["md"] == "error:markdown boom"
@@ -246,10 +258,11 @@ def test_emit_required_markdown_failure_makes_delivery_failed_even_if_optional_s
 
 
 def test_emit_run_log_write_failure_is_a_required_artifact_failure(
+    writer,
     monkeypatch,
     tmp_path,
 ):
-    _prepare_base(monkeypatch, tmp_path)
+    _prepare_base(writer, monkeypatch, tmp_path)
     _install_optional_success(monkeypatch)
     result = _result()
 
@@ -262,7 +275,7 @@ def test_emit_run_log_write_failure_is_a_required_artifact_failure(
 
     monkeypatch.setattr(builtins, "open", selective_open)
 
-    files = pipeline._emit("600693", "东百集团", result)
+    files = writer._emit("600693", "东百集团", result)
 
     status = files["status"]
     assert status["log"] == "error:log boom"
@@ -279,13 +292,14 @@ def test_emit_run_log_write_failure_is_a_required_artifact_failure(
 
 
 def test_dump_run_log_uses_code_as_safe_name_when_name_is_empty(
+    writer,
     monkeypatch,
     tmp_path,
 ):
-    _prepare_base(monkeypatch, tmp_path)
+    _prepare_base(writer, monkeypatch, tmp_path)
     run_log = {"fatal": "boom", "sources": {}}
 
-    pipeline._dump_run_log("600693", "", run_log)
+    writer._dump_run_log("600693", "", run_log)
 
     log_path = (
         tmp_path
