@@ -172,7 +172,7 @@ def test_section_exception_becomes_error_payload_and_does_not_stop_later_section
 
     def fetch_c(code, ctx):
         calls.append(("C", code, ctx))
-        clock.advance(0.300)
+        clock.advance(0.250)
         return {"value": "C"}
 
     sections = [
@@ -194,7 +194,7 @@ def test_section_exception_becomes_error_payload_and_does_not_stop_later_section
     assert run_log["sections_count"] == 2
     assert run_log["sources"]["Section A"] == "ok, 100ms"
     assert run_log["sources"]["Section B"] == "error: boom"
-    assert run_log["sources"]["Section C"] == "ok, 300ms"
+    assert run_log["sources"]["Section C"] == "ok, 250ms"
     assert "Section B: boom" in run_log["fallback_chain"]
 
 
