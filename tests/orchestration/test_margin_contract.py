@@ -51,8 +51,8 @@ def _scoring_breakdown():
     }
 
 
-def _run_pipeline_with_margin(monkeypatch, margin_fetcher):
-    clock = FakeClock()
+def _run_pipeline_with_margin(monkeypatch, margin_fetcher, clock=None):
+    clock = clock or FakeClock()
     pipeline._src_meta.clear()
 
     monkeypatch.setattr(
@@ -106,67 +106,21 @@ def _run_pipeline_with_margin(monkeypatch, margin_fetcher):
 def test_margin_success_first_try_records_total_elapsed_and_exact_value(monkeypatch):
     calls = []
     payload = {"source": "eastmoney", "balance": 123}
-    clock_ref = {}
+    clock = FakeClock()
 
     def fetcher(code):
         calls.append(code)
-        clock_ref["clock"].advance(0.25)
+        clock.advance(0.25)
         return payload
 
-    original_helper = _run_pipeline_with_margin
-
-    def run_with_clock():
-        clock = FakeClock()
-        clock_ref["clock"] = clock
-        pipeline._src_meta.clear()
-        monkeypatch.setattr(
-            pipeline,
-            "time",
-            SimpleNamespace(time=clock.time, sleep=clock.sleep),
-        )
-        monkeypatch.setattr(pipeline, "_patch_v2_timers", lambda *_args, **_kw: {})
-        monkeypatch.setattr(pipeline, "_restore_v2", lambda *_args, **_kw: None)
-        monkeypatch.setattr(
-            pipeline.v2,
-            "analyze_single",
-            lambda *_args, **_kw: _base_result(),
-        )
-        monkeypatch.setattr(pipeline.v2, "_make_trading_plan", lambda *_args, **_kw: None)
-        monkeypatch.setattr(pipeline.v2, "_make_signal_list", lambda *_args, **_kw: ([], []))
-        monkeypatch.setattr(pipeline.v2, "fetch_margin_trading", fetcher)
-        monkeypatch.setattr(pipeline, "compute_three_levels", lambda *_args, **_kw: {})
-        monkeypatch.setattr(pipeline, "_call_new", lambda *_args, **_kw: None)
-        monkeypatch.setattr(pipeline, "enabled_sections", lambda: [])
-        monkeypatch.setattr(pipeline, "_fetch_fund_flow_daily", lambda *_args, **_kw: {})
-        monkeypatch.setattr(pipeline, "_fetch_margin_history", lambda *_args, **_kw: {})
-        monkeypatch.setattr(pipeline, "_fetch_concept_peers", lambda *_args, **_kw: {})
-        monkeypatch.setattr(
-            pipeline,
-            "_classify_north_scope",
-            lambda *_args, **_kw: ("market", "市场口径"),
-        )
-        monkeypatch.setattr(
-            pipeline,
-            "_build_scoring_breakdown",
-            lambda *_args, **_kw: _scoring_breakdown(),
-        )
-        monkeypatch.setattr(
-            pipeline,
-            "_kline_freshness",
-            lambda *_args, **_kw: {
-                "last_bar": None,
-                "expected": "2026-09-15",
-                "level": "ok",
-                "text": "fresh",
-            },
-        )
-        monkeypatch.setattr(pipeline, "_emit", lambda *_args, **_kw: {"status": {}})
-        return pipeline.analyze_single_v3("600693", "东百集团"), clock
-
-    result, clock = run_with_clock()
+    result, returned_clock = _run_pipeline_with_margin(
+        monkeypatch,
+        fetcher,
+        clock,
+    )
     meta = result["run_log"]["source_meta"]["融资融券"]
 
-    assert original_helper is _run_pipeline_with_margin
+    assert returned_clock is clock
     assert calls == ["600693"]
     assert clock.sleeps == []
     assert result["margin"] is payload
@@ -179,31 +133,21 @@ def test_margin_success_first_try_records_total_elapsed_and_exact_value(monkeypa
 
 def test_margin_retries_exceptions_three_times_and_timer_includes_sleeps(monkeypatch):
     calls = []
-    clock_ref = {}
     payload = {"balance": 456}
+    clock = FakeClock()
 
     def fetcher(code):
         calls.append(code)
-        clock_ref["clock"].advance(0.2)
+        clock.advance(0.2)
         if len(calls) < 3:
             raise RuntimeError(f"boom-{len(calls)}")
         return payload
 
-    clock = FakeClock()
-    clock_ref["clock"] = clock
-
-    result, returned_clock = _run_pipeline_with_margin(monkeypatch, fetcher)
-    # The helper owns the pipeline clock; point the fetcher at that same clock.
-    # Re-run with a fetcher bound to the helper clock through the first call.
-    if returned_clock is not clock:
-        calls.clear()
-        clock_ref["clock"] = returned_clock
-        result, returned_clock = _run_pipeline_with_margin(monkeypatch, fetcher)
-
+    result, _ = _run_pipeline_with_margin(monkeypatch, fetcher, clock)
     meta = result["run_log"]["source_meta"]["融资融券"]
 
     assert calls == ["600693", "600693", "600693"]
-    assert returned_clock.sleeps == [1.0, 1.0]
+    assert clock.sleeps == [1.0, 1.0]
     assert result["margin"] is payload
     assert meta["ms"] == 2600
     assert meta["status"] == "ok:eastmoney-datacenter, 2600ms"
@@ -211,25 +155,18 @@ def test_margin_retries_exceptions_three_times_and_timer_includes_sleeps(monkeyp
 
 def test_margin_all_exceptions_sleep_after_final_try_and_keep_last_error(monkeypatch):
     calls = []
-    clock_ref = {}
+    clock = FakeClock()
 
     def fetcher(code):
         calls.append(code)
-        clock_ref["clock"].advance(0.1)
+        clock.advance(0.1)
         raise ValueError(f"failure-{len(calls)}")
 
-    clock = FakeClock()
-    clock_ref["clock"] = clock
-    result, returned_clock = _run_pipeline_with_margin(monkeypatch, fetcher)
-    if returned_clock is not clock:
-        calls.clear()
-        clock_ref["clock"] = returned_clock
-        result, returned_clock = _run_pipeline_with_margin(monkeypatch, fetcher)
-
+    result, _ = _run_pipeline_with_margin(monkeypatch, fetcher, clock)
     meta = result["run_log"]["source_meta"]["融资融券"]
 
     assert calls == ["600693", "600693", "600693"]
-    assert returned_clock.sleeps == [1.0, 1.0, 1.0]
+    assert clock.sleeps == [1.0, 1.0, 1.0]
     assert result["margin"] == {"error": "failure-3"}
     assert meta["ms"] == 3300
     assert meta["status"] == "error:failure-3, 3300ms"
