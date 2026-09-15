@@ -62,17 +62,31 @@ jobs:
           git diff --check
           git diff -- analysis/pipeline.py
           python -m py_compile analysis/pipeline.py analysis/analytics/scoring.py
-          PYTHONPATH=.:analysis python - <<'PY'
-          from analysis import pipeline
+          PYTHONPATH=. python - <<'PY'
+          import ast
+          from pathlib import Path
           from analysis.analytics.scoring import _build_scoring_breakdown
 
-          assert pipeline._build_scoring_breakdown is _build_scoring_breakdown
+          text = Path('analysis/pipeline.py').read_text(encoding='utf-8')
+          tree = ast.parse(text)
+          local_defs = {
+              node.name for node in tree.body
+              if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+          }
+          assert '_build_scoring_breakdown' not in local_defs
+          assert any(
+              isinstance(node, ast.ImportFrom)
+              and node.module == 'analysis.analytics.scoring'
+              and any(alias.name == '_build_scoring_breakdown' for alias in node.names)
+              for node in tree.body
+          )
+
           sample = {
               'trend': 1, 'valuation': 2, 'valuation_pctile': 3,
               'capital': 7, 'momentum': 1, 'sentiment': 4, 'risk': 4,
               'chip': 4, 'sw_stability': 5, 'dragon': 3, 'total': 34,
           }
-          bd = pipeline._build_scoring_breakdown(sample)
+          bd = _build_scoring_breakdown(sample)
           assert bd['total'] == {'label': '综合', 'score': 34.0, 'max': 100, 'pct': 34.0}
           assert sum(bd[k]['score'] for k in ('tech', 'capital', 'valuation', 'sentiment', 'risk')) == 34.0
           print('scoring cutover assertions: ok')
