@@ -113,3 +113,46 @@ def _call_new(
     run_log["sources"][lab] = status
     run_log["source_meta"][lab] = meta
     return value
+
+
+def _fetch_margin(
+    run_log: dict[str, Any],
+    src_desc: dict[str, str],
+    fmt_time: Callable[[float], str],
+    fetcher: Callable[[str], Any],
+    code: str,
+) -> Any:
+    """Fetch margin trading data with the pipeline's historical semantics.
+
+    Only raised exceptions trigger retries.  Returned ``{"error": ...}`` values
+    are not retried, ``None`` still falls through to the historical success
+    status, elapsed milliseconds cover the whole retry loop including sleeps,
+    and the final failed attempt still sleeps once before status is recorded.
+    """
+    label = "融资融券"
+    started = time.time()
+    margin = None
+
+    for _ in range(3):
+        try:
+            margin = fetcher(code)
+            break
+        except Exception as exc:  # noqa: BLE001
+            margin = {"error": str(exc)}
+            time.sleep(1.0)
+
+    ms = round((time.time() - started) * 1000)
+    if margin and isinstance(margin, dict) and "error" in margin:
+        status = f"error:{str(margin['error'])[:60]}, {ms}ms"
+        run_log["fallback_chain"].append(f"{label}: {margin['error']}")
+    else:
+        status = f"ok:eastmoney-datacenter, {ms}ms"
+
+    run_log["sources"][label] = status
+    run_log["source_meta"][label] = {
+        "ms": ms,
+        "at": fmt_time(time.time()),
+        "status": status,
+        "detail": src_desc[label],
+    }
+    return margin
