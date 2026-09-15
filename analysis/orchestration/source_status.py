@@ -84,3 +84,35 @@ def _record_v2_source_statuses(results, recorder, run_log, field_of, source_desc
         run_log["source_meta"][lab] = projected_meta
         if not status.startswith("ok"):
             run_log["fallback_chain"].append(f"{lab}: {status}")
+
+
+def _record_sw_tls_failure(
+    base_result,
+    recorder,
+    run_log,
+    source_desc,
+    fmt_time,
+    time_fn,
+):
+    """Record the existing 申万 TLS failure metadata without changing policy."""
+    sw_data = base_result.get("sw_data") or {}
+    if not (isinstance(sw_data, dict) and "error" in sw_data):
+        return
+
+    sw_err = str(sw_data.get("error", ""))[:80]
+    run_log["fallback_chain"].append(
+        f"申万分类: SSL 直连失败 ({sw_err[:44]}) — 不再 verify=False 兜底 (§5); "
+        f"修复: pip install -U certifi  (申万行业因子按 v2 默认中性计)"
+    )
+    meta = recorder.setdefault("申万分类", {"at": fmt_time(time_fn())})
+    meta["ms"] = 0
+    meta["status"] = f"error:{sw_err[:40]} (需 pip install -U certifi), 0ms"
+    meta["detail"] = source_desc.get("申万分类", "申万行业稳定性")
+    meta["tls_recommendation"] = "pip install -U certifi"
+    run_log.setdefault("tls_recommendations", []).append(
+        {
+            "host": "swsresearch.com",
+            "fix": "pip install -U certifi",
+            "applies_to": ["申万分类"],
+        }
+    )
