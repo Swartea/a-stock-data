@@ -1,0 +1,6 @@
+import analysis.pipeline as pipeline
+from analysis.orchestration import fetching
+
+
+def test_pipeline_uses_call_new_fetching_boundary():
+    assert pipeline._call_new is fetching._call_new
