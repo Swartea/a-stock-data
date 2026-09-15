@@ -3,6 +3,7 @@ import re
 import pytest
 
 import analysis.pipeline as pipeline
+from analysis.orchestration import legacy_bridge
 
 
 EXPECTED_V2_FN_TO_SRC = {
@@ -54,16 +55,34 @@ def _install_only(monkeypatch, target_name, target_fn):
             monkeypatch.delattr(pipeline.v2, fn_name, raising=False)
 
 
+def _patch():
+    return legacy_bridge._patch_v2_timers(
+        pipeline.v2,
+        pipeline._src_meta,
+        pipeline._fmt_time,
+    )
+
+
+def _restore(saved):
+    legacy_bridge._restore_v2(pipeline.v2, saved)
+
+
 def test_legacy_source_and_result_field_mappings_are_locked():
-    assert pipeline._V2_FN_TO_SRC == EXPECTED_V2_FN_TO_SRC
-    assert pipeline._FIELD_OF == EXPECTED_FIELD_OF
-    assert set(pipeline._V2_FN_TO_SRC.values()) == set(pipeline._FIELD_OF)
+    assert legacy_bridge._V2_FN_TO_SRC == EXPECTED_V2_FN_TO_SRC
+    assert legacy_bridge._FIELD_OF == EXPECTED_FIELD_OF
+    assert set(legacy_bridge._V2_FN_TO_SRC.values()) == set(legacy_bridge._FIELD_OF)
 
     expected_top = {
         fn_name: EXPECTED_FIELD_OF[label]
         for fn_name, label in EXPECTED_V2_FN_TO_SRC.items()
     }
-    assert pipeline._TOP_FIELD_OF == expected_top
+    assert legacy_bridge._TOP_FIELD_OF == expected_top
+
+    # pipeline keeps importing these names so its existing result/status logic
+    # sees the same exact mappings after extraction.
+    assert pipeline._V2_FN_TO_SRC is legacy_bridge._V2_FN_TO_SRC
+    assert pipeline._FIELD_OF is legacy_bridge._FIELD_OF
+    assert pipeline._TOP_FIELD_OF is legacy_bridge._TOP_FIELD_OF
 
 
 def test_patch_wraps_available_functions_and_restore_is_symmetric(monkeypatch):
@@ -73,7 +92,7 @@ def test_patch_wraps_available_functions_and_restore_is_symmetric(monkeypatch):
         originals[fn_name] = original
         monkeypatch.setattr(pipeline.v2, fn_name, original, raising=False)
 
-    saved = pipeline._patch_v2_timers()
+    saved = _patch()
     try:
         assert saved == originals
         assert set(pipeline._src_meta) == set(EXPECTED_FIELD_OF)
@@ -101,7 +120,7 @@ def test_patch_wraps_available_functions_and_restore_is_symmetric(monkeypatch):
         assert meta["status"] is None
         assert meta["detail"] is None
     finally:
-        pipeline._restore_v2(saved)
+        _restore(saved)
 
     for fn_name, original in originals.items():
         assert getattr(pipeline.v2, fn_name) is original
@@ -120,13 +139,13 @@ def test_patch_skips_missing_v2_function_without_creating_meta(monkeypatch):
         originals[fn_name] = original
         monkeypatch.setattr(pipeline.v2, fn_name, original, raising=False)
 
-    saved = pipeline._patch_v2_timers()
+    saved = _patch()
     try:
         assert target_name not in saved
         assert target_label not in pipeline._src_meta
         assert set(saved) == set(originals)
     finally:
-        pipeline._restore_v2(saved)
+        _restore(saved)
 
 
 def test_timer_wrapper_recreates_sparse_meta_after_recorder_clear(monkeypatch):
@@ -134,7 +153,7 @@ def test_timer_wrapper_recreates_sparse_meta_after_recorder_clear(monkeypatch):
     original = _stub_for(target_name)
     _install_only(monkeypatch, target_name, original)
 
-    saved = pipeline._patch_v2_timers()
+    saved = _patch()
     try:
         assert pipeline._src_meta["行情"] == {
             "ms": None,
@@ -144,7 +163,7 @@ def test_timer_wrapper_recreates_sparse_meta_after_recorder_clear(monkeypatch):
         }
 
         # analyze_single_v3 currently clears the recorder after patching and
-        # before calling V2.  The wrapper must therefore recreate sparse meta.
+        # before calling V2. The bridge must preserve that sparse re-creation.
         pipeline._src_meta.clear()
         pipeline.v2.fetch_tencent_quote("600693")
 
@@ -154,7 +173,7 @@ def test_timer_wrapper_recreates_sparse_meta_after_recorder_clear(monkeypatch):
         assert meta["ms"] >= 0
         assert re.fullmatch(r"\d{2}:\d{2}:\d{2}", meta["at"])
     finally:
-        pipeline._restore_v2(saved)
+        _restore(saved)
 
 
 def test_timer_wrapper_records_timing_and_reraises_original_error(monkeypatch):
@@ -164,7 +183,7 @@ def test_timer_wrapper_records_timing_and_reraises_original_error(monkeypatch):
         raise RuntimeError("legacy fetch failed")
 
     _install_only(monkeypatch, target_name, boom)
-    saved = pipeline._patch_v2_timers()
+    saved = _patch()
     try:
         pipeline._src_meta.clear()
         with pytest.raises(RuntimeError, match="legacy fetch failed"):
@@ -176,7 +195,7 @@ def test_timer_wrapper_records_timing_and_reraises_original_error(monkeypatch):
         assert meta["ms"] >= 0
         assert re.fullmatch(r"\d{2}:\d{2}:\d{2}", meta["at"])
     finally:
-        pipeline._restore_v2(saved)
+        _restore(saved)
 
 
 def test_restore_only_restores_saved_functions_and_does_not_touch_status(monkeypatch):
@@ -184,10 +203,10 @@ def test_restore_only_restores_saved_functions_and_does_not_touch_status(monkeyp
     original = _stub_for(target_name)
     _install_only(monkeypatch, target_name, original)
 
-    saved = pipeline._patch_v2_timers()
+    saved = _patch()
     pipeline._src_meta["自定义"] = {"status": "keep"}
 
-    pipeline._restore_v2(saved)
+    _restore(saved)
 
     assert pipeline.v2.fetch_tencent_quote is original
     assert pipeline._src_meta["自定义"] == {"status": "keep"}
