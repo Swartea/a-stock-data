@@ -21,9 +21,14 @@ class FixedDateTime:
         return FIXED_NOW
 
 
-@pytest.fixture(params=[pipeline, artifact_writer], ids=["pipeline", "artifact_writer"])
-def writer(request):
-    return request.param
+@pytest.fixture
+def writer():
+    return artifact_writer
+
+
+def test_pipeline_reexports_artifact_writer_boundary():
+    assert pipeline._emit is artifact_writer._emit
+    assert pipeline._dump_run_log is artifact_writer._dump_run_log
 
 
 def _result():
