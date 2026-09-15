@@ -68,7 +68,7 @@ from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.source_status import SourceStatusRecorder
-from analysis.orchestration.fetching import _call_new
+from analysis.orchestration.fetching import _call_new, _fetch_margin
 from analysis.orchestration.fetching import _retry_call as _retry_call  # noqa: F401
 from analysis.orchestration.legacy_bridge import (
     _V2_FN_TO_SRC,
@@ -281,24 +281,13 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
             run_log["sources"][sec.label] = f"error: {e}"
             run_log.setdefault("fallback_chain", []).append(f"{sec.label}: {e}")
 
-    t0 = time.time()
-    margin = None
-    for _ in range(3):
-        try:
-            margin = v2.fetch_margin_trading(code6)
-            break
-        except Exception as e:  # noqa: BLE001
-            margin = {"error": str(e)}
-            time.sleep(1.0)
-    ms = round((time.time() - t0) * 1000)
-    if margin and isinstance(margin, dict) and "error" in margin:
-        status = f"error:{str(margin['error'])[:60]}, {ms}ms"
-        run_log["fallback_chain"].append(f"融资融券: {margin['error']}")
-    else:
-        status = f"ok:eastmoney-datacenter, {ms}ms"
-    run_log["sources"]["融资融券"] = status
-    run_log["source_meta"]["融资融券"] = {"ms": ms, "at": _fmt_time(time.time()),
-                                          "status": status, "detail": _SRC_DESC["融资融券"]}
+    margin = _fetch_margin(
+        run_log,
+        _SRC_DESC,
+        _fmt_time,
+        v2.fetch_margin_trading,
+        code6,
+    )
     fetched["margin"] = margin
 
     # 附加: 近5日主力 + 两融方向历史 + 同业(概念口径) — 失败不致命, 记入 supplements
