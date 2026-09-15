@@ -68,6 +68,13 @@ from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.source_status import SourceStatusRecorder
+from analysis.orchestration.legacy_bridge import (
+    _V2_FN_TO_SRC,
+    _FIELD_OF,
+    _TOP_FIELD_OF,
+    _patch_v2_timers,
+    _restore_v2,
+)
 from analysis.analytics.scope import _classify_north_scope
 from analysis.analytics.scoring import _build_scoring_breakdown
 
@@ -99,58 +106,8 @@ except Exception:  # noqa: BLE001
 # ============================================================
 REPORTS_ROOT = os.path.normpath(os.path.join(_ANALYSIS_DIR, "..", "reports"))
 
-# V2 内嵌 10 类 + V3 追加: 融资融券 + 研报/公告/财务/新闻
-_V2_FN_TO_SRC = {
-    "fetch_tencent_quote": "行情",
-    "fetch_full_valuation": "估值一致预期",
-    "fetch_eastmoney_concept_blocks": "概念板块",
-    "fetch_fund_flow_minute": "当日资金流",
-    "fetch_valuation_history": "估值历史分位",
-    "fetch_lockup_expiry": "解禁日历",
-    "fetch_dragon_tiger": "龙虎榜",
-    "fetch_macro_snapshot": "宏观底色",
-    "fetch_chip_distribution": "筹码K线",
-    "fetch_sw_stability": "申万分类",
-}
-# 来源 label → base_result field
-_FIELD_OF = {
-    "行情": "quote", "估值一致预期": "valuation", "概念板块": "blocks",
-    "当日资金流": "fund", "估值历史分位": "valuation_hist", "解禁日历": "lockup",
-    "龙虎榜": "dragon", "宏观底色": "macro", "筹码K线": "chip_data",
-    "申万分类": "sw_data",
-}
-_TOP_FIELD_OF = {fn: _FIELD_OF[lab] for fn, lab in _V2_FN_TO_SRC.items()}
-
 # 来源 label → meta dict (analyze_single_v3 内累计, 写盘前清空)
 _src_meta = SourceStatusRecorder()
-
-
-
-def _patch_v2_timers():
-    """包装 v2 的 10 个取数函数: 记录每次调用的耗时与时点 (不改变行为)。"""
-    saved = {}
-    def _make_wrapper(fn_name, orig):
-        def wrapper(*a, **k):
-            t0 = time.time()
-            try:
-                return orig(*a, **k)
-            finally:
-                lab = _V2_FN_TO_SRC.get(fn_name, fn_name)
-                _src_meta.setdefault(lab, {})["ms"] = round((time.time() - t0) * 1000)
-                _src_meta[lab]["at"] = _fmt_time(time.time())
-        return wrapper
-    for fn_name, lab in _V2_FN_TO_SRC.items():
-        if not hasattr(v2, fn_name):
-            continue
-        saved[fn_name] = getattr(v2, fn_name)
-        setattr(v2, fn_name, _make_wrapper(fn_name, saved[fn_name]))
-        _src_meta[lab] = {"ms": None, "at": None, "status": None, "detail": None}
-    return saved
-
-
-def _restore_v2(saved: dict):
-    for fn_name, orig in saved.items():
-        setattr(v2, fn_name, orig)
 
 
 # ============================================================
@@ -205,7 +162,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     }
 
     # ---- 1. V2 全链路 (10 数据类, 计时包装) ----
-    saved = _patch_v2_timers()
+    saved = _patch_v2_timers(v2, _src_meta, _fmt_time)
     base_result = {}
     fatal = None
     try:
@@ -225,7 +182,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
             print(f"\n[✗] 分析中止: {run_log['fatal']}")
             return {"error": run_log["fatal"], "run_log": run_log}
     finally:
-        _restore_v2(saved)
+        _restore_v2(v2, saved)
 
     # ---- 1.5 申万 SSL 失败处理 (P0-C 规范整改, 2026-09-11, §5 'TLS 证书校验') ----
     # 历史: 本机 CA 证书链过旧 → swsresearch.com HTTPS 握手失败 (SSL EOF);
