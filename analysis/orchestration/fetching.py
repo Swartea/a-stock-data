@@ -1,8 +1,8 @@
 """Fetching orchestration primitives for the V3 pipeline.
 
-Phase 1G keeps the existing retry semantics intact while making the source
-status recorder an explicit dependency.  Higher-level status interpretation,
-fallback-chain updates, and run-log assembly remain in ``pipeline.py``.
+Phase 1G keeps the existing retry and new-fetcher status semantics intact while
+making runtime state explicit.  The helpers here do not import ``pipeline`` or
+own a second source-status recorder.
 """
 
 import time
@@ -36,3 +36,80 @@ def _retry_call(
             last_exc = exc
             time.sleep(1.0)
     return None, tries, str(last_exc)
+
+
+def _call_new(
+    recorder: SourceStatusRecorder,
+    run_log: dict[str, Any],
+    new_imports: dict[str, dict[str, Any]],
+    src_desc: dict[str, str],
+    status_of_fn: Callable[[Any], str | None],
+    src_label: str,
+    mod_key: str,
+    *args: Any,
+    tries: int = 3,
+    **kwargs: Any,
+) -> Any:
+    """Call one optional V3 fetcher and preserve the existing run-log contract.
+
+    Import failures, retry exhaustion, error/empty status handling, actual-source
+    reporting, and fallback-chain wording intentionally match the former nested
+    ``pipeline._call_new`` implementation.  ``unsupported`` also intentionally
+    keeps its historical fall-through behavior during this extraction phase.
+    """
+    mod = new_imports.get(mod_key)
+    if mod is None:
+        return None
+
+    lab = src_label
+    if not mod["ok"]:
+        status = f"error:{mod['err'][:60]}, 0ms"
+        run_log["sources"][lab] = status
+        run_log["source_meta"][lab] = {
+            "ms": 0,
+            "at": None,
+            "status": status,
+            "detail": src_desc.get(lab, ""),
+        }
+        run_log["fallback_chain"].append(f"{lab}: {mod['err']}")
+        return None
+
+    fn = mod["fn"]
+    value, attempt_count, exc = _retry_call(
+        recorder,
+        lab,
+        fn,
+        *args,
+        tries=tries,
+        **kwargs,
+    )
+    meta = recorder.get(lab, {})
+    status_value = status_of_fn(value) if value is not None else "error"
+
+    if exc:
+        status = f"error:调用异常 {exc[:80]}, {meta.get('ms','?')}ms"
+        run_log["fallback_chain"].append(
+            f"{lab}: 第{attempt_count}次后仍失败 — {exc}"
+        )
+    elif status_value == "error":
+        err_msg = ""
+        if isinstance(value, dict):
+            error = value.get("error")
+            if isinstance(error, dict) and "message" in error:
+                err_msg = str(error["message"])
+            elif isinstance(error, str):
+                err_msg = error
+        status = f"error:{err_msg[:60]}, {meta.get('ms','?')}ms"
+        run_log["fallback_chain"].append(f"{lab}: {err_msg[:100]}")
+    elif status_value == "empty":
+        status = f"empty:无记录, {meta.get('ms','?')}ms"
+    elif isinstance(value, dict) and value.get("source"):
+        status = f"ok:{value['source']}, {meta.get('ms','?')}ms"
+    else:
+        status = f"ok, {meta.get('ms','?')}ms"
+
+    meta["status"] = status
+    meta["detail"] = src_desc.get(lab, "")
+    run_log["sources"][lab] = status
+    run_log["source_meta"][lab] = meta
+    return value
