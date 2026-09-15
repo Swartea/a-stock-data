@@ -8,3 +8,7 @@ def test_pipeline_uses_call_new_fetching_boundary():
 
 def test_pipeline_uses_margin_fetching_boundary():
     assert pipeline._fetch_margin is fetching._fetch_margin
+
+
+def test_pipeline_uses_supplements_fetching_boundary():
+    assert pipeline._fetch_supplements is fetching._fetch_supplements

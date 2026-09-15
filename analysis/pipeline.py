@@ -68,7 +68,7 @@ from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.source_status import SourceStatusRecorder
-from analysis.orchestration.fetching import _call_new, _fetch_margin
+from analysis.orchestration.fetching import _call_new, _fetch_margin, _fetch_supplements
 from analysis.orchestration.fetching import _retry_call as _retry_call  # noqa: F401
 from analysis.orchestration.legacy_bridge import (
     _V2_FN_TO_SRC,
@@ -292,32 +292,18 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
 
     # 附加: 近5日主力 + 两融方向历史 + 同业(概念口径) — 失败不致命, 记入 supplements
     # 灰度保留：spec §3.3（"先保留 4 旧 fetcher 走老路径，5 新节走新注册表；下版本统一"）
-    run_log["supplements"] = {}
-    for key, lab, fn, args in (
-            ("fund_daily5", "资金面-5日主力", _fetch_fund_flow_daily, (code6,)),
-            ("margin_hist", "两融历史", _fetch_margin_history, (code6,)),
-            ("peers", "同业对比", _fetch_concept_peers, (code6, base_result.get("blocks", []))),
-    ):
-        t0 = time.time()
-        try:
-            val = fn(*args)
-            if isinstance(val, dict) and "error" in val and key != "margin_hist":
-                time.sleep(1.5)                      # 附加源网络重试 1 次 (时间盒内)
-                val2 = fn(*args)
-                if not (isinstance(val2, dict) and "error" in val2):
-                    val = val2
-        except Exception as e:  # noqa: BLE001
-            val = {"error": str(e)}
-        meta = _src_meta.setdefault(lab, {"at": _fmt_time(time.time())})
-        meta["ms"] = round((time.time() - t0) * 1000)
-        if isinstance(val, dict) and "error" in val:
-            meta["status"] = f"error:{str(val['error'])[:80]}, {meta['ms']}ms"
-        else:
-            meta["status"] = f"ok, {meta['ms']}ms"
-        meta["detail"] = _SRC_DESC.get(lab, lab)
-        run_log["source_meta"][lab] = meta
-        run_log["supplements"][lab] = meta["status"]
-        fetched[key] = val
+    _fetch_supplements(
+        _src_meta,
+        run_log,
+        fetched,
+        _SRC_DESC,
+        _fmt_time,
+        code6,
+        base_result.get("blocks", []),
+        _fetch_fund_flow_daily,
+        _fetch_margin_history,
+        _fetch_concept_peers,
+    )
 
     # ---- 5. 组装 result_v3 (契约) ----
     result = {

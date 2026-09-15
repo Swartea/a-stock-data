@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 import analysis.pipeline as pipeline
+from analysis.orchestration import fetching
 
 
 class FakeClock:
@@ -66,11 +67,9 @@ def _run_pipeline_with_supplements(
     clock = clock or FakeClock()
     pipeline._src_meta.clear()
 
-    monkeypatch.setattr(
-        pipeline,
-        "time",
-        SimpleNamespace(time=clock.time, sleep=clock.sleep),
-    )
+    fake_time = SimpleNamespace(time=clock.time, sleep=clock.sleep)
+    monkeypatch.setattr(pipeline, "time", fake_time)
+    monkeypatch.setattr(fetching, "time", fake_time)
     monkeypatch.setattr(pipeline, "_patch_v2_timers", lambda *_args, **_kw: {})
     monkeypatch.setattr(pipeline, "_restore_v2", lambda *_args, **_kw: None)
 
