@@ -68,6 +68,7 @@ from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.source_status import SourceStatusRecorder
+from analysis.orchestration.fetching import _retry_call
 from analysis.orchestration.legacy_bridge import (
     _V2_FN_TO_SRC,
     _FIELD_OF,
@@ -108,27 +109,6 @@ REPORTS_ROOT = os.path.normpath(os.path.join(_ANALYSIS_DIR, "..", "reports"))
 
 # 来源 label → meta dict (analyze_single_v3 内累计, 写盘前清空)
 _src_meta = SourceStatusRecorder()
-
-
-# ============================================================
-# 通用工具
-# _short_iso 已抽到 analysis.utils (P2-A Phase 5)
-# - v3 顶部 from analysis.utils import _short_iso 透传
-# ============================================================
-
-def _retry_call(label: str, fn, *args, tries: int = 3, timeout: int = 60, **kw) -> tuple:
-    """调用带重试(时间盒 tries 次), 返回 (值, 实际尝试次数, 状态串)。"""
-    last_exc = None
-    for i in range(1, tries + 1):
-        t0 = time.time()
-        try:
-            val = fn(*args, **kw)
-            _src_meta.setdefault(label, {})["ms"] = round((time.time() - t0) * 1000)
-            return val, i, None
-        except Exception as e:  # noqa: BLE001
-            last_exc = e
-            time.sleep(1.0)
-    return None, tries, str(last_exc)
 
 
 # ============================================================
@@ -282,7 +262,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
             run_log["fallback_chain"].append(f"{lab}: {mod['err']}")
             return None
         fn = mod["fn"]
-        val, n_try, exc = _retry_call(lab, fn, *args, tries=tries, **kw)
+        val, n_try, exc = _retry_call(_src_meta, lab, fn, *args, tries=tries, **kw)
         meta = _src_meta.get(lab, {})
         # P0-B (2026-09-11, §4): 用 status_of() 统一检测, 兼容新契约 + 老 ad-hoc
         st = status_of(val) if val is not None else "error"
@@ -651,4 +631,3 @@ def _dump_run_log(code: str, name: str, run_log: dict):
 
 # ============================================================
 # CLI
-
