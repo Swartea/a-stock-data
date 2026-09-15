@@ -68,7 +68,8 @@ from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.report_md import write_markdown_report_v3
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.source_status import SourceStatusRecorder
-from analysis.orchestration.fetching import _retry_call
+from analysis.orchestration.fetching import _call_new
+from analysis.orchestration.fetching import _retry_call as _retry_call  # noqa: F401
 from analysis.orchestration.legacy_bridge import (
     _V2_FN_TO_SRC,
     _FIELD_OF,
@@ -247,56 +248,23 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
                "research": None, "margin": None,
                "fund_daily5": None, "margin_hist": None, "peers": None}
 
-    def _call_new(src_label: str, mod_key: str, *args, tries: int = 3, **kw):
-        """调新 fetcher: import 失败 → 数据源暂缺; 调用异常 → 重试 tries 次。
-        src_label = run_log.sources 规范键; mod_key = _NEW_IMPORTS 模块键。"""
-        mod = _NEW_IMPORTS.get(mod_key)
-        if mod is None:
-            return None
-        lab = src_label
-        if not mod["ok"]:
-            status = f"error:{mod['err'][:60]}, 0ms"
-            run_log["sources"][lab] = status
-            run_log["source_meta"][lab] = {"ms": 0, "at": None, "status": status,
-                                           "detail": _SRC_DESC.get(lab, "")}
-            run_log["fallback_chain"].append(f"{lab}: {mod['err']}")
-            return None
-        fn = mod["fn"]
-        val, n_try, exc = _retry_call(_src_meta, lab, fn, *args, tries=tries, **kw)
-        meta = _src_meta.get(lab, {})
-        # P0-B (2026-09-11, §4): 用 status_of() 统一检测, 兼容新契约 + 老 ad-hoc
-        st = status_of(val) if val is not None else "error"
-        if exc:
-            status = f"error:调用异常 {exc[:80]}, {meta.get('ms','?')}ms"
-            run_log["fallback_chain"].append(f"{lab}: 第{n_try}次后仍失败 — {exc}")
-        elif st == "error":
-            # 新契约从 error.message 取, 老 ad-hoc 从 error 字段取
-            err_msg = ""
-            if isinstance(val, dict):
-                e = val.get("error")
-                if isinstance(e, dict) and "message" in e:
-                    err_msg = str(e["message"])
-                elif isinstance(e, str):
-                    err_msg = e
-            status = f"error:{err_msg[:60]}, {meta.get('ms','?')}ms"
-            run_log["fallback_chain"].append(f"{lab}: {err_msg[:100]}")
-        elif st == "empty":
-            status = f"empty:无记录, {meta.get('ms','?')}ms"
-        elif isinstance(val, dict) and val.get("source"):
-            status = f"ok:{val['source']}, {meta.get('ms','?')}ms"     # 实际数据源
-        else:
-            status = f"ok, {meta.get('ms','?')}ms"
-        meta["status"] = status
-        meta["detail"] = _SRC_DESC.get(lab, "")
-        run_log["sources"][lab] = status
-        run_log["source_meta"][lab] = meta
-        return val
-
     print("\n[V3+] 追加数据块: 公告 / 财务 / 研报 / 新闻 / Section Registry / 两融 / 5日资金 / 同业…")
-    fetched["announcements"] = _call_new("公告", "公告", code6)
-    fetched["finance"] = _call_new("财务摘要", "财务", code6)
-    fetched["research"] = _call_new("研报观点", "研报", code6, 200)  # days=200: 小票近90日常无覆盖(真实)
-    fetched["news"] = _call_new("新闻舆情", "新闻", code6)
+    fetched["announcements"] = _call_new(
+        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
+        "公告", "公告", code6,
+    )
+    fetched["finance"] = _call_new(
+        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
+        "财务摘要", "财务", code6,
+    )
+    fetched["research"] = _call_new(
+        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
+        "研报观点", "研报", code6, 200,
+    )  # days=200: 小票近90日常无覆盖(真实)
+    fetched["news"] = _call_new(
+        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
+        "新闻舆情", "新闻", code6,
+    )
     # Section Registry: 5 新节走新路径（灰度老路径仍保留 4 旧 fetcher；spec §3.3）
     sections_data = {}
     sections = enabled_sections()
