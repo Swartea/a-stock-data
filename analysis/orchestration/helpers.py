@@ -74,3 +74,9 @@ def _record_kline_freshness_guard(run_log: dict, freshness: dict) -> None:
     )
     if freshness["level"] == "warn":
         run_log["fallback_chain"].append(f"K线时点: {freshness['text']} [WARN]")
+
+
+def _finalize_run_log_timing(run_log: dict, started, now_fn, time_fn) -> None:
+    """按现有 V3 契约写入 run_log 的结束时点与总耗时。"""
+    run_log["finished_at"] = now_fn().astimezone().isoformat(timespec="seconds")
+    run_log["total_sec"] = round(time_fn() - started.timestamp(), 1)
