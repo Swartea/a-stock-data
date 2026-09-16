@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import date as Date
-from typing import Any
 
 import requests
 
