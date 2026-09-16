@@ -15,6 +15,36 @@ class FakeClock:
         self.now += seconds
 
 
+class FakeMoment:
+    def __init__(self, iso_text, timestamp_value, date_text="2026-09-16"):
+        self.iso_text = iso_text
+        self.timestamp_value = timestamp_value
+        self.date_text = date_text
+        self.isoformat_calls = []
+
+    def astimezone(self):
+        return self
+
+    def isoformat(self, *, timespec):
+        self.isoformat_calls.append(timespec)
+        return self.iso_text
+
+    def timestamp(self):
+        return self.timestamp_value
+
+    def strftime(self, fmt):
+        assert fmt == "%Y-%m-%d"
+        return self.date_text
+
+
+class FakeDateTime:
+    moments = []
+
+    @classmethod
+    def now(cls):
+        return cls.moments.pop(0)
+
+
 def _base_result():
     return {
         "code": "600693",
@@ -161,3 +191,46 @@ def test_kline_guard_only_exact_warn_level_adds_fallback(monkeypatch):
 
     assert run_log["guard"]["kline_freshness"].endswith("WARN (大写状态)")
     assert not any(item.startswith("K线时点:") for item in run_log["fallback_chain"])
+
+
+def test_run_log_finalization_uses_second_precision_finished_at_and_wall_clock(monkeypatch):
+    start = FakeMoment("2026-09-16T01:00:00+00:00", 987.66)
+    report_time = FakeMoment("unused", 5000.0)
+    finish = FakeMoment("2026-09-16T01:00:12+00:00", 9999.0)
+    FakeDateTime.moments = [start, report_time, finish]
+    monkeypatch.setattr(pipeline, "datetime", FakeDateTime)
+
+    result = _run_pipeline(
+        monkeypatch,
+        {
+            "last_bar": "2026-09-15",
+            "expected": "2026-09-15",
+            "level": "ok",
+            "text": "fresh",
+        },
+    )
+    run_log = result["run_log"]
+
+    assert run_log["finished_at"] == "2026-09-16T01:00:12+00:00"
+    assert finish.isoformat_calls == ["seconds"]
+    assert run_log["total_sec"] == 12.3
+
+
+def test_run_log_total_sec_rounds_wall_clock_elapsed_to_one_decimal(monkeypatch):
+    start = FakeMoment("2026-09-16T01:00:00+00:00", 987.64)
+    report_time = FakeMoment("unused", 5000.0)
+    finish = FakeMoment("2026-09-16T01:00:13+00:00", 12345.0)
+    FakeDateTime.moments = [start, report_time, finish]
+    monkeypatch.setattr(pipeline, "datetime", FakeDateTime)
+
+    result = _run_pipeline(
+        monkeypatch,
+        {
+            "last_bar": None,
+            "expected": "2026-09-15",
+            "level": "na",
+            "text": "无K线",
+        },
+    )
+
+    assert result["run_log"]["total_sec"] == 12.4
