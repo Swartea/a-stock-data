@@ -67,6 +67,7 @@ from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.source_status import (
     SourceStatusRecorder,
     _record_v2_source_statuses,
+    _record_sw_tls_failure,
 )
 from analysis.orchestration.fetching import (
     _call_new,
@@ -176,23 +177,14 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     # 整改: 移除 verify=False 兜底 (§5 '保持 TLS 证书校验开启; 不得 verify=False 作为生产默认'),
     #       失败如实记录, run_log 推荐 'pip install -U certifi' 修复; 评分沿用 v2 已算值.
     code6 = base_result["code"]
-    sw0 = base_result.get("sw_data") or {}
-    if isinstance(sw0, dict) and "error" in sw0:
-        sw_err = str(sw0.get("error", ""))[:80]
-        run_log["fallback_chain"].append(
-            f"申万分类: SSL 直连失败 ({sw_err[:44]}) — 不再 verify=False 兜底 (§5); "
-            f"修复: pip install -U certifi  (申万行业因子按 v2 默认中性计)")
-        # §5: 不重试不回退, 失败如实记录; 评分不变, 由 v2.analyze_single 已按 sw 缺失算
-        meta = _src_meta.setdefault("申万分类", {"at": _fmt_time(time.time())})
-        meta["ms"] = 0
-        meta["status"] = f"error:{sw_err[:40]} (需 pip install -U certifi), 0ms"
-        meta["detail"] = _SRC_DESC.get("申万分类", "申万行业稳定性")
-        meta["tls_recommendation"] = "pip install -U certifi"
-        run_log.setdefault("tls_recommendations", []).append({
-            "host": "swsresearch.com",
-            "fix": "pip install -U certifi",
-            "applies_to": ["申万分类"],
-        })
+    _record_sw_tls_failure(
+        base_result,
+        _src_meta,
+        run_log,
+        _SRC_DESC,
+        _fmt_time,
+        time.time,
+    )
 
     q = base_result["quote"]; v = base_result["valuation"]
     score = base_result["score"]; score_total = score["total"]
