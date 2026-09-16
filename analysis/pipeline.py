@@ -64,6 +64,7 @@ from analysis.data_fetcher import (
 )
 from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
+from analysis.orchestration.helpers import _record_kline_freshness_guard
 from analysis.orchestration.source_status import (
     SourceStatusRecorder,
     _record_v2_source_statuses,
@@ -315,11 +316,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
 
     # ---- 6. run_log 收尾: guard + 时点 ----
     fresh = _kline_freshness(chip_data)
-    run_log["guard"]["kline_freshness"] = (
-        f"last_bar={fresh['last_bar'] or 'N/A'} vs 最新交易日={fresh['expected']} -> "
-        f"{fresh['level']} ({fresh['text']})")
-    if fresh["level"] == "warn":
-        run_log["fallback_chain"].append(f"K线时点: {fresh['text']} [WARN]")
+    _record_kline_freshness_guard(run_log, fresh)
     print(f"\n[guard] {run_log['guard']['kline_freshness']}")
 
     run_log["finished_at"] = datetime.now().astimezone().isoformat(timespec="seconds")

@@ -1,3 +1,5 @@
+import analysis.orchestration.helpers as helpers
+import analysis.pipeline as pipeline
 from analysis.orchestration.helpers import _record_kline_freshness_guard
 
 
@@ -6,6 +8,10 @@ def _run_log():
         "guard": {},
         "fallback_chain": [],
     }
+
+
+def test_pipeline_uses_kline_guard_boundary():
+    assert pipeline._record_kline_freshness_guard is helpers._record_kline_freshness_guard
 
 
 def test_guard_helper_formats_exact_ok_status_without_fallback():
