@@ -64,3 +64,13 @@ def _kline_freshness(chip_data: dict) -> dict:
             "若为法定节假日/周末属正常, 否则需关注数据延迟"
         ),
     }
+
+
+def _record_kline_freshness_guard(run_log: dict, freshness: dict) -> None:
+    """把 K 线 freshness 结果投影到现有 run_log guard/fallback 契约。"""
+    run_log["guard"]["kline_freshness"] = (
+        f"last_bar={freshness['last_bar'] or 'N/A'} vs 最新交易日={freshness['expected']} -> "
+        f"{freshness['level']} ({freshness['text']})"
+    )
+    if freshness["level"] == "warn":
+        run_log["fallback_chain"].append(f"K线时点: {freshness['text']} [WARN]")
