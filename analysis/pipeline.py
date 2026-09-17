@@ -65,6 +65,7 @@ from analysis.data_fetcher import (
 from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.helpers import _record_kline_freshness_guard
+from analysis.orchestration.helpers import _finalize_run_log_timing
 from analysis.orchestration.source_status import (
     SourceStatusRecorder,
     _record_v2_source_statuses,
@@ -319,8 +320,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     _record_kline_freshness_guard(run_log, fresh)
     print(f"\n[guard] {run_log['guard']['kline_freshness']}")
 
-    run_log["finished_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
-    run_log["total_sec"] = round(time.time() - started.timestamp(), 1)
+    _finalize_run_log_timing(run_log, started, datetime.now, time.time)
 
     # ---- 7. 输出: 五件套 (MD + result_v3.json + HTML + DOCX + run_log.json) ----
     files = _emit(code6, result["name"], result)
