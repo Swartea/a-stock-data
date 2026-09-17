@@ -1,3 +1,5 @@
+import analysis.orchestration.helpers as helpers
+import analysis.pipeline as pipeline
 from analysis.orchestration.helpers import _finalize_run_log_timing
 
 
@@ -22,6 +24,10 @@ class FakeFinish:
     def isoformat(self, *, timespec):
         self.isoformat_calls.append(timespec)
         return self.iso_text
+
+
+def test_pipeline_uses_run_log_timing_boundary():
+    assert pipeline._finalize_run_log_timing is helpers._finalize_run_log_timing
 
 
 def test_finalize_run_log_timing_preserves_exact_finished_at_and_rounding_contract():
