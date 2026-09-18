@@ -4,11 +4,19 @@ import analysis.pipeline as pipeline
 
 
 class FakeStarted:
-    def __init__(self, timestamp_value):
+    def __init__(self, timestamp_value, iso_text="2026-09-18T01:23:36+00:00"):
         self.timestamp_value = timestamp_value
+        self.iso_text = iso_text
 
     def timestamp(self):
         return self.timestamp_value
+
+    def astimezone(self):
+        return self
+
+    def isoformat(self, *, timespec):
+        assert timespec == "seconds"
+        return self.iso_text
 
 
 class FakeDateTime:
