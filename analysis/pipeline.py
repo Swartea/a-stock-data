@@ -65,7 +65,7 @@ from analysis.data_fetcher import (
 from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
 from analysis.orchestration.helpers import _record_kline_freshness_guard
-from analysis.orchestration.helpers import _finalize_run_log_timing
+from analysis.orchestration.helpers import _initialize_run_log, _finalize_run_log_timing
 from analysis.orchestration.source_status import (
     SourceStatusRecorder,
     _record_v2_source_statuses,
@@ -141,14 +141,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     K线当日证据与三价位硬约束: 全部取 V2 同源实时结果 (腾讯行情 + baostock 前复权K线),
     不读任何 pool CSV。"""
     started = datetime.now()
-    run_log = {
-        "started_at": started.astimezone().isoformat(timespec="seconds"),
-        "finished_at": None, "total_sec": None,
-        "sources": {}, "source_meta": {},
-        "guard": {"status": "N/A 单票流程不用池CSV", "kline_freshness": None},
-        "fallback_chain": [],
-        "fatal": None,
-    }
+    run_log = _initialize_run_log(started)
 
     # ---- 1. V2 全链路 (10 数据类, 计时包装) ----
     saved = _patch_v2_timers(v2, _src_meta, _fmt_time)

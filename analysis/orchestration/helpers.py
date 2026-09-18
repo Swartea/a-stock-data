@@ -76,6 +76,23 @@ def _record_kline_freshness_guard(run_log: dict, freshness: dict) -> None:
         run_log["fallback_chain"].append(f"K线时点: {freshness['text']} [WARN]")
 
 
+def _initialize_run_log(started) -> dict:
+    """按现有 V3 契约创建一次分析运行的初始 run_log。"""
+    return {
+        "started_at": started.astimezone().isoformat(timespec="seconds"),
+        "finished_at": None,
+        "total_sec": None,
+        "sources": {},
+        "source_meta": {},
+        "guard": {
+            "status": "N/A 单票流程不用池CSV",
+            "kline_freshness": None,
+        },
+        "fallback_chain": [],
+        "fatal": None,
+    }
+
+
 def _finalize_run_log_timing(run_log: dict, started, now_fn, time_fn) -> None:
     """按现有 V3 契约写入 run_log 的结束时点与总耗时。"""
     run_log["finished_at"] = now_fn().astimezone().isoformat(timespec="seconds")
