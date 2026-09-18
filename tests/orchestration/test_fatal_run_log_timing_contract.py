@@ -105,6 +105,14 @@ def test_fatal_path_finalizes_run_log_before_dump_and_return(monkeypatch):
 
     assert result["error"] == "V2 行情链路失败(腾讯为终点, 禁止陈旧价兜底): 行情失败"
     assert result["run_log"]["fatal"] == result["error"]
+    assert result["run_log"]["started_at"] == "2026-09-18T01:23:36+00:00"
+    assert result["run_log"]["sources"] == {}
+    assert result["run_log"]["source_meta"] == {}
+    assert result["run_log"]["guard"] == {
+        "status": "N/A 单票流程不用池CSV",
+        "kline_freshness": None,
+    }
+    assert result["run_log"]["fallback_chain"] == []
     assert result["run_log"]["finished_at"] == "2026-09-18T01:23:45+00:00"
     assert result["run_log"]["total_sec"] == 9.0
 
