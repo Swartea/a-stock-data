@@ -60,7 +60,14 @@ def test_fatal_path_finalizes_run_log_before_dump_and_return(monkeypatch):
     FakeDateTime._finish = None
     calls = {"analyze": 0, "restore": 0}
     dumped = []
+    timing_calls = []
+    real_finalize = pipeline._finalize_run_log_timing
 
+    def finalize(run_log, started, now_fn, time_fn):
+        timing_calls.append((run_log, started, now_fn, time_fn))
+        return real_finalize(run_log, started, now_fn, time_fn)
+
+    monkeypatch.setattr(pipeline, "_finalize_run_log_timing", finalize)
     monkeypatch.setattr(pipeline, "datetime", FakeDateTime)
     monkeypatch.setattr(
         pipeline,
@@ -92,6 +99,9 @@ def test_fatal_path_finalizes_run_log_before_dump_and_return(monkeypatch):
     assert calls["analyze"] == 3
     assert calls["restore"] == 1
     assert clock.sleeps == [3, 3, 3]
+    assert len(timing_calls) == 1
+    assert timing_calls[0][0] is result["run_log"]
+    assert timing_calls[0][1] is FakeDateTime._started
 
     assert result["error"] == "V2 行情链路失败(腾讯为终点, 禁止陈旧价兜底): 行情失败"
     assert result["run_log"]["fatal"] == result["error"]

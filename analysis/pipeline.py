@@ -165,8 +165,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
             time.sleep(3)
         if "error" in base_result:
             run_log["fatal"] = f"V2 行情链路失败(腾讯为终点, 禁止陈旧价兜底): {fatal}"
-            run_log["finished_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
-            run_log["total_sec"] = round(time.time() - started.timestamp(), 1)
+            _finalize_run_log_timing(run_log, started, datetime.now, time.time)
             _dump_run_log(code, name, run_log)
             print(f"\n[✗] 分析中止: {run_log['fatal']}")
             return {"error": run_log["fatal"], "run_log": run_log}
