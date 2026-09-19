@@ -23,10 +23,11 @@
 import os
 import sys
 import json
+from pathlib import Path
 
-# 绝对 import: ROOT 加入 sys.path, 让 `from analysis.xxx import yyy` 生效
-# (与 plan 严格一致, 不用 `sys.path.insert(0, "analysis/")` 旧风格)
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
+# 使用仓库/CI 工作目录, 不绑定个人 Mac 路径
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", Path(__file__).resolve().parents[1])).resolve()
+sys.path.insert(0, str(WORKDIR))
 
 import pytest
 
@@ -38,6 +39,13 @@ from analysis.quant_analyzer_v3 import (
     _series_recent_high,
     _series_recent_low,
 )
+
+
+def _load_historical_result(relative_path: str) -> dict:
+    path = WORKDIR / relative_path
+    if not path.exists():
+        pytest.skip(f"未提供历史 result_v3 fixture: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 # ============================================================
@@ -569,8 +577,7 @@ def test_batch_d_jierui_case_v2_stop_above_support():
     → V2 仍赢, 数值不变, method=trading_plan
     """
     import json
-    result_path = "/Users/swarteachou/Desktop/大A数据/reports/002353_杰瑞股份/2026-09-12/result_v3-1758.json"
-    d = json.load(open(result_path))
+    d = _load_historical_result("reports/002353_杰瑞股份/2026-09-12/result_v3-1758.json")
     r = compute_three_levels(d["quote"], d["chip_data"], d["trading_plan"])
     # 批次 E 痛 1: 操作支撑=108.37 (boll_lower, 距现价 -8.89%)
     assert r["support"] == 108.37, f"杰瑞操作支撑应=108.37 (boll_lower, 批次 E), 实际={r['support']}"
@@ -585,8 +592,7 @@ def test_batch_d_jierui_case_v2_stop_above_support():
 def test_batch_d_dongbai_case_v2_stop_above_support():
     """批次 D + E 东百类: 600693 9-12 操作支撑=8.99 (ma60), V2 止损=9.23, V2 赢"""
     import json
-    result_path = "/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/2026-09-12/result_v3-1758.json"
-    d = json.load(open(result_path))
+    d = _load_historical_result("reports/600693_东百集团/2026-09-12/result_v3-1758.json")
     r = compute_three_levels(d["quote"], d["chip_data"], d["trading_plan"])
     # 批次 E: 操作支撑=8.99 (ma60)
     assert r["support"] == 8.99, f"东百操作支撑应=8.99 (ma60, 批次 E), 实际={r['support']}"
@@ -601,8 +607,7 @@ def test_batch_d_dongbai_case_v2_stop_above_support():
 def test_batch_d_xinzhonggang_case_v2_stop_above_support():
     """批次 D + E 新中港类: 605162 9-11 操作支撑=8.68 (ma60), V2 止损=9.72, V2 赢"""
     import json
-    result_path = "/Users/swarteachou/Desktop/大A数据/reports/605162_新中港/2026-09-11/result_v3-1220.json"
-    d = json.load(open(result_path))
+    d = _load_historical_result("reports/605162_新中港/2026-09-11/result_v3-1220.json")
     r = compute_three_levels(d["quote"], d["chip_data"], d["trading_plan"])
     # 批次 E: 操作支撑=8.68 (ma60)
     assert r["support"] == 8.68, f"新中港操作支撑应=8.68 (ma60, 批次 E), 实际={r['support']}"
@@ -658,7 +663,7 @@ def test_batch_d_method_field_value_constraints():
     valid_methods = {"trading_plan", "support_buffer", "max_of_both", None}
     # case 1: 杰瑞
     import json
-    d = json.load(open("/Users/swarteachou/Desktop/大A数据/reports/002353_杰瑞股份/2026-09-12/result_v3-1758.json"))
+    d = _load_historical_result("reports/002353_杰瑞股份/2026-09-12/result_v3-1758.json")
     r1 = compute_three_levels(d["quote"], d["chip_data"], d["trading_plan"])
     assert r1["stop_loss_method"] in valid_methods
     # case 2: 防倒挂

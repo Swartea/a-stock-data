@@ -19,6 +19,13 @@ WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", "/Users/swarteachou/Desktop/大A�
 sys.path.insert(0, str(WORKDIR))
 sys.path.insert(0, str(WORKDIR / "analysis"))
 
+_SAMPLE_RESULT_PATH = WORKDIR / "reports/600693_东百集团/2026-09-13/result_v3-0914.json"
+
+def _load_sample_result():
+    if not _SAMPLE_RESULT_PATH.exists():
+        pytest.skip(f"未提供历史 result_v3 fixture: {_SAMPLE_RESULT_PATH}")
+    return json.loads(_SAMPLE_RESULT_PATH.read_text(encoding="utf-8"))
+
 
 # ============================================================
 # 1. _build_scoring_breakdown 单元测试
@@ -137,7 +144,7 @@ def test_md_compact_has_scoring_breakdown():
     """简版 MD 应含"📊 评分构成"段, 在 30 秒决策卡后, 三价位前。"""
     from analysis.pipeline import _build_scoring_breakdown
     from analysis.report_md import write_markdown_report_v3
-    r = json.load(open(str(WORKDIR / "reports/600693_东百集团/2026-09-13/result_v3-0914.json")))
+    r = _load_sample_result()
     r["scoring_breakdown"] = _build_scoring_breakdown(r["score"])
     md = write_markdown_report_v3(r)
     assert "## 📊 评分构成" in md
@@ -154,7 +161,7 @@ def test_md_full_has_scoring_breakdown_5dim_table():
     """完整版 MD 应含"📊 评分构成 (5 维拆解, 满分 100)"详细表。"""
     from analysis.pipeline import _build_scoring_breakdown
     from analysis.report_md import write_markdown_report_v3
-    r = json.load(open(str(WORKDIR / "reports/600693_东百集团/2026-09-13/result_v3-0914.json")))
+    r = _load_sample_result()
     r["scoring_breakdown"] = _build_scoring_breakdown(r["score"])
     r["_md_full"] = True
     md = write_markdown_report_v3(r)
@@ -171,7 +178,7 @@ def test_md_full_has_scoring_breakdown_5dim_table():
 def test_md_fallback_when_scoring_breakdown_missing():
     """scoring_breakdown 字段缺失时, MD 兜底"评分构成数据缺失"。"""
     from analysis.report_md import write_markdown_report_v3
-    r = json.load(open(str(WORKDIR / "reports/600693_东百集团/2026-09-13/result_v3-0914.json")))
+    r = _load_sample_result()
     r.pop("scoring_breakdown", None)
     md = write_markdown_report_v3(r)
     assert "## 📊 评分构成" in md
@@ -186,7 +193,7 @@ def test_html_card_has_5_cols():
     """HTML 5 维评分构成卡片应含 5 列 (bd-col)。"""
     from analysis.pipeline import _build_scoring_breakdown
     from analysis.html_report_v3 import _render_scoring_breakdown
-    r = json.load(open(str(WORKDIR / "reports/600693_东百集团/2026-09-13/result_v3-0914.json")))
+    r = _load_sample_result()
     r["scoring_breakdown"] = _build_scoring_breakdown(r["score"])
     html = _render_scoring_breakdown(r)
     # 5 列
@@ -213,7 +220,7 @@ def test_html_card_color_thresholds():
 def test_html_card_fallback_when_scoring_breakdown_missing():
     """scoring_breakdown 字段缺失时, HTML 卡片兜底"评分构成数据缺失"。"""
     from analysis.html_report_v3 import _render_scoring_breakdown
-    r = json.load(open(str(WORKDIR / "reports/600693_东百集团/2026-09-13/result_v3-0914.json")))
+    r = _load_sample_result()
     r.pop("scoring_breakdown", None)
     html = _render_scoring_breakdown(r)
     assert "评分构成数据缺失" in html
