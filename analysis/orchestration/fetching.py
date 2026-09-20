@@ -72,7 +72,7 @@ def _retry_call(
     fn: Callable[..., Any],
     *args: Any,
     tries: int = 3,
-    timeout: int = 60,
+    timeout: float | int = 60,
     **kwargs: Any,
 ) -> tuple[Any, int, str | None]:
     """Call fn with the existing retry behavior plus a per-attempt deadline.
@@ -136,13 +136,14 @@ def _call_new(
         return None
 
     fn = mod["fn"]
+    retry_timeout = kwargs.pop("timeout", _NEW_FETCH_TIMEOUT_SEC)
     value, attempt_count, exc = _retry_call(
         recorder,
         lab,
         fn,
         *args,
         tries=tries,
-        timeout=_NEW_FETCH_TIMEOUT_SEC,
+        timeout=retry_timeout,
         **kwargs,
     )
     meta = recorder.get(lab, {})
