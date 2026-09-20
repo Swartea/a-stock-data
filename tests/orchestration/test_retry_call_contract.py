@@ -102,7 +102,7 @@ def test_retry_call_success_updates_existing_meta_without_normalizing_it(monkeyp
     assert "at" not in recorder[LABEL]
 
 
-def test_retry_call_timeout_parameter_is_currently_inert_and_not_forwarded(monkeypatch):
+def test_retry_call_timeout_is_active_and_not_forwarded(monkeypatch):
     recorder = SourceStatusRecorder()
     monkeypatch.setattr(fetching.time, "sleep", lambda _seconds: None)
     seen_kwargs = {}
@@ -115,12 +115,41 @@ def test_retry_call_timeout_parameter_is_currently_inert_and_not_forwarded(monke
         recorder,
         LABEL,
         fetcher,
-        timeout=0.01,
+        timeout=0.05,
         custom="forwarded",
     )
 
     assert (value, n_try, exc) == ("ok", 1, None)
     assert seen_kwargs == {"custom": "forwarded"}
+
+
+def test_retry_call_timeout_retries_with_same_attempt_count(monkeypatch):
+    recorder = SourceStatusRecorder()
+    sleeps = []
+    monkeypatch.setattr(fetching.time, "sleep", lambda seconds: sleeps.append(seconds))
+    release = fetching.threading.Event()
+    calls = []
+
+    def blocked():
+        calls.append(len(calls) + 1)
+        release.wait(0.2)
+        return "late"
+
+    value, n_try, exc = fetching._retry_call(
+        recorder,
+        LABEL,
+        blocked,
+        tries=3,
+        timeout=0.01,
+    )
+
+    release.set()
+    assert value is None
+    assert n_try == 3
+    assert exc == "公告 调用超时(0.01s)"
+    assert calls == [1, 2, 3]
+    assert sleeps == [1.0, 1.0, 1.0]
+    assert LABEL not in recorder
 
 
 def test_retry_call_single_failed_try_still_sleeps_once(monkeypatch):
