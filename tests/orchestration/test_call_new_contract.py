@@ -318,3 +318,49 @@ def test_call_new_unsupported_currently_falls_through_to_ok_source(run_case):
     assert _target_fallbacks(run_log) == []
     assert run_log["source_meta"][TARGET_LABEL]["status"] == status
     assert sleeps == []
+
+
+def test_call_new_timeout_kw_controls_retry_boundary_without_forwarding(monkeypatch):
+    recorder = pipeline._src_meta
+    recorder.clear()
+    seen = {}
+
+    def fake_retry(rec, label, fn, *args, tries, timeout, **kwargs):
+        seen["recorder"] = rec
+        seen["label"] = label
+        seen["args"] = args
+        seen["tries"] = tries
+        seen["timeout"] = timeout
+        seen["kwargs"] = kwargs
+        return {"rows": [1]}, 1, None
+
+    monkeypatch.setattr(fetching, "_retry_call", fake_retry)
+    run_log = {"sources": {}, "source_meta": {}, "fallback_chain": []}
+    imports = {
+        TARGET_KEY: {
+            "ok": True,
+            "err": "",
+            "fn": lambda *_args, **_kwargs: {"rows": [1]},
+        }
+    }
+
+    value = fetching._call_new(
+        recorder,
+        run_log,
+        imports,
+        {TARGET_LABEL: "公告数据"},
+        lambda _value: "ok",
+        TARGET_LABEL,
+        TARGET_KEY,
+        "600693",
+        timeout=7,
+        custom="kept",
+    )
+
+    assert value == {"rows": [1]}
+    assert seen["recorder"] is recorder
+    assert seen["label"] == TARGET_LABEL
+    assert seen["args"] == ("600693",)
+    assert seen["tries"] == 3
+    assert seen["timeout"] == 7
+    assert seen["kwargs"] == {"custom": "kept"}
