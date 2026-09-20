@@ -120,6 +120,9 @@ def test_fetch_supplements_success_forwards_arguments_and_records_status(monkeyp
     assert run_log["source_meta"]["资金面-5日主力"]["detail"] == "近5日主力资金"
     assert run_log["source_meta"]["两融历史"]["detail"] == "两融方向历史"
     assert run_log["source_meta"]["同业对比"]["detail"] == "概念同业对比"
+    for label in SRC_DESC:
+        assert run_log["source_meta"][label]["timeout_sec"] == 20.0
+        assert run_log["source_meta"][label]["timed_out"] is False
 
 
 def test_fund_error_dict_retries_once_after_1_5_seconds(monkeypatch):
@@ -248,3 +251,27 @@ def test_existing_sparse_meta_is_reused_without_normalizing(monkeypatch):
     assert meta["custom"] == "keep-me"
     assert meta["status"] == "ok, 0ms"
     assert meta["detail"] == "近5日主力资金"
+def test_fetch_supplements_timeout_sets_typed_observability(monkeypatch):
+    calls = []
+    release = fetching.threading.Event()
+    monkeypatch.setattr(fetching, "_SUPPLEMENT_TIMEOUT_SEC", 0.01)
+
+    def blocked(code):
+        calls.append(code)
+        release.wait(0.2)
+        return {"late": True}
+
+    fetched, run_log, _recorder, clock = _run(
+        monkeypatch,
+        fund_fetcher=blocked,
+    )
+    release.set()
+
+    meta = run_log["source_meta"]["资金面-5日主力"]
+    assert calls == ["600693"]
+    assert clock.sleeps == []
+    assert fetched["fund_daily5"] == {"error": "资金面-5日主力 调用超时(0.01s)"}
+    assert meta["timeout_sec"] == 0.01
+    assert meta["timed_out"] is True
+    assert run_log["source_meta"]["两融历史"]["timed_out"] is False
+    assert run_log["source_meta"]["同业对比"]["timed_out"] is False

@@ -172,6 +172,8 @@ def test_call_new_exception_retries_three_times_without_creating_recorder_meta(r
     assert run_log["source_meta"][TARGET_LABEL] == {
         "status": status,
         "detail": pipeline._SRC_DESC.get(TARGET_LABEL, ""),
+        "timeout_sec": 20.0,
+        "timed_out": False,
     }
     assert _target_fallbacks(run_log) == [
         f"{TARGET_LABEL}: 第3次后仍失败 — legacy endpoint exploded"
@@ -325,7 +327,18 @@ def test_call_new_timeout_kw_controls_retry_boundary_without_forwarding(monkeypa
     recorder.clear()
     seen = {}
 
-    def fake_retry(rec, label, fn, *args, tries, timeout, **kwargs):
+    def fake_retry(
+        rec,
+        label,
+        fn,
+        *args,
+        tries,
+        timeout,
+        _timeout_state,
+        **kwargs,
+    ):
+        _timeout_state["timeout_sec"] = float(timeout)
+        _timeout_state["timed_out"] = False
         seen["recorder"] = rec
         seen["label"] = label
         seen["args"] = args
@@ -364,3 +377,27 @@ def test_call_new_timeout_kw_controls_retry_boundary_without_forwarding(monkeypa
     assert seen["tries"] == 3
     assert seen["timeout"] == 7
     assert seen["kwargs"] == {"custom": "kept"}
+    assert run_log["source_meta"][TARGET_LABEL]["timeout_sec"] == 7.0
+    assert run_log["source_meta"][TARGET_LABEL]["timed_out"] is False
+def test_call_new_timeout_records_machine_readable_observability(run_case, monkeypatch):
+    calls = []
+    release = fetching.threading.Event()
+    monkeypatch.setattr(fetching, "_NEW_FETCH_TIMEOUT_SEC", 0.01)
+
+    def blocked(*args, **kwargs):
+        calls.append((args, kwargs))
+        release.wait(0.2)
+        return {"late": True}
+
+    imports = _default_imports()
+    imports[TARGET_KEY] = {"ok": True, "err": "", "fn": blocked}
+
+    result, sleeps = run_case(imports)
+    release.set()
+
+    meta = result["run_log"]["source_meta"][TARGET_LABEL]
+    assert len(calls) == 3
+    assert sleeps == [1.0, 1.0, 1.0]
+    assert meta["timeout_sec"] == 0.01
+    assert meta["timed_out"] is True
+    assert meta["status"].startswith("error:调用异常 公告 调用超时(0.01s), ")

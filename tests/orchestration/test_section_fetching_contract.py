@@ -79,6 +79,10 @@ def test_fetch_sections_preserves_order_context_identity_payload_and_int_timing(
         "Section B": "ok, 250ms",
     }
     assert run_log["fallback_chain"] == ["existing fallback"]
+    assert run_log["source_meta"] == {
+        "Section A": {"timeout_sec": 20.0, "timed_out": False},
+        "Section B": {"timeout_sec": 20.0, "timed_out": False},
+    }
 
 
 def test_fetch_sections_exception_becomes_error_payload_and_later_section_still_runs(monkeypatch):
@@ -121,6 +125,10 @@ def test_fetch_sections_exception_becomes_error_payload_and_later_section_still_
     assert run_log["sources"]["Section B"] == "error: boom"
     assert run_log["sources"]["Section C"] == "ok, 250ms"
     assert run_log["fallback_chain"] == ["existing fallback", "Section B: boom"]
+    assert run_log["source_meta"]["Section B"] == {
+        "timeout_sec": 20.0,
+        "timed_out": False,
+    }
 
 
 def test_fetch_sections_empty_registry_returns_empty_and_sets_count_zero(monkeypatch):
@@ -150,3 +158,24 @@ def test_holders_section_uses_dedicated_35_second_timeout(monkeypatch):
     assert sections_data["holders"] == {"ok": "600693"}
     assert run_log["sections_count"] == 1
     assert seen == {"label": "holders", "timeout": 35.0}
+    assert run_log["source_meta"]["holders"] == {
+        "timeout_sec": 35.0,
+        "timed_out": False,
+    }
+def test_fetch_sections_timeout_sets_typed_observability(monkeypatch):
+    def timeout_boundary(label, fn, *args, timeout, **kwargs):
+        raise TimeoutError(f"{label} 调用超时({timeout:g}s)")
+
+    monkeypatch.setattr(fetching, "_call_with_timeout", timeout_boundary)
+
+    sections_data, run_log, _clock, _base_result = _run(
+        monkeypatch,
+        [FakeSection("holders", lambda code, ctx: {"late": code})],
+    )
+
+    assert sections_data["holders"] == {"error": "holders 调用超时(35s)"}
+    assert run_log["sources"]["holders"] == "error: holders 调用超时(35s)"
+    assert run_log["source_meta"]["holders"] == {
+        "timeout_sec": 35.0,
+        "timed_out": True,
+    }

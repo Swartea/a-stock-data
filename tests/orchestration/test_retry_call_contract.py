@@ -167,3 +167,27 @@ def test_retry_call_single_failed_try_still_sleeps_once(monkeypatch):
     assert exc == "single failure"
     assert sleeps == [1.0]
     assert LABEL not in recorder
+def test_retry_call_timeout_observation_is_additive_and_type_based(monkeypatch):
+    recorder = SourceStatusRecorder()
+    sleeps = []
+    state = {}
+    monkeypatch.setattr(fetching.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    def timeout_boundary(*_args, **_kwargs):
+        raise TimeoutError("typed timeout")
+
+    monkeypatch.setattr(fetching, "_call_with_timeout", timeout_boundary)
+
+    value, n_try, exc = fetching._retry_call(
+        recorder,
+        LABEL,
+        lambda: "never",
+        tries=1,
+        timeout=7,
+        _timeout_state=state,
+    )
+
+    assert (value, n_try, exc) == (None, 1, "typed timeout")
+    assert sleeps == [1.0]
+    assert LABEL not in recorder
+    assert state == {"timeout_sec": 7.0, "timed_out": True}

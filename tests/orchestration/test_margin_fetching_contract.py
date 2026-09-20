@@ -66,6 +66,8 @@ def test_fetch_margin_success_first_try_records_total_elapsed(monkeypatch):
         "at": "at:1000.2",
         "status": "ok:eastmoney-datacenter, 250ms",
         "detail": "融资融券明细",
+        "timeout_sec": 20.0,
+        "timed_out": False,
     }
     assert run_log["sources"]["融资融券"] == meta["status"]
     assert run_log["fallback_chain"] == []
@@ -111,6 +113,8 @@ def test_fetch_margin_all_exceptions_sleep_after_final_and_keep_last_error(monke
     assert margin == {"error": "failure-3"}
     assert meta["ms"] == 3300
     assert meta["status"] == "error:failure-3, 3300ms"
+    assert meta["timeout_sec"] == 20.0
+    assert meta["timed_out"] is False
     assert run_log["fallback_chain"] == ["融资融券: failure-3"]
 
 
@@ -147,6 +151,8 @@ def test_fetch_margin_none_is_currently_recorded_as_ok_without_retry(monkeypatch
     assert margin is None
     assert meta["status"] == "ok:eastmoney-datacenter, 0ms"
     assert run_log["fallback_chain"] == []
+
+
 def test_fetch_margin_timeout_budget_is_internal_and_not_forwarded(monkeypatch):
     seen = {}
     calls = []
@@ -200,4 +206,6 @@ def test_fetch_margin_timeout_retries_three_times_and_keeps_exception_contract(m
     assert margin == {"error": "融资融券 调用超时(0.01s)"}
     assert meta["ms"] == 3000
     assert meta["status"] == "error:融资融券 调用超时(0.01s), 3000ms"
+    assert meta["timeout_sec"] == 0.01
+    assert meta["timed_out"] is True
     assert run_log["fallback_chain"] == ["融资融券: 融资融券 调用超时(0.01s)"]

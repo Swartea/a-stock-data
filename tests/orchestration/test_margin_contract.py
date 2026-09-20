@@ -128,6 +128,8 @@ def test_margin_success_first_try_records_total_elapsed_and_exact_value(monkeypa
     assert result["run_log"]["sources"]["融资融券"] == meta["status"]
     assert meta["detail"] == pipeline._SRC_DESC["融资融券"]
     assert "at" in meta
+    assert meta["timeout_sec"] == 20.0
+    assert meta["timed_out"] is False
 
 
 def test_margin_retries_exceptions_three_times_and_timer_includes_sleeps(monkeypatch):
@@ -208,6 +210,8 @@ def test_margin_none_return_is_currently_recorded_as_ok_without_retry(monkeypatc
         not item.startswith("融资融券:")
         for item in result["run_log"]["fallback_chain"]
     )
+
+
 def test_margin_timeout_is_equivalent_to_raised_exception_contract(monkeypatch):
     clock = FakeClock()
     boundary_calls = []
@@ -234,6 +238,8 @@ def test_margin_timeout_is_equivalent_to_raised_exception_contract(monkeypatch):
     assert clock.sleeps == [1.0, 1.0, 1.0]
     assert result["margin"] == {"error": "融资融券 调用超时(20s)"}
     assert meta["status"] == "error:融资融券 调用超时(20s), 3000ms"
+    assert meta["timeout_sec"] == 20.0
+    assert meta["timed_out"] is True
     assert result["run_log"]["fallback_chain"][-1] == (
         "融资融券: 融资融券 调用超时(20s)"
     )

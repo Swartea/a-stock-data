@@ -74,6 +74,7 @@ def _retry_call(
     *args: Any,
     tries: int = 3,
     timeout: float | int = 60,
+    _timeout_state: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> tuple[Any, int, str | None]:
     """Call fn with the existing retry behavior plus a per-attempt deadline.
@@ -82,6 +83,10 @@ def _retry_call(
     time is bounded by tries * timeout plus the existing retry sleeps.
     """
     last_exc = None
+    if _timeout_state is not None:
+        _timeout_state["timeout_sec"] = float(timeout)
+        _timeout_state["timed_out"] = False
+
     for attempt in range(1, tries + 1):
         started = time.time()
         try:
@@ -92,9 +97,13 @@ def _retry_call(
                 timeout=timeout,
                 **kwargs,
             )
+            if _timeout_state is not None:
+                _timeout_state["timed_out"] = False
             recorder.setdefault(label, {})["ms"] = round((time.time() - started) * 1000)
             return value, attempt, None
         except Exception as exc:  # noqa: BLE001
+            if _timeout_state is not None:
+                _timeout_state["timed_out"] = isinstance(exc, TimeoutError)
             last_exc = exc
             time.sleep(1.0)
     return None, tries, str(last_exc)
@@ -138,6 +147,10 @@ def _call_new(
 
     fn = mod["fn"]
     retry_timeout = kwargs.pop("timeout", _NEW_FETCH_TIMEOUT_SEC)
+    timeout_state = {
+        "timeout_sec": float(retry_timeout),
+        "timed_out": False,
+    }
     value, attempt_count, exc = _retry_call(
         recorder,
         lab,
@@ -145,6 +158,7 @@ def _call_new(
         *args,
         tries=tries,
         timeout=retry_timeout,
+        _timeout_state=timeout_state,
         **kwargs,
     )
     meta = recorder.get(lab, {})
@@ -174,6 +188,8 @@ def _call_new(
 
     meta["status"] = status
     meta["detail"] = src_desc.get(lab, "")
+    meta["timeout_sec"] = timeout_state["timeout_sec"]
+    meta["timed_out"] = timeout_state["timed_out"]
     run_log["sources"][lab] = status
     run_log["source_meta"][lab] = meta
     return value
@@ -196,6 +212,7 @@ def _fetch_margin(
     label = "融资融券"
     started = time.time()
     margin = None
+    timed_out = False
 
     for _ in range(3):
         try:
@@ -205,8 +222,10 @@ def _fetch_margin(
                 code,
                 timeout=_MARGIN_TIMEOUT_SEC,
             )
+            timed_out = False
             break
         except Exception as exc:  # noqa: BLE001
+            timed_out = isinstance(exc, TimeoutError)
             margin = {"error": str(exc)}
             time.sleep(1.0)
 
@@ -223,6 +242,8 @@ def _fetch_margin(
         "at": fmt_time(time.time()),
         "status": status,
         "detail": src_desc[label],
+        "timeout_sec": float(_MARGIN_TIMEOUT_SEC),
+        "timed_out": timed_out,
     }
     return margin
 
@@ -253,6 +274,7 @@ def _fetch_supplements(
         ("peers", "同业对比", peers_fetcher, (code, blocks)),
     ):
         started = time.time()
+        timed_out = False
         try:
             value = _call_with_timeout(
                 label,
@@ -260,6 +282,7 @@ def _fetch_supplements(
                 *args,
                 timeout=_SUPPLEMENT_TIMEOUT_SEC,
             )
+            timed_out = False
             if isinstance(value, dict) and "error" in value and key != "margin_hist":
                 time.sleep(1.5)
                 retry_value = _call_with_timeout(
@@ -268,9 +291,11 @@ def _fetch_supplements(
                     *args,
                     timeout=_SUPPLEMENT_TIMEOUT_SEC,
                 )
+                timed_out = False
                 if not (isinstance(retry_value, dict) and "error" in retry_value):
                     value = retry_value
         except Exception as exc:  # noqa: BLE001
+            timed_out = isinstance(exc, TimeoutError)
             value = {"error": str(exc)}
 
         meta = recorder.setdefault(label, {"at": fmt_time(time.time())})
@@ -280,6 +305,8 @@ def _fetch_supplements(
         else:
             meta["status"] = f"ok, {meta['ms']}ms"
         meta["detail"] = src_desc.get(label, label)
+        meta["timeout_sec"] = float(_SUPPLEMENT_TIMEOUT_SEC)
+        meta["timed_out"] = timed_out
         run_log["source_meta"][label] = meta
         run_log["supplements"][label] = meta["status"]
         fetched[key] = value
@@ -294,14 +321,15 @@ def _fetch_sections(
     """Execute enabled report sections with the pipeline's existing semantics."""
     sections_data: dict[str, Any] = {}
     run_log["sections_count"] = 0
+    source_meta = run_log.setdefault("source_meta", {})
 
     for section in sections:
         started = time.time()
+        timeout = _SECTION_TIMEOUTS_SEC.get(
+            section.label,
+            _DEFAULT_SECTION_TIMEOUT_SEC,
+        )
         try:
-            timeout = _SECTION_TIMEOUTS_SEC.get(
-                section.label,
-                _DEFAULT_SECTION_TIMEOUT_SEC,
-            )
             sections_data[section.label] = _call_with_timeout(
                 section.label,
                 section.fetch,
@@ -311,10 +339,18 @@ def _fetch_sections(
             )
             ms = int((time.time() - started) * 1000)
             run_log["sources"][section.label] = f"ok, {ms}ms"
+            source_meta[section.label] = {
+                "timeout_sec": float(timeout),
+                "timed_out": False,
+            }
             run_log["sections_count"] += 1
         except Exception as exc:  # noqa: BLE001
             sections_data[section.label] = {"error": str(exc)}
             run_log["sources"][section.label] = f"error: {exc}"
+            source_meta[section.label] = {
+                "timeout_sec": float(timeout),
+                "timed_out": isinstance(exc, TimeoutError),
+            }
             run_log.setdefault("fallback_chain", []).append(
                 f"{section.label}: {exc}"
             )
