@@ -378,3 +378,115 @@ def test_emit_pdf_libreoffice_fallback_can_reach_complete(
     assert artifacts["pdf_renderer"] == "libreoffice"
     assert artifacts["pdf_fallback_status"] == "ok"
     assert artifacts["deliverable_status"] == "complete"
+def test_emit_chrome_pdf_success_does_not_probe_libreoffice(
+    writer,
+    monkeypatch,
+    tmp_path,
+):
+    _prepare_base(writer, monkeypatch, tmp_path)
+    _install_optional_success(monkeypatch)
+
+    import shutil
+
+    def unexpected_probe(_name):
+        pytest.fail("Chrome PDF 已成功时不应探测 LibreOffice")
+
+    monkeypatch.setattr(shutil, "which", unexpected_probe)
+    result = _result()
+
+    files = writer._emit("600693", "东百集团", result)
+
+    assert files["status"]["pdf"] == "ok"
+    assert files["status"]["pdf_renderer"] == "chrome"
+    assert files["status"]["pdf_fallback"] == "not-needed"
+    assert files["status"]["deliverable"] == "complete"
+
+
+def test_emit_missing_libreoffice_records_capability_gap_and_stays_partial(
+    writer,
+    monkeypatch,
+    tmp_path,
+):
+    _prepare_base(writer, monkeypatch, tmp_path)
+
+    html_module = ModuleType("html_report_v3")
+
+    def write_html_report_v3(result, day_dir):
+        html_path = Path(day_dir) / "600693-东百集团-2253.html"
+        html_path.write_text("<html>ok</html>", encoding="utf-8")
+        result["pdf_status"] = "error:TimeoutExpired: chrome timeout"
+        result["pdf_path"] = None
+        return str(html_path)
+
+    html_module.write_html_report_v3 = write_html_report_v3
+    monkeypatch.setitem(sys.modules, "html_report_v3", html_module)
+
+    docx_module = ModuleType("md_to_docx")
+
+    def md_to_docx(_md_path, docx_path):
+        Path(docx_path).write_bytes(b"docx contract")
+
+    docx_module.md_to_docx = md_to_docx
+    monkeypatch.setitem(sys.modules, "md_to_docx", docx_module)
+
+    import shutil
+
+    monkeypatch.setattr(shutil, "which", lambda _name: None)
+    result = _result()
+
+    files = writer._emit("600693", "东百集团", result)
+
+    assert files["status"]["pdf"] == "error:TimeoutExpired: chrome timeout"
+    assert files["status"]["pdf_fallback"].startswith(
+        "error:FileNotFoundError: 未找到 LibreOffice/soffice"
+    )
+    assert files["status"]["deliverable"] == "partial"
+    assert files["status"]["required_failed"] == []
+    assert files["status"]["optional_failed"] == ["pdf"]
+
+    run_log_disk = json.loads(Path(files["run_log"]).read_text(encoding="utf-8"))
+    artifacts = run_log_disk["artifacts"]
+    assert artifacts["pdf_fallback_status"].startswith(
+        "error:FileNotFoundError: 未找到 LibreOffice/soffice"
+    )
+    assert artifacts["deliverable_status"] == "partial"
+
+
+@pytest.mark.integration
+def test_real_libreoffice_converts_minimal_docx_to_nonempty_pdf(tmp_path):
+    import shutil
+
+    office_bin = shutil.which("soffice") or shutil.which("libreoffice")
+    if not office_bin:
+        pytest.skip("LibreOffice/soffice not installed")
+
+    from docx import Document
+
+    docx_path = tmp_path / "libreoffice-fallback-contract.docx"
+    pdf_path = tmp_path / "libreoffice-fallback-contract.pdf"
+    profile_dir = tmp_path / "libreoffice-profile"
+    profile_dir.mkdir()
+
+    document = Document()
+    document.add_paragraph("Phase 0 PDF fallback integration contract")
+    document.save(docx_path)
+
+    subprocess.run(
+        [
+            office_bin,
+            f"-env:UserInstallation={profile_dir.as_uri()}",
+            "--headless",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            str(tmp_path),
+            str(docx_path),
+        ],
+        check=True,
+        timeout=60,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert pdf_path.exists()
+    assert pdf_path.stat().st_size > 0
