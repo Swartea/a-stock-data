@@ -302,7 +302,7 @@ def _emit(code: str, name: str, result: dict) -> dict:
         print(f"  [WARN] HTML 生成失败: {html_status}")
     if docx_status != "ok":
         print(f"  [WARN] DOCX 生成失败: {docx_status}")
-    if pdf_status != "ok":
+    if not _is_ok(pdf_status):
         print(f"  [WARN] PDF 生成失败: {pdf_status}")
     return files
 
