@@ -147,3 +147,57 @@ def test_fetch_margin_none_is_currently_recorded_as_ok_without_retry(monkeypatch
     assert margin is None
     assert meta["status"] == "ok:eastmoney-datacenter, 0ms"
     assert run_log["fallback_chain"] == []
+def test_fetch_margin_timeout_budget_is_internal_and_not_forwarded(monkeypatch):
+    seen = {}
+    calls = []
+
+    def fake_timeout(label, fn, *args, timeout, **kwargs):
+        seen["label"] = label
+        seen["args"] = args
+        seen["timeout"] = timeout
+        seen["kwargs"] = kwargs
+        return fn(*args, **kwargs)
+
+    def fetcher(code):
+        calls.append(code)
+        return {"balance": 789}
+
+    monkeypatch.setattr(fetching, "_call_with_timeout", fake_timeout)
+
+    margin, run_log, clock = _run(monkeypatch, fetcher)
+
+    assert margin == {"balance": 789}
+    assert calls == ["600693"]
+    assert clock.sleeps == []
+    assert seen == {
+        "label": "融资融券",
+        "args": ("600693",),
+        "timeout": fetching._MARGIN_TIMEOUT_SEC,
+        "kwargs": {},
+    }
+    assert run_log["source_meta"]["融资融券"]["status"] == (
+        "ok:eastmoney-datacenter, 0ms"
+    )
+
+
+def test_fetch_margin_timeout_retries_three_times_and_keeps_exception_contract(monkeypatch):
+    calls = []
+    clock = FakeClock()
+    release = fetching.threading.Event()
+    monkeypatch.setattr(fetching, "_MARGIN_TIMEOUT_SEC", 0.01)
+
+    def fetcher(code):
+        calls.append(code)
+        release.wait(0.2)
+        return {"late": True}
+
+    margin, run_log, _ = _run(monkeypatch, fetcher, clock)
+    release.set()
+
+    meta = run_log["source_meta"]["融资融券"]
+    assert calls == ["600693", "600693", "600693"]
+    assert clock.sleeps == [1.0, 1.0, 1.0]
+    assert margin == {"error": "融资融券 调用超时(0.01s)"}
+    assert meta["ms"] == 3000
+    assert meta["status"] == "error:融资融券 调用超时(0.01s), 3000ms"
+    assert run_log["fallback_chain"] == ["融资融券: 融资融券 调用超时(0.01s)"]

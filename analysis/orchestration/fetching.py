@@ -10,6 +10,7 @@ import time
 from typing import Any, Callable
 
 _NEW_FETCH_TIMEOUT_SEC = 20.0
+_MARGIN_TIMEOUT_SEC = 20.0
 _SUPPLEMENT_TIMEOUT_SEC = 20.0
 _DEFAULT_SECTION_TIMEOUT_SEC = 20.0
 _SECTION_TIMEOUTS_SEC = {
@@ -198,7 +199,12 @@ def _fetch_margin(
 
     for _ in range(3):
         try:
-            margin = fetcher(code)
+            margin = _call_with_timeout(
+                label,
+                fetcher,
+                code,
+                timeout=_MARGIN_TIMEOUT_SEC,
+            )
             break
         except Exception as exc:  # noqa: BLE001
             margin = {"error": str(exc)}

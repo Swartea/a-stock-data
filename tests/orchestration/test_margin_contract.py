@@ -208,3 +208,32 @@ def test_margin_none_return_is_currently_recorded_as_ok_without_retry(monkeypatc
         not item.startswith("融资融券:")
         for item in result["run_log"]["fallback_chain"]
     )
+def test_margin_timeout_is_equivalent_to_raised_exception_contract(monkeypatch):
+    clock = FakeClock()
+    boundary_calls = []
+
+    def timeout_boundary(label, fn, *args, timeout, **kwargs):
+        boundary_calls.append((label, fn, args, timeout, kwargs))
+        raise TimeoutError("融资融券 调用超时(20s)")
+
+    monkeypatch.setattr(fetching, "_call_with_timeout", timeout_boundary)
+
+    result, returned_clock = _run_pipeline_with_margin(
+        monkeypatch,
+        lambda code: {"never": code},
+        clock,
+    )
+    meta = result["run_log"]["source_meta"]["融资融券"]
+
+    assert returned_clock is clock
+    margin_calls = [call for call in boundary_calls if call[0] == "融资融券"]
+    assert len(margin_calls) == 3
+    assert all(call[2] == ("600693",) for call in margin_calls)
+    assert all(call[3] == fetching._MARGIN_TIMEOUT_SEC for call in margin_calls)
+    assert all(call[4] == {} for call in margin_calls)
+    assert clock.sleeps == [1.0, 1.0, 1.0]
+    assert result["margin"] == {"error": "融资融券 调用超时(20s)"}
+    assert meta["status"] == "error:融资融券 调用超时(20s), 3000ms"
+    assert result["run_log"]["fallback_chain"][-1] == (
+        "融资融券: 融资融券 调用超时(20s)"
+    )
