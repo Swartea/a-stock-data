@@ -174,6 +174,129 @@ def _sample_result_v3() -> Dict[str, Any]:
     }
 
 
+
+@pytest.fixture
+def rendered_markdown_v3() -> str:
+    """用确定性 result fixture 渲染当前 V3 Markdown 契约，不读取 reports/ 历史产物。"""
+    from analysis.report_md import write_markdown_report_v3
+
+    result = _sample_result_v3()
+    result["quote"].update({
+        "price": 10.00,
+        "pe_ttm": 88.0,
+        "pb": 2.40,
+        "float_mcap": 86.4,
+        "limit_up": 11.00,
+        "limit_down": 9.00,
+        "amplitude": 3.20,
+        "turnover_rate": 4.10,
+        "vol_ratio": 1.20,
+    })
+    result["valuation"] = {
+        "peg": 4.20,
+        "analyst_count": 5,
+        "digest_years": 5,
+    }
+    result["valuation_hist"] = {
+        "pe_percentile_3y": 92.0,
+        "pb_percentile_3y": 55.0,
+    }
+    result["score"] = {
+        "total": 50,
+        "change_pct": 1.25,
+        "trend": 6,
+        "valuation": 7,
+        "valuation_pctile": 4,
+        "capital": 8,
+        "momentum": 4,
+        "sentiment": 4,
+        "risk": 5,
+        "chip": 4,
+        "sw_stability": 3,
+        "dragon": 5,
+        "factors": [],
+    }
+    result["emoji"] = "🟡"
+    result["advice"] = "中性"
+    result["detail"] = "Markdown 契约测试"
+    result["_md_full"] = True
+    result["trading_plan"].update({
+        "state": "neutral",
+        "entry_low": 9.50,
+        "entry_high": 9.80,
+        "stop_loss": 9.20,
+        "stop_loss_pct": -8.0,
+        "tp1": 10.80,
+        "tp2": 11.50,
+        "tp3": 12.20,
+        "position": "轻仓",
+        "period": "1-2 周",
+        "template_used": (
+            "【结论】当前维持中性 ｜ "
+            "【操作】按买入区间分批执行 ｜ "
+            "【风险】跌破止损位退出"
+        ),
+    })
+    result["three_levels"].update({
+        "support": 9.50,
+        "resistance": 10.80,
+        "stop_loss": 9.20,
+        "stop_loss_method": "trading_plan",
+        "support_op_key": "ma60",
+        "resistance_op_key": "boll_upper",
+        "support_extreme": 8.80,
+        "resistance_extreme": 11.60,
+        "support_extreme_label": "60日最低",
+        "resistance_extreme_label": "60日最高",
+        "support_candidates": {
+            "ma60": 9.50,
+            "recent_low": 8.80,
+            "chip_peak": 9.60,
+            "boll_lower": 9.40,
+        },
+        "resistance_candidates": {
+            "ma250_or_ma120": 10.70,
+            "recent_high": 11.60,
+            "boll_upper": 10.80,
+        },
+    })
+    result.update({
+        "signals": {"good": [], "bad": []},
+        "blocks": [],
+        "fund": {},
+        "chip_data": {},
+        "lockup": {},
+        "dragon": {},
+        "macro": {"north_label": "北向资金：市场口径"},
+        "sw_data": {},
+        "announcements": None,
+        "finance": None,
+        "research": None,
+        "news": None,
+        "margin": None,
+        "margin_hist": {},
+        "fund_daily5": {},
+        "peers": {},
+        "irm": {},
+        "holders": {},
+        "dividend": {},
+        "board": {},
+        "dragon_market": {},
+    })
+    result["run_log"].update({
+        "source_meta": {},
+        "fallback_chain": [],
+        "guard": {
+            "status": "ok",
+            "kline_freshness": {"last_bar": "2026-09-18"},
+        },
+        "started_at": "2026-09-18T10:00:00+08:00",
+        "finished_at": "2026-09-18T10:00:01+08:00",
+        "total_sec": 1.0,
+    })
+    return write_markdown_report_v3(result)
+
+
 @pytest.fixture
 def mock_result_v3(tmp_path: Path) -> Path:
     """在 tmp_path 生成 mock result_v3-1234.json, 返回路径"""
