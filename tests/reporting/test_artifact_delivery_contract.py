@@ -314,3 +314,67 @@ def test_dump_run_log_uses_code_as_safe_name_when_name_is_empty(
     )
     assert log_path.exists()
     assert json.loads(log_path.read_text(encoding="utf-8")) == run_log
+
+
+def test_emit_pdf_libreoffice_fallback_can_reach_complete(
+    writer,
+    monkeypatch,
+    tmp_path,
+):
+    _prepare_base(writer, monkeypatch, tmp_path)
+
+    html_module = ModuleType("html_report_v3")
+
+    def write_html_report_v3(result, day_dir):
+        html_path = Path(day_dir) / "600693-东百集团-2253.html"
+        html_path.write_text("<html>ok</html>", encoding="utf-8")
+        result["pdf_status"] = "error:TimeoutExpired: chrome timeout"
+        result["pdf_path"] = None
+        return str(html_path)
+
+    html_module.write_html_report_v3 = write_html_report_v3
+    monkeypatch.setitem(sys.modules, "html_report_v3", html_module)
+
+    docx_module = ModuleType("md_to_docx")
+
+    def md_to_docx(_md_path, docx_path):
+        Path(docx_path).write_bytes(b"docx contract")
+
+    docx_module.md_to_docx = md_to_docx
+    monkeypatch.setitem(sys.modules, "md_to_docx", docx_module)
+
+    import shutil
+
+    monkeypatch.setattr(
+        shutil,
+        "which",
+        lambda name: "/usr/local/bin/soffice" if name == "soffice" else None,
+    )
+
+    def fake_run(cmd, **kwargs):
+        assert cmd[0] == "/usr/local/bin/soffice"
+        assert "--headless" in cmd
+        assert kwargs["check"] is True
+        assert kwargs["timeout"] == 60
+        out_dir = Path(cmd[cmd.index("--outdir") + 1])
+        docx_path = Path(cmd[-1])
+        (out_dir / f"{docx_path.stem}.pdf").write_bytes(b"%PDF fallback")
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    result = _result()
+
+    files = writer._emit("600693", "东百集团", result)
+
+    assert files["status"]["pdf"] == "ok(fallback:libreoffice)"
+    assert files["status"]["pdf_renderer"] == "libreoffice"
+    assert files["status"]["pdf_fallback"] == "ok"
+    assert files["status"]["deliverable"] == "complete"
+    assert Path(files["pdf"]).read_bytes() == b"%PDF fallback"
+    assert result["pdf_renderer"] == "libreoffice"
+
+    run_log_disk = json.loads(Path(files["run_log"]).read_text(encoding="utf-8"))
+    artifacts = run_log_disk["artifacts"]
+    assert artifacts["pdf_renderer"] == "libreoffice"
+    assert artifacts["pdf_fallback_status"] == "ok"
+    assert artifacts["deliverable_status"] == "complete"
