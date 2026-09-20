@@ -130,3 +130,23 @@ def test_fetch_sections_empty_registry_returns_empty_and_sets_count_zero(monkeyp
     assert run_log["sections_count"] == 0
     assert run_log["sources"] == {"existing": "ok"}
     assert run_log["fallback_chain"] == ["existing fallback"]
+
+
+def test_holders_section_uses_dedicated_35_second_timeout(monkeypatch):
+    seen = {}
+
+    def fake_timeout(label, fn, *args, timeout, **kwargs):
+        seen["label"] = label
+        seen["timeout"] = timeout
+        return fn(*args, **kwargs)
+
+    monkeypatch.setattr(fetching, "_call_with_timeout", fake_timeout)
+
+    sections_data, run_log, _clock, _base_result = _run(
+        monkeypatch,
+        [FakeSection("holders", lambda code, ctx: {"ok": code})],
+    )
+
+    assert sections_data["holders"] == {"ok": "600693"}
+    assert run_log["sections_count"] == 1
+    assert seen == {"label": "holders", "timeout": 35.0}
