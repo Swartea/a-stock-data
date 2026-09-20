@@ -126,9 +126,61 @@ def _emit(code: str, name: str, result: dict) -> dict:
             docx_status = f"error:{docx_err[:120]}"
     docx_ms = round((time.time() - t0) * 1000)
 
-    # ⑤ PDF (允许降级, html_report_v3 已写 result.pdf_status; 兜底 None)
+    # ⑤ PDF (允许降级): Chrome 主路径失败后，DOCX → LibreOffice 作为第二渲染器
     pdf_status = result.get("pdf_status", "skipped:html_report_v3 未执行")
     pdf_path = result.get("pdf_path")
+    pdf_renderer = result.get("pdf_renderer")
+    pdf_fallback_status = "not-needed"
+
+    pdf_ok = pdf_status == "ok" or (
+        isinstance(pdf_status, str) and pdf_status.startswith("ok(")
+    )
+    docx_ok = docx_status == "ok" or (
+        isinstance(docx_status, str) and docx_status.startswith("ok(")
+    )
+    if pdf_ok:
+        pdf_renderer = pdf_renderer or "chrome"
+        result["pdf_renderer"] = pdf_renderer
+    elif docx_ok and os.path.exists(docx_path):
+        try:
+            import shutil
+            import subprocess
+
+            office_bin = shutil.which("soffice") or shutil.which("libreoffice")
+            if not office_bin:
+                raise FileNotFoundError("未找到 LibreOffice/soffice")
+
+            fallback_pdf = os.path.splitext(docx_path)[0] + ".pdf"
+            if os.path.exists(fallback_pdf):
+                os.remove(fallback_pdf)
+            subprocess.run(
+                [
+                    office_bin,
+                    "--headless",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    day_dir,
+                    docx_path,
+                ],
+                check=True,
+                timeout=60,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if not os.path.exists(fallback_pdf) or os.path.getsize(fallback_pdf) <= 0:
+                raise RuntimeError("LibreOffice 未生成有效 PDF")
+            pdf_path = fallback_pdf
+            pdf_status = "ok(fallback:libreoffice)"
+            pdf_renderer = "libreoffice"
+            pdf_fallback_status = "ok"
+            result["pdf_path"] = pdf_path
+            result["pdf_status"] = pdf_status
+            result["pdf_renderer"] = pdf_renderer
+        except Exception as e:  # noqa: BLE001
+            pdf_fallback_status = f"error:{type(e).__name__}: {str(e)[:100]}"
+    else:
+        pdf_fallback_status = "skipped:DOCX 未就绪"
 
     # ================= P1-A deliverable_status 计算 (§7) =================
     optional_status = {"html": html_status, "docx": docx_status, "pdf": pdf_status}
@@ -175,6 +227,8 @@ def _emit(code: str, name: str, result: dict) -> dict:
         "html_status": html_status,
         "docx_status": docx_status,
         "pdf_status": pdf_status,
+        "pdf_renderer": pdf_renderer,
+        "pdf_fallback_status": pdf_fallback_status,
         "result_json_status": json_status,
         "html_ms": html_ms,
         "docx_ms": docx_ms,
@@ -221,6 +275,8 @@ def _emit(code: str, name: str, result: dict) -> dict:
             "html": html_status,
             "docx": docx_status,
             "pdf": pdf_status,
+            "pdf_renderer": pdf_renderer,
+            "pdf_fallback": pdf_fallback_status,
             "json": json_status,
             "log": log_status,
             "deliverable": deliverable_status,
