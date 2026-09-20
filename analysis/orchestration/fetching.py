@@ -5,8 +5,63 @@ making runtime state explicit.  The helpers here do not import ``pipeline`` or
 own a second source-status recorder.
 """
 
+import threading
 import time
 from typing import Any, Callable
+
+_NEW_FETCH_TIMEOUT_SEC = 20.0
+_SUPPLEMENT_TIMEOUT_SEC = 20.0
+_DEFAULT_SECTION_TIMEOUT_SEC = 20.0
+_SECTION_TIMEOUTS_SEC = {
+    "holders": 35.0,
+    "board": 20.0,
+    "dragon_market": 20.0,
+    "irm": 20.0,
+    "dividend": 20.0,
+}
+
+
+def _call_with_timeout(
+    label: str,
+    fn: Callable[..., Any],
+    *args: Any,
+    timeout: float | int,
+    **kwargs: Any,
+) -> Any:
+    """Run one read-only fetch behind an orchestration deadline.
+
+    The worker is daemonized so a stuck provider cannot hold the pipeline or
+    interpreter open after the deadline. Python cannot safely kill a running
+    thread; a timed-out provider may finish in the background, but its result is
+    discarded and the caller observes TimeoutError at the configured bound.
+    """
+    if timeout <= 0:
+        return fn(*args, **kwargs)
+
+    done = threading.Event()
+    box: list[tuple[bool, Any]] = []
+
+    def _runner() -> None:
+        try:
+            box.append((True, fn(*args, **kwargs)))
+        except BaseException as exc:
+            box.append((False, exc))
+        finally:
+            done.set()
+
+    worker = threading.Thread(
+        target=_runner,
+        name=f"fetch-timeout-{label}",
+        daemon=True,
+    )
+    worker.start()
+    if not done.wait(float(timeout)):
+        raise TimeoutError(f"{label} 调用超时({float(timeout):g}s)")
+
+    ok, payload = box[0]
+    if ok:
+        return payload
+    raise payload
 
 from analysis.orchestration.source_status import SourceStatusRecorder
 
@@ -20,16 +75,22 @@ def _retry_call(
     timeout: int = 60,
     **kwargs: Any,
 ) -> tuple[Any, int, str | None]:
-    """Call ``fn`` with the pipeline's existing retry behavior.
+    """Call fn with the existing retry behavior plus a per-attempt deadline.
 
-    ``timeout`` is intentionally retained as a compatibility parameter but is
-    currently inert, matching the historical pipeline implementation.
+    Retry count and 1-second backoff semantics stay unchanged. Total worst-case
+    time is bounded by tries * timeout plus the existing retry sleeps.
     """
     last_exc = None
     for attempt in range(1, tries + 1):
         started = time.time()
         try:
-            value = fn(*args, **kwargs)
+            value = _call_with_timeout(
+                label,
+                fn,
+                *args,
+                timeout=timeout,
+                **kwargs,
+            )
             recorder.setdefault(label, {})["ms"] = round((time.time() - started) * 1000)
             return value, attempt, None
         except Exception as exc:  # noqa: BLE001
@@ -81,6 +142,7 @@ def _call_new(
         fn,
         *args,
         tries=tries,
+        timeout=_NEW_FETCH_TIMEOUT_SEC,
         **kwargs,
     )
     meta = recorder.get(lab, {})
@@ -185,10 +247,20 @@ def _fetch_supplements(
     ):
         started = time.time()
         try:
-            value = fetcher(*args)
+            value = _call_with_timeout(
+                label,
+                fetcher,
+                *args,
+                timeout=_SUPPLEMENT_TIMEOUT_SEC,
+            )
             if isinstance(value, dict) and "error" in value and key != "margin_hist":
                 time.sleep(1.5)
-                retry_value = fetcher(*args)
+                retry_value = _call_with_timeout(
+                    label,
+                    fetcher,
+                    *args,
+                    timeout=_SUPPLEMENT_TIMEOUT_SEC,
+                )
                 if not (isinstance(retry_value, dict) and "error" in retry_value):
                     value = retry_value
         except Exception as exc:  # noqa: BLE001
@@ -219,7 +291,17 @@ def _fetch_sections(
     for section in sections:
         started = time.time()
         try:
-            sections_data[section.label] = section.fetch(code, base_result)
+            timeout = _SECTION_TIMEOUTS_SEC.get(
+                section.label,
+                _DEFAULT_SECTION_TIMEOUT_SEC,
+            )
+            sections_data[section.label] = _call_with_timeout(
+                section.label,
+                section.fetch,
+                code,
+                base_result,
+                timeout=timeout,
+            )
             ms = int((time.time() - started) * 1000)
             run_log["sources"][section.label] = f"ok, {ms}ms"
             run_log["sections_count"] += 1
