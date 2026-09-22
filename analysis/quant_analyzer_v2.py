@@ -720,7 +720,7 @@ def fetch_sw_stability(code: str) -> dict:
     current = sw_industry_as_of(df, code, datetime.now().strftime("%Y-%m-%d"))
     # 行业活跃度：变更次数 vs 全市场中位数
     median_changes = df.groupby("code").size().median()
-    is_churning = n_changes > median_changes
+    is_churning = bool(n_changes > median_changes)  # numpy.bool_ → 原生 bool (JSON 可序列化)
     return {
         "n_changes": n_changes,
         "median_changes": int(median_changes),
@@ -728,7 +728,14 @@ def fetch_sw_stability(code: str) -> dict:
         "current_l1": current["l1_code"] if current else None,
         "current_l2": current["l2_code"] if current else None,
         "since": current["since"] if current else None,
-        "all_changes": sub[["start_date", "l1_code", "l2_code"]].to_dict("records"),
+        "all_changes": [
+            {  # Timestamp/numpy → 原生类型 (规范 §3: 显式转换, 不依赖 default=str)
+                "start_date": r["start_date"].strftime("%Y-%m-%d"),
+                "l1_code": str(r["l1_code"]),
+                "l2_code": str(r["l2_code"]),
+            }
+            for r in sub[["start_date", "l1_code", "l2_code"]].to_dict("records")
+        ],
     }
 
 
