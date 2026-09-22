@@ -27,6 +27,19 @@ import re
 
 import html_report as hr  # 只复用 V2 的 4 个 SVG 生成函数
 
+# 因子缺失显式标注 (2026-09-22): 数据源 error/fallback 的因子在雷达图轴标签/卡片脚注标注。
+# 双路径容错 import: 作为 analysis 子包导入 / analysis 目录直接在 sys.path 均可。
+try:
+    from analysis.analytics.factor_status import (
+        factor_notes_from_sources,
+        notes_summary,
+    )
+except Exception:  # noqa: BLE001
+    from analytics.factor_status import (
+        factor_notes_from_sources,
+        notes_summary,
+    )
+
 # Phase 1: Section Registry (irm §10.1) — 容错 import, 缺则降级
 # (Task 1.4 灰度: 5 新节走新注册表, 旧 6 块仍保留; spec §3.3)
 try:
@@ -2244,7 +2257,10 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     pe_series = (vh.get("pe_series", []) if isinstance(vh, dict) and not _is_error(vh) else [])
     pe_pct = (vh.get("pe_percentile_3y", 0) if isinstance(vh, dict) and not _is_error(vh) else 0)
     svg_pe = _svg_safe(hr._svg_pe_history, pe_series, pe_pct)
-    svg_radar = _svg_safe(hr._svg_radar, s)
+    # 因子缺失显式标注 (2026-09-22): run_log sources error/fallback → 雷达轴标签加 ⚠ + 脚注说明
+    _factor_notes = factor_notes_from_sources(
+        (result.get("run_log") or {}).get("sources") or {}, s)
+    svg_radar = _svg_safe(hr._svg_radar, s, factor_notes=_factor_notes)
 
     run_log = result.get("run_log") if isinstance(result.get("run_log"), dict) else {}
 
@@ -2276,8 +2292,11 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     chart_grid.append('<div class="grid-2-wrap">')
     chart_grid.append(_chart_card("📊", "PE (TTM) 走势", svg_pe, pe_t,
                                   foot_note="来源 baostock · 3 年窗口取近 180 交易日"))
+    _radar_foot = "来源本地 10 因子量化引擎 · 满分 100"
+    if _factor_notes:
+        _radar_foot += " ｜ ⚠ " + notes_summary(_factor_notes)
     chart_grid.append(_chart_card("🔬", "10 因子雷达", svg_radar, report_date, radar=True,
-                                  foot_note="来源本地 10 因子量化引擎 · 满分 100"))
+                                  foot_note=_radar_foot))
     chart_grid.append('</div>')
 
     # Task 6.3 + 6.4 (UI 升级线): ECharts K 线 + 4 技术图 (SVG 升级 fintech-h5-demos 风格)

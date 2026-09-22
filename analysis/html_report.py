@@ -186,8 +186,13 @@ def _svg_pe_history(pe_series, current_pct, width=720, height=200):
     return '\n'.join(parts)
 
 
-def _svg_radar(score_dict, width=380, height=340):
-    """10 因子雷达图"""
+def _svg_radar(score_dict, width=380, height=340, factor_notes=None):
+    """10 因子雷达图
+
+    factor_notes: 可选 {factor_key: 标注文案} (2026-09-22 因子缺失显式标注),
+                  数据源 error/fallback 的因子在轴标签后追加 ⚠, 提醒该分为兜底中性分。
+    """
+    factor_notes = factor_notes or {}
     labels = [
         ("趋势", "trend", 12), ("估值", "valuation", 15), ("分位", "valuation_pctile", 8),
         ("资金", "capital", 15), ("动量", "momentum", 8), ("情绪", "sentiment", 8),
@@ -210,7 +215,9 @@ def _svg_radar(score_dict, width=380, height=340):
         parts.append('<polygon points="{p}" fill="none" stroke="#eee"/>'.format(p=' '.join(pts)))
 
     # 轴线 + 标签
-    for j, (name, _key, _mx) in enumerate(labels):
+    for j, (name, key, _mx) in enumerate(labels):
+        if key in factor_notes:
+            name = name + "⚠"  # 数据缺失, 该轴按中性兜底分计入 (详见卡片脚注)
         ang = -math.pi / 2 + 2 * math.pi * j / n_axes
         parts.append('<line x1="{x1}" y1="{y1}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="#eee"/>'.format(
             x1=cx, y1=cy, x2=cx + R*math.cos(ang), y2=cy + R*math.sin(ang)))

@@ -44,6 +44,9 @@ import quant_analyzer_v2 as v2  # noqa: E402
 # Section Registry (P1 §10.1, 5 sections 渲染循环, 与 v3 line 108 一致)
 from sections import enabled_sections  # noqa: E402
 
+from analysis.analytics.factor_status import (  # noqa: E402  # sys.path 兄弟目录引导
+    factor_notes_from_sources,
+)
 from analysis.constants import (  # noqa: E402  # sys.path 兄弟目录引导
     _SRC_DESC,
     _STATE_DISPLAY,
@@ -1191,20 +1194,30 @@ def write_markdown_report_v3(r: dict) -> str:
     L += _scoring_breakdown_md_full(r.get("scoring_breakdown"))
 
     L.append("## 🔬 10 因子打分明细")
+    # 因子缺失显式标注 (2026-09-22): 数据源状态为 error/fallback 的因子,
+    # 得分旁标注兜底中性分 (如 申万表加载失败 → 申万稳定=5 是 mock 中性分, 非真实评分)。
+    # 只加标注, 打分逻辑不变 (历史报告可比性不动)。
+    _factor_notes = factor_notes_from_sources((rl.get("sources") or {}), s)
+
+    def _fcell(factor_key):
+        v = s[factor_key]
+        note = _factor_notes.get(factor_key)
+        return f"{v} {note}" if note else f"{v}"
+
     L += [
         "",
         "| 因子 | 得分 | 满分 |",
         "|------|------|------|",
-        f"| 趋势 | {s['trend']} | 12 |",
-        f"| 估值 | {s['valuation']} | 15 |",
-        f"| 估值分位 | {s['valuation_pctile']} | 8 |",
-        f"| 资金 | {s['capital']} | 15 |",
-        f"| 动量 | {s['momentum']} | 8 |",
-        f"| 情绪 | {s['sentiment']} | 8 |",
-        f"| 风险 | {s['risk']} | 10 |",
-        f"| 筹码 | {s['chip']} | 8 |",
-        f"| 申万稳定 | {s['sw_stability']} | 6 |",
-        f"| 龙虎榜 | {s['dragon']} | 10 |",
+        f"| 趋势 | {_fcell('trend')} | 12 |",
+        f"| 估值 | {_fcell('valuation')} | 15 |",
+        f"| 估值分位 | {_fcell('valuation_pctile')} | 8 |",
+        f"| 资金 | {_fcell('capital')} | 15 |",
+        f"| 动量 | {_fcell('momentum')} | 8 |",
+        f"| 情绪 | {_fcell('sentiment')} | 8 |",
+        f"| 风险 | {_fcell('risk')} | 10 |",
+        f"| 筹码 | {_fcell('chip')} | 8 |",
+        f"| 申万稳定 | {_fcell('sw_stability')} | 6 |",
+        f"| 龙虎榜 | {_fcell('dragon')} | 10 |",
         f"| **综合** | **{s['total']}** | **100** |",
         "",
     ]

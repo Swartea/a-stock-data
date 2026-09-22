@@ -1743,11 +1743,45 @@ def analyze_single(code: str, name: str = "", output_md: bool = True) -> dict:
         print(f"  估值分位(3年): PE {val_hist.get('pe_percentile_3y',0)}% / "
               f"PB {val_hist.get('pb_percentile_3y',0)}%")
     print("\n  因子明细:")
+    # 因子缺失显式标注 (2026-09-22): 数据源 error/fallback 的因子 (典型: 申万表加载失败
+    # → sw_stability=5 为 mock 中性分), CLI 输出同样标注, 避免被误读为真实评分。
+    # 只加标注, 打分逻辑不变。双路径容错 import (analysis 子包 / analysis 目录直挂 sys.path)。
+    try:
+        from analysis.analytics.factor_status import (
+            FACTOR_SOURCES as _FACTOR_SOURCES,
+        )
+        from analysis.analytics.factor_status import (
+            factor_notes_from_data as _factor_notes_from_data,
+        )
+    except Exception:  # noqa: BLE001
+        try:
+            from analytics.factor_status import (
+                FACTOR_SOURCES as _FACTOR_SOURCES,
+            )
+            from analytics.factor_status import (
+                factor_notes_from_data as _factor_notes_from_data,
+            )
+        except Exception:  # noqa: BLE001
+            _FACTOR_SOURCES = None
+            _factor_notes_from_data = None
+    if _factor_notes_from_data is not None:
+        _fn_src = {"quote": quote, "valuation": valuation, "blocks": blocks,
+                   "fund": fund, "valuation_hist": val_hist, "lockup": lockup,
+                   "dragon": dragon, "chip_data": chip_data, "sw_data": sw_data}
+        _fn_notes = _factor_notes_from_data(_fn_src, score)
+    else:
+        _fn_notes = {}
+
     print(f"    趋势={score['trend']:>4}  估值={score['valuation']:>4}  "
           f"分位={score['valuation_pctile']:>4}  资金={score['capital']:>4}")
     print(f"    动量={score['momentum']:>4}  情绪={score['sentiment']:>4}  "
           f"风险={score['risk']:>4}  筹码={score['chip']:>4}")
     print(f"    申万={score['sw_stability']:>4}  龙虎榜={score['dragon']:>4}")
+    # 缺失因子逐条标注 (行内追加会破坏对齐, 单列一行列出)
+    if _fn_notes:
+        for _k, _note in _fn_notes.items():
+            _cn = (_FACTOR_SOURCES.get(_k) or (_k,))[0] if _FACTOR_SOURCES else _k
+            print(f"    ⚠ {_cn}: {_note.lstrip('⚠')}")
     print(f"  → {detail}")
 
     result = {
