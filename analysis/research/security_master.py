@@ -15,7 +15,6 @@ import re
 from dataclasses import dataclass, fields
 from enum import Enum
 
-
 _SECURITY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 _LOCAL_CODE_RE = re.compile(r"^[A-Z0-9]+$")
 

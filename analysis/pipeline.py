@@ -35,8 +35,7 @@ V3 编排层 (P2-A Phase 5 Task 5.2, 2026-09-13)
 import os
 import sys
 import time
-from datetime import date, datetime, time as dtime, timedelta
-from typing import Optional
+from datetime import datetime
 
 # 兄弟目录加 sys.path (与 v3 / report_md 一致, 让 v2 / html_report_v3 / md_to_docx 裸 import 可解析)
 _ANALYSIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,64 +43,70 @@ if _ANALYSIS_DIR not in sys.path:
     sys.path.insert(0, _ANALYSIS_DIR)
 
 # 兄弟模块 (§1 业务口径, 阈值/模板不动)
-from analysis.utils import (
-    _fmt_time, _to_float, _num_or_none,
-    _clean, _fnum, _fpct, _interpret_yoy, _interpret_qoq, _finance_talk,
-    _short_iso, _format_peg_talk,
-)
-from analysis.constants import (
-    _SRC_DESC, OPERATION_TEMPLATES, _STATE_DISPLAY,
-)
-from analysis.trading_plan import (
-    _score_to_state, inject_state_to_plan, _state_display,
-)
-from analysis.three_levels import (
-    compute_three_levels, _klines_to_series, _series_ma, _series_boll,
-    _series_recent_high, _series_recent_low,
-)
-from analysis.data_fetcher import (
-    _fetch_fund_flow_daily, _fetch_margin_history, _fetch_concept_peers,
-)
-from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
-from analysis.orchestration.helpers import _latest_trading_day, _kline_freshness
-from analysis.orchestration.helpers import _record_kline_freshness_guard
-from analysis.orchestration.helpers import _initialize_run_log, _finalize_run_log_timing
-from analysis.orchestration.source_status import (
-    SourceStatusRecorder,
-    _record_v2_source_statuses,
-    _record_sw_tls_failure,
-)
-from analysis.orchestration.fetching import (
-    _call_new,
-    _fetch_margin,
-    _fetch_supplements,
-    _fetch_sections,
-)
-from analysis.orchestration.fetching import _retry_call as _retry_call  # noqa: F401
-from analysis.orchestration.legacy_bridge import (
-    _V2_FN_TO_SRC,
-    _FIELD_OF,
-    _TOP_FIELD_OF,
-    _patch_v2_timers,
-    _restore_v2,
-)
-from analysis.analytics.scope import _classify_north_scope
-from analysis.analytics.scoring import _build_scoring_breakdown
-from analysis.reporting.artifact_writer import _emit, _dump_run_log
-
 # V2 同源复用 (只读引用, 不修改 v2)
 import quant_analyzer_v2 as v2  # noqa: E402
 
 # Section Registry (P1 §10.1, 5 sections 渲染列表, 与 v3 line 108 一致)
 from sections import enabled_sections  # noqa: E402
 
+from analysis.analytics.scope import _classify_north_scope  # noqa: E402  # sys.path 兄弟目录引导
+from analysis.analytics.scoring import (  # noqa: E402  # sys.path 兄弟目录引导
+    _build_scoring_breakdown,
+)
+from analysis.constants import (  # noqa: E402  # sys.path 兄弟目录引导
+    _SRC_DESC,
+)
+from analysis.data_fetcher import (  # noqa: E402  # sys.path 兄弟目录引导
+    _fetch_concept_peers,
+    _fetch_fund_flow_daily,
+    _fetch_margin_history,
+)
+from analysis.fetcher_dispatcher import _NEW_IMPORTS  # noqa: E402  # sys.path 兄弟目录引导
+from analysis.orchestration.fetching import (  # noqa: E402  # sys.path 兄弟目录引导
+    _call_new,
+    _fetch_margin,
+    _fetch_sections,
+    _fetch_supplements,
+    _retry_call,  # noqa: E402,F401  # v3 透传契约
+)
+from analysis.orchestration.helpers import (  # noqa: E402  # sys.path 兄弟目录引导
+    _finalize_run_log_timing,
+    _initialize_run_log,
+    _kline_freshness,
+    _latest_trading_day,  # noqa: F401  # v3 透传契约 (quant_analyzer_v3 从此 re-export)
+    _record_kline_freshness_guard,
+)
+from analysis.orchestration.legacy_bridge import (  # noqa: E402  # sys.path 兄弟目录引导
+    _FIELD_OF,
+    _TOP_FIELD_OF,  # noqa: F401  # v3 透传契约
+    _V2_FN_TO_SRC,  # noqa: F401  # v3 透传契约
+    _patch_v2_timers,
+    _restore_v2,
+)
+from analysis.orchestration.source_status import (  # noqa: E402  # sys.path 兄弟目录引导
+    SourceStatusRecorder,
+    _record_sw_tls_failure,
+    _record_v2_source_statuses,
+)
+from analysis.reporting.artifact_writer import (  # noqa: E402  # sys.path 兄弟目录引导
+    _dump_run_log,
+    _emit,
+)
+from analysis.three_levels import (  # noqa: E402  # sys.path 兄弟目录引导
+    compute_three_levels,
+)
+from analysis.trading_plan import (  # noqa: E402  # sys.path 兄弟目录引导
+    inject_state_to_plan,
+)
+from analysis.utils import (  # noqa: E402  # sys.path 兄弟目录引导
+    _fmt_time,
+)
+
 # P0-B 规范整改 (2026-09-11, 规范 §4): 统一 fetcher 返回契约
 # (与 v3 line 50-64 镜像, 让 _call_new 内 status_of() 等可用)
 try:
     from fetcher_contract import (
-        status_of, is_error as _is_error_fc, is_ok, is_empty, is_unsupported,
-        from_legacy as _from_legacy,
-        STATUS_OK, STATUS_EMPTY, STATUS_ERROR, STATUS_UNSUPPORTED,
+        status_of,
     )
     _HAS_FETCHER_CONTRACT = True
 except Exception:  # noqa: BLE001
@@ -180,8 +185,10 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         time.time,
     )
 
-    q = base_result["quote"]; v = base_result["valuation"]
-    score = base_result["score"]; score_total = score["total"]
+    q = base_result["quote"]
+    v = base_result["valuation"]
+    score = base_result["score"]
+    score_total = score["total"]
     chip_data = base_result["chip_data"]
     vh = base_result.get("valuation_hist") or {}
 

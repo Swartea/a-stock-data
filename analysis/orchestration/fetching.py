@@ -64,7 +64,9 @@ def _call_with_timeout(
         return payload
     raise payload
 
-from analysis.orchestration.source_status import SourceStatusRecorder
+from analysis.orchestration.source_status import (  # noqa: E402  # sys.path 兄弟目录引导
+    SourceStatusRecorder,
+)
 
 
 def _retry_call(

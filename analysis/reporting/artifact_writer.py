@@ -15,7 +15,6 @@ from datetime import datetime
 from analysis.report_md import write_markdown_report_v3
 from analysis.utils import _json_default
 
-
 _ANALYSIS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ANALYSIS_DIR not in sys.path:
     sys.path.insert(0, _ANALYSIS_DIR)

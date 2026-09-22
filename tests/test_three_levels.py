@@ -20,9 +20,9 @@
   - 杰瑞类 (V2 > 支撑) 数值不变, 仅 method 标签化 (method="trading_plan")
   - 反之 (V2 < 支撑 × 0.97) 才强切到 支撑 × 0.97 (method="support_buffer")
 """
+import json
 import os
 import sys
-import json
 from pathlib import Path
 
 # 使用仓库/CI 工作目录, 不绑定个人 Mac 路径
@@ -32,12 +32,12 @@ sys.path.insert(0, str(WORKDIR))
 import pytest
 
 from analysis.quant_analyzer_v3 import (
-    compute_three_levels,
     _klines_to_series,
-    _series_ma,
     _series_boll,
+    _series_ma,
     _series_recent_high,
     _series_recent_low,
+    compute_three_levels,
 )
 
 
@@ -355,7 +355,6 @@ def test_v3_result_has_three_levels_for_600693(mock_result_v3):
     if price:
         sup = tl3.get("support")
         res = tl3.get("resistance")
-        sl = tl3.get("stop_loss")
         if sup is not None:
             assert sup <= price * 1.05, f"support {sup} > 1.05×现价 {price*1.05:.2f}"
         if res is not None:

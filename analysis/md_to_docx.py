@@ -23,7 +23,7 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Pt, Inches, RGBColor
+from docx.shared import Inches, Pt, RGBColor
 
 # ---------------------------------------------------------------- Phase 1: Section Registry
 # 容错 import: 缺则降级, 不阻断主流程 (Task 1.5: 6 块后追加 section 渲染)
@@ -215,13 +215,11 @@ def add_quote(doc, text, stats, in_conclusion=False):
         sent_hx = HX_GREEN if bear else HX_RED
         p.paragraph_format.space_before = Pt(6)
         p.paragraph_format.space_after = Pt(6)
-        for seg, bold, emoji in md_runs(t):
+        for seg, _bold, emoji in md_runs(t):
             r = p.add_run(seg)
             if emoji:
                 _fmt(r, size=14, bold=True, color=C_DARK)
-            elif "看空" in seg or re.fullmatch(r"\s*\d+/\d+\s*", seg):
-                _fmt(r, size=14, bold=True, color=sent)
-            elif "看多" in seg:
+            elif "看空" in seg or re.fullmatch(r"\s*\d+/\d+\s*", seg) or "看多" in seg:
                 _fmt(r, size=14, bold=True, color=sent)
             else:
                 _fmt(r, size=14, bold=True, color=C_DARK)
@@ -263,7 +261,7 @@ def add_body(doc, line, stats, risk_zone=False, disclaimer=False):
         text = re.sub(r"^\s*[-*]\s*", "", text)  # 剥掉手写 "- "，内容排版
     # 内容上色：风险区带程度符号的行整行上色，其余正文默认深色
     if severity is not None:
-        for seg, bold, emoji in md_runs(text):
+        for seg, bold, _emoji in md_runs(text):
             r = p.add_run(seg)
             _fmt(r, size=10.5, bold=bold, color=severity)
     else:
@@ -303,7 +301,7 @@ def _cell_add(cell, content, stats, numeric_cols=None, price_cols=None, bold_row
     p = cell.paragraphs[0]
     p.paragraph_format.space_after = Pt(0)
     p.paragraph_format.space_before = Pt(0)
-    for text, bold, emoji in md_runs(content):
+    for text, bold, _emoji in md_runs(content):
         r = p.add_run(text)
         _fmt(r, size=10.5, bold=(bold or bold_row))
     return p

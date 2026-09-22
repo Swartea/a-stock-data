@@ -12,11 +12,11 @@
 2. 返回 dict/list 符合 schema
 3. 至少 1 个样本有非空数据
 """
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import pytest
 import quant_analyzer_v2 as v2
 
 

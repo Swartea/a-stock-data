@@ -8,12 +8,13 @@
 
 历史: docs/09-报告质量债2.0-plan.md 批次 C, 痛 7
 """
-import os
-import sys
 import json
+import os
 import re
-import pytest
+import sys
 from pathlib import Path
+
+import pytest
 
 WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", "/Users/swarteachou/Desktop/大A数据")).resolve()
 sys.path.insert(0, str(WORKDIR))
@@ -171,7 +172,7 @@ def test_md_full_has_scoring_breakdown_5dim_table():
     assert "维度" in section and "得分" in section and "满分" in section
     assert "占比" in section
     # 5 行 (5 维) + 综合行
-    rows = [l for l in section.split("\n") if l.startswith("|") and "**" in l]
+    rows = [ln for ln in section.split("\n") if ln.startswith("|") and "**" in ln]
     assert len(rows) == 6, f"5 维 + 综合 = 6 行, 实际 {len(rows)}"
 
 
@@ -191,8 +192,8 @@ def test_md_fallback_when_scoring_breakdown_missing():
 # ============================================================
 def test_html_card_has_5_cols():
     """HTML 5 维评分构成卡片应含 5 列 (bd-col)。"""
-    from analysis.pipeline import _build_scoring_breakdown
     from analysis.html_report_v3 import _render_scoring_breakdown
+    from analysis.pipeline import _build_scoring_breakdown
     r = _load_sample_result()
     r["scoring_breakdown"] = _build_scoring_breakdown(r["score"])
     html = _render_scoring_breakdown(r)
@@ -234,6 +235,7 @@ def test_html_card_positioned_after_hero():
     动态渲染验证已由 test_e2e_html_report_renders_breakdown 覆盖。
     """
     import inspect
+
     from analysis.html_report_v3 import write_html_report_v3
     src = inspect.getsource(write_html_report_v3)
     # 找 3 个关键锚点在源码中的出现位置
@@ -280,7 +282,8 @@ def test_e2e_breakdown_in_result_json(code_name, code, name):
     """端到端: 3 只样本票 result_v3.json 注入 scoring_breakdown, 5 维 sum 守恒。"""
     from analysis.pipeline import _build_scoring_breakdown
     path = _latest_result_v3_for(code_name)
-    r = json.load(open(path))
+    with open(path, encoding="utf-8") as f:
+        r = json.load(f)
     # 老 result JSON 可能没 scoring_breakdown, 注入
     if "scoring_breakdown" not in r:
         r["scoring_breakdown"] = _build_scoring_breakdown(r["score"])
@@ -306,10 +309,11 @@ def test_e2e_html_report_renders_breakdown(code_name, code, name):
     对 3 票 × 多个 e2e 测试会拖到 >1min, 单函数验证足以覆盖 5 维逻辑。
     全量端到端 (含 PDF) 由 _render_html_to_pdf 单独测试覆盖, 不在此重复。
     """
-    from analysis.pipeline import _build_scoring_breakdown
     from analysis.html_report_v3 import _render_scoring_breakdown
+    from analysis.pipeline import _build_scoring_breakdown
     path = _latest_result_v3_for(code_name)
-    r = json.load(open(path))
+    with open(path, encoding="utf-8") as f:
+        r = json.load(f)
     if "scoring_breakdown" not in r:
         r["scoring_breakdown"] = _build_scoring_breakdown(r["score"])
     html = _render_scoring_breakdown(r)
@@ -330,7 +334,8 @@ def test_e2e_md_report_renders_breakdown(code_name, code, name):
     from analysis.pipeline import _build_scoring_breakdown
     from analysis.report_md import write_markdown_report_v3
     path = _latest_result_v3_for(code_name)
-    r = json.load(open(path))
+    with open(path, encoding="utf-8") as f:
+        r = json.load(f)
     if "scoring_breakdown" not in r:
         r["scoring_breakdown"] = _build_scoring_breakdown(r["score"])
     r["_md_full"] = True
@@ -338,5 +343,5 @@ def test_e2e_md_report_renders_breakdown(code_name, code, name):
     assert "## 📊 评分构成 (5 维拆解" in md, f"{code} MD 缺 5 维拆解段"
     # 5 维 + 综合 = 6 行
     section = md[md.find("## 📊 评分构成 (5 维拆解"):md.find("## 🔬 10 因子打分明细")]
-    rows = [l for l in section.split("\n") if l.startswith("|") and "**" in l]
+    rows = [ln for ln in section.split("\n") if ln.startswith("|") and "**" in ln]
     assert len(rows) == 6, f"{code} 5 维 + 综合 = 6 行, 实际 {len(rows)}"

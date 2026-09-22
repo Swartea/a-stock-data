@@ -8,7 +8,6 @@ recorder or import ``analysis.pipeline``.
 
 import time
 
-
 # V2 fetch function -> source label.
 _V2_FN_TO_SRC = {
     "fetch_tencent_quote": "行情",

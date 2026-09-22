@@ -11,10 +11,9 @@ track an industry or theme, but that does not make the index itself the taxonomy
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, fields
 from enum import Enum
-import re
-
 
 _INDEX_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 _LOCAL_CODE_RE = re.compile(r"^[A-Z0-9]+$")

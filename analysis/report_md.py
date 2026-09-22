@@ -29,7 +29,7 @@
 import os
 import re as _re
 import sys
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Optional
 
 # 兄弟目录加 sys.path (与 v3 line 69-71 同步, 让 quant_analyzer_v2 裸 import 可解析)
@@ -38,21 +38,27 @@ if _ANALYSIS_DIR not in sys.path:
     sys.path.insert(0, _ANALYSIS_DIR)
 
 # 兄弟模块 (§1 业务口径, 阈值/模板不动)
-from analysis.utils import (
-    _json_default, _clean, _fnum, _fpct, _finance_talk, _num_or_none,
-    _short_iso, _format_peg_talk,
-)
-from analysis.constants import (
-    _SRC_DESC, OPERATION_TEMPLATES, _STATE_DISPLAY,
-)
-from analysis.fetcher_dispatcher import _NEW_IMPORTS
-from analysis.trading_plan import _score_to_state
-
 # V2 同源复用 (只读引用, 不修改 v2)
 import quant_analyzer_v2 as v2  # noqa: E402
 
 # Section Registry (P1 §10.1, 5 sections 渲染循环, 与 v3 line 108 一致)
 from sections import enabled_sections  # noqa: E402
+
+from analysis.constants import (  # noqa: E402  # sys.path 兄弟目录引导
+    _SRC_DESC,
+    _STATE_DISPLAY,
+)
+from analysis.fetcher_dispatcher import _NEW_IMPORTS  # noqa: E402  # sys.path 兄弟目录引导
+from analysis.trading_plan import _score_to_state  # noqa: E402  # sys.path 兄弟目录引导
+from analysis.utils import (  # noqa: E402  # sys.path 兄弟目录引导
+    _clean,
+    _finance_talk,
+    _fnum,
+    _format_peg_talk,
+    _fpct,
+    _num_or_none,
+    _short_iso,
+)
 
 
 def _next_report_window(latest_date: Optional[str]) -> str:
@@ -66,7 +72,6 @@ def _next_report_window(latest_date: Optional[str]) -> str:
     else:
         ctx = "暂无最近财报日期"
     today = datetime.now()
-    dl_name = {4: "年报/一季报", 8: "半年报", 10: "三季报"}
     dl_day = {4: 30, 8: 31, 10: 31}      # 法定披露截止日: 4-30 / 8-31 / 10-31
     candidates = []
     for y in (today.year, today.year + 1):
@@ -190,8 +195,10 @@ def _scoring_breakdown_md_compact(breakdown: dict) -> list:
     L.append("")
     # 颜色提示: 按 pct 给每维打 emoji
     def _pct_emoji(p):
-        if p >= 70: return "🟢"
-        if p >= 40: return "🟡"
+        if p >= 70:
+            return "🟢"
+        if p >= 40:
+            return "🟡"
         return "🔴"
     color_parts = [f"{_pct_emoji(r['pct'])} {r['label']} {r['pct']:.0f}%"
                   for r in info["rows"]]
@@ -224,8 +231,10 @@ def _scoring_breakdown_md_full(breakdown: dict) -> list:
     L.append("")
 
     def _pct_emoji(p):
-        if p >= 70: return "🟢"
-        if p >= 40: return "🟡"
+        if p >= 70:
+            return "🟢"
+        if p >= 40:
+            return "🟡"
         return "🔴"
 
     L += [
@@ -248,7 +257,7 @@ def _scoring_breakdown_md_full(breakdown: dict) -> list:
     L.append(f"| **综合** | **{t['score']}** | **{t['max']}** | "
              f"**{t.get('pct', 0):.1f}%** | 5 维之和 |")
     L.append("")
-    L.append(f"> 📐 **维度定义** (5 维聚合规则, 与 v2 10 维口径一致):")
+    L.append("> 📐 **维度定义** (5 维聚合规则, 与 v2 10 维口径一致):")
     L.append("> • **技术** = 趋势 + 动量 + 筹码 (max 28)")
     L.append("> • **资金** = 资金流 + 龙虎榜 (max 25)")
     L.append("> • **估值** = 估值 + 估值分位 + 申万稳定 (max 29)")
@@ -313,10 +322,7 @@ def write_markdown_report_v3(r: dict) -> str:
         state_key = _score_to_state(score_total)
         state, state_icon = _STATE_DISPLAY.get(state_key, ("中性", "🟡"))
 
-    # 三价位 (债2显式三价位 + 债4 同源声明)
-    support, resist, stop = None, None, None
-    if plan:
-        support, resist, stop = (plan["entry_low"], plan["tp1"], plan["stop_loss"])
+    # 三价位 (债2显式三价位 + 债4 同源声明) — 现由 tl3 段直接取 plan 字段
 
     L: list = []
 
@@ -408,7 +414,6 @@ def write_markdown_report_v3(r: dict) -> str:
     # 核心指标 7 列大表 (1 屏读完所有核心数据)
     vh = r.get("valuation_hist") or {}
     pe_pct = vh.get("pe_percentile_3y")
-    pb_pct = vh.get("pb_percentile_3y")
     val = r.get("valuation") or {}
     peg_val = val.get("peg")
     change_sign = "+" if change_pct >= 0 else ""
@@ -456,8 +461,6 @@ def write_markdown_report_v3(r: dict) -> str:
         # 批次 E 痛 1: 操作位/参考位字段
         sup_op_key = tl3.get("support_op_key", "—")
         res_op_key = tl3.get("resistance_op_key", "—")
-        sup_recent_pct = tl3.get("support_recent_pct")
-        res_recent_pct = tl3.get("resistance_recent_pct")
         sup_extreme = tl3.get("support_extreme")
         res_extreme = tl3.get("resistance_extreme")
         sup_extreme_label = tl3.get("support_extreme_label", "60日最低")
@@ -503,7 +506,7 @@ def write_markdown_report_v3(r: dict) -> str:
             L += [
                 f"> 📊 **多目标价**: 短 {plan['tp1']:.2f} / 中 {plan['tp2']:.2f} / 远 {plan['tp3']:.2f} 元",
                 f"> 🎯 **买入区间**: {plan['entry_low']:.2f}~{plan['entry_high']:.2f} 元 (分批上限 {plan['entry_high']:.2f})",
-                f"> ⏱ **周期**: 短线 1-2 周",
+                "> ⏱ **周期**: 短线 1-2 周",
                 "",
             ]
             L.append("> 🔒 **数据可信度**: 三价位由 V2 同源实时模型推导 (腾讯实时行情 + baostock 前复权筹码K线)，"
@@ -704,7 +707,6 @@ def write_markdown_report_v3(r: dict) -> str:
     L.append("### 📰 1. 研报观点汇总")
     L.append("")
     res = r.get("research")
-    src_m = metas.get("研报观点") or {}
     if res is None or (isinstance(res, dict) and "error" in res):
         why = (res or {}).get("error") if isinstance(res, dict) else \
             (_NEW_IMPORTS["研报"]["err"] or "未调用")
@@ -792,7 +794,6 @@ def write_markdown_report_v3(r: dict) -> str:
         L.append(f"> ⚠️ 财务数据暂缺: {_clean(why, 90)} (已记 run_log error)")
     elif isinstance(fin, dict):
         reps = (fin.get("reports") or [])[:8]
-        lt = fin.get("latest") or {}
         L.extend(_finance_talk(fin))
         L.append("")
         L.append("| 报告期 | 营收(亿) | 净利(亿) | EPS | ROE% | 毛利率% | 负债率% | 同比营收 | 同比净利 |")

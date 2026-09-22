@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from analysis.orchestration import fetching
 from analysis.orchestration.source_status import SourceStatusRecorder
 
-
 SRC_DESC = {
     "资金面-5日主力": "近5日主力资金",
     "两融历史": "两融方向历史",

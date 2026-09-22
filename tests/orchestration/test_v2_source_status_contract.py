@@ -3,7 +3,6 @@ from analysis.orchestration.source_status import (
     _record_v2_source_statuses,
 )
 
-
 FIELD_OF = {
     "行情": "quote",
     "估值一致预期": "valuation",

@@ -10,8 +10,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
-
+from typing import Any, Dict, Optional
 
 # ============================================================
 # 4 个独立 fetcher 软导入 (P0-B §4 容错接入 + Phase 1 7-task plan 入仓)

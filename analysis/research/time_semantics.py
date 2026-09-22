@@ -16,7 +16,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-
 TIME_FIELDS = (
     "fetched_at",
     "data_as_of",

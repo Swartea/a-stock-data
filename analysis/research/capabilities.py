@@ -12,10 +12,9 @@ one provider or endpoint family to another.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
 import re
+from dataclasses import dataclass, fields
 from typing import Iterable, Optional
-
 
 _DOMAIN_RE = re.compile(r"^[a-z0-9][a-z0-9_]*$")
 _CAPABILITY_ID_RE = re.compile(

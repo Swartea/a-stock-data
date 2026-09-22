@@ -22,10 +22,10 @@ REPORTS_DIR = WORKDIR / "reports"
   8. 端到端: 跑 600693, HTML 含 mingli CSS 字符串
 """
 import sys
+
 sys.path.insert(0, str(WORKDIR / "analysis"))
 
 import pytest
-
 from html_report_v3 import _MINGLI_CSS  # noqa: E402
 
 
@@ -109,6 +109,7 @@ def test_mingli_css_has_responsive_media_query():
 def test_html_report_v3_has_echarts_cdn():
     """V3 渲染器 <head> 段应含 ECharts CDN <script> tag。"""
     import inspect
+
     from html_report_v3 import write_html_report_v3
     src = inspect.getsource(write_html_report_v3)
     assert "echarts@5.5.1" in src or "echarts.min.js" in src, (
@@ -122,6 +123,7 @@ def test_html_report_v3_has_echarts_cdn():
 def test_html_report_v3_includes_mingli_css_in_style():
     """V3 渲染器 <style> 段应含 _MINGLI_CSS。"""
     import inspect
+
     from html_report_v3 import write_html_report_v3
     src = inspect.getsource(write_html_report_v3)
     assert "_MINGLI_CSS" in src, (
@@ -146,6 +148,7 @@ def test_mingli_css_size_reasonable():
 def test_v3_render_html_has_top_nav():
     """V3 渲染器 <body> 段应含 .top-nav + theme-toggle 按钮。"""
     import inspect
+
     from html_report_v3 import write_html_report_v3
     src = inspect.getsource(write_html_report_v3)
     assert '<nav class="top-nav">' in src, "V3 渲染器未输出 .top-nav"
@@ -155,6 +158,7 @@ def test_v3_render_html_has_top_nav():
 def test_v3_render_html_has_theme_js():
     """V3 渲染器应含主题切换 JS (localStorage 记忆 + body.light-mode 切换)。"""
     import inspect
+
     from html_report_v3 import write_html_report_v3
     src = inspect.getsource(write_html_report_v3)
     assert "v3-stock-report-theme" in src, "V3 渲染器未注入主题 JS (localStorage key)"
@@ -165,6 +169,7 @@ def test_v3_render_html_has_theme_js():
 def test_v3_body_wrapped_in_v3_stock_report():
     """V3 渲染器 <body> 内层 div 应为 .v3-stock-report (CSS 变量继承基底层)。"""
     import inspect
+
     from html_report_v3 import write_html_report_v3
     src = inspect.getsource(write_html_report_v3)
     assert '<div class="v3-stock-report">' in src, (
@@ -179,6 +184,7 @@ def test_v3_body_wrapped_in_v3_stock_report():
 def test_theme_toggle_button_text_default_dark():
     """主题切换按钮默认文本应为 '☀️ 浅色模式' (暗色模式提示切换到浅色)。"""
     import inspect
+
     from html_report_v3 import write_html_report_v3
     src = inspect.getsource(write_html_report_v3)
     assert "☀️ 浅色模式" in src, "主题按钮默认文本不正确"
@@ -366,6 +372,7 @@ def test_e2e_600693_html_has_echarts_5_containers():
 def test_render_html_to_pdf_finds_chrome():
     """_render_html_to_pdf 应能找到本机 Chrome 路径。"""
     import os
+
     from analysis.html_report_v3 import _render_html_to_pdf
     # 仅检查函数能正常导入且参数校验
     # 真正的 PDF 渲染需要真实 HTML 文件, 走 e2e 测试

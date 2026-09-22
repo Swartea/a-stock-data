@@ -7,10 +7,9 @@ or model constituents, weights, valuation, quotes, or taxonomy membership.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
 import re
+from dataclasses import dataclass, fields
 from typing import Iterable, Optional
-
 
 _INDEX_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 _PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")

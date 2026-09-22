@@ -2,9 +2,8 @@ import re
 
 import pytest
 
-import analysis.pipeline as pipeline
 import analysis.orchestration.fetching as fetching
-
+import analysis.pipeline as pipeline
 
 TARGET_LABEL = "公告"
 TARGET_KEY = "公告"

@@ -15,7 +15,8 @@ def test_news_backoff_reduced():
     P1.5 整改: 用 conftest.analysis_dir + fixture 路径, 取代 open 个人路径
     """
     # 静态检查源码
-    src = open(WORKDIR / "analysis" / "fetch_news_em.py", encoding="utf-8").read()
+    with open(WORKDIR / "analysis" / "fetch_news_em.py", encoding="utf-8") as f:
+        src = f.read()
     # 旧的 sleep 3 + 4*attempt = 3/7/11s（21s 总和）
     # 新的 sleep 0.8 + 1.2*attempt = 0.8/2.0/3.2s（6s 总和）
     assert "0.8 + 1.2 * attempt" in src or "0.8+1.2*attempt" in src, \

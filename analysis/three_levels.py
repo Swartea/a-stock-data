@@ -248,9 +248,7 @@ def compute_three_levels(quote: Optional[Dict], chip_data: Optional[Dict],
             if v is None:
                 continue
             d_pct = (v - price) / price * 100
-            if want == "min" and d_pct <= 0 and OP_BAND[0] <= abs(d_pct) <= OP_BAND[1]:
-                band_strict[k] = (v, abs(d_pct))
-            elif want == "max" and d_pct >= 0 and OP_BAND[0] <= abs(d_pct) <= OP_BAND[1]:
+            if want == "min" and d_pct <= 0 and OP_BAND[0] <= abs(d_pct) <= OP_BAND[1] or want == "max" and d_pct >= 0 and OP_BAND[0] <= abs(d_pct) <= OP_BAND[1]:
                 band_strict[k] = (v, abs(d_pct))
         if band_strict:
             # 距现价最近 (|d_pct| 最小)
@@ -263,9 +261,7 @@ def compute_three_levels(quote: Optional[Dict], chip_data: Optional[Dict],
             if v is None:
                 continue
             d_pct = (v - price) / price * 100
-            if want == "min" and d_pct <= 0 and abs(d_pct) <= 5.0:
-                band_loose[k] = (v, abs(d_pct))
-            elif want == "max" and d_pct >= 0 and abs(d_pct) <= 5.0:
+            if want == "min" and d_pct <= 0 and abs(d_pct) <= 5.0 or want == "max" and d_pct >= 0 and abs(d_pct) <= 5.0:
                 band_loose[k] = (v, abs(d_pct))
         if band_loose:
             k_pick = min(band_loose.items(), key=lambda kv: kv[1][1])[0]

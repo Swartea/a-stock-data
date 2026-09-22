@@ -13,12 +13,13 @@
   - 报告层显示原状态 → 旁路后
 """
 import json
+
 import pytest
 
 from analysis.trading_plan import (
+    PE_PCTL_BYPASS_THRESHOLD,
     apply_pe_pctl_bypass,
     inject_state_to_plan,
-    PE_PCTL_BYPASS_THRESHOLD,
     score_to_state,
 )
 

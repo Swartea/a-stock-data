@@ -12,7 +12,6 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 
-
 _QUALITY_FLAG_RE = re.compile(
     r"^[a-z0-9][a-z0-9_]*(?:[.-][a-z0-9][a-z0-9_]*)*$"
 )

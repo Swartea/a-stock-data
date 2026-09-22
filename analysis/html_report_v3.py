@@ -20,10 +20,10 @@ V3 排版 (docs/05-报告升级方案.md 拍板 4 项):
 result dict 契约 (V3 主分析器并行开发中):
   缺字段一律显示 "数据源暂缺", 绝不崩。
 """
+import datetime
+import math
 import os
 import re
-import math
-import datetime
 
 import html_report as hr  # 只复用 V2 的 4 个 SVG 生成函数
 
@@ -1025,7 +1025,7 @@ def _chart_card(emoji, title, svg_str, asof, radar=False, foot_note=""):
 
 def _kline_to_rawdata(kline_dicts):
     """V3 chip_data['kline'] dict 列表 → [date, open, high, low, close, turn] 列表
-    
+
     V3 字段: {date, open, high, low, close, turn}  (turn=换手率%)
     ECharts 模板: [date, open, high, low, close, vol]
     注: V3 没 volume, 用 turn (换手率%) 替代
@@ -1039,7 +1039,7 @@ def _kline_to_rawdata(kline_dicts):
 
 def _markline_data(three_levels, current_price=None):
     """从 three_levels 自动生成 ECharts markLine 标注。
-    
+
     返回 [{yAxis, name, label, lineStyle}, ...]
     """
     if not three_levels or not isinstance(three_levels, dict):
@@ -1082,7 +1082,7 @@ def _markpoint_data(kline_dicts, current_price):
 
 def _render_echarts_kline_block(result):
     """ECharts K 线 + 成交量 + MA + markLine 标注 (从 three_levels 自动注入)。
-    
+
     位置: V3 渲染器 4 图 (svg_kline/svg_chip/svg_pe/svg_radar) 之后追加。
     """
     cd = result.get("chip_data") or {}
@@ -1250,10 +1250,14 @@ def _state_key_of(result):
         sc = float(score)
     except (TypeError, ValueError):
         return None
-    if sc >= 65: return "bullish"
-    if sc >= 55: return "mild_bull"
-    if sc >= 45: return "neutral"
-    if sc >= 35: return "mild_bear"
+    if sc >= 65:
+        return "bullish"
+    if sc >= 55:
+        return "mild_bull"
+    if sc >= 45:
+        return "neutral"
+    if sc >= 35:
+        return "mild_bear"
     return "bearish"
 
 
@@ -1465,18 +1469,12 @@ def _render_checklist(result, state):
     # ----- 5 项 GFM checkbox 清单 (债 5 修法, Task 7.2) -----
     # 5 状态 × 5 项, 运行时按 state 选 1 套
     # 5 项: 状态确认 / 买点触发 / 卖点触发 / 止损纪律 / 仓位管理
-    sl_pct_str = (_num(sl_pct, 1) if _num(sl_pct, 1) else "?")
     e_lo_s = money(sup_low if sup_low is not None else q.get("price"), "支撑区")
-    e_hi_s = money(sup_high if sup_high is not None else q.get("price"), "支撑上沿")
     tp1_s = money(pres if pres is not None else q.get("price"), "第一压力")
     st_s = money(sl, "止损位")
     pos_s = (_esc(pos) if pos else "数据源暂缺")
     per_s = (_esc(per) if per else "数据源暂缺")
     sl_pct_s = (_num(sl_pct, 1) if _num(sl_pct, 1) else "—")
-    e_lo_v = sup_low if sup_low is not None else None
-    e_hi_v = sup_high if sup_high is not None else None
-    tp1_v = pres if pres is not None else None
-    sl_v = sl
     CHECKLIST_5T = {
         "bullish": [
             ("状态确认", "评分 ≥65 + 趋势确认 + 量能配合, 5 状态机判定为多头"),
@@ -1873,9 +1871,9 @@ def _module_finance(result, report_date, run_log):
         ("EPS", cell(latest, "eps", 2)),
     ]
     h.append('<div class="mini-grid">')
-    for l, v in mini:
+    for label, v in mini:
         h.append('<div class="kpi"><div class="l">%s</div><div class="v">%s</div></div>'
-                 % (_esc(l), _esc(v)))
+                 % (_esc(label), _esc(v)))
     h.append("</div>")
     cmt = _finance_comment(latest, prev)
     if cmt:
@@ -2029,9 +2027,9 @@ def _module_margin(result, report_date, run_log):
             else:
                 trend = "期间融资余额基本持平"
     h = ['<div class="mini-grid">']
-    for l, v in mini:
+    for label, v in mini:
         h.append('<div class="kpi"><div class="l">%s</div><div class="v">%s</div></div>'
-                 % (_esc(l), v))
+                 % (_esc(label), v))
     h.append("</div>")
     if trend:
         h.append('<div class="src-line" style="margin-top:8px">📈 %s</div>' % trend)
@@ -2225,7 +2223,6 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     name = result.get("name", "")
     q = result.get("quote") or {}
     s = result.get("score") or {}
-    score_total = s.get("total")
     report_date = result.get("report_date") \
         or (result.get("run_log") or {}).get("report_date") \
         or datetime.datetime.now().strftime("%Y-%m-%d")
@@ -2395,7 +2392,7 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     html.append(_render_run_log(result, report_date))
 
     # ---- 页脚: 免责声明 + 数据来源 + 生成时间 (§2.4) ----
-    src_keys = [str(k) for k in (run_log.get("sources") or {}).keys()]
+    src_keys = [str(k) for k in (run_log.get("sources") or {})]
     if src_keys:
         src_line = "数据来源：" + " · ".join(_esc(k) for k in src_keys) + "（以各模块标注时点为准）"
     else:
@@ -2479,7 +2476,7 @@ def write_html_report_v3(result: dict, out_dir: str) -> str:
     #   在 result 写 pdf_status / pdf_path, 让 _emit 算 deliverable_status
     try:
         pdf_path = _render_html_to_pdf(path, virtual_time_budget_ms=15000)
-        result["pdf_status"] = "ok" if pdf_path and os.path.exists(pdf_path) else f"error: PDF 未生成"
+        result["pdf_status"] = "ok" if pdf_path and os.path.exists(pdf_path) else "error: PDF 未生成"
         result["pdf_path"] = pdf_path
     except Exception as _pdf_err:
         # PDF 渲染失败不阻塞 HTML 输出, 但必须记录到 result
@@ -2504,7 +2501,6 @@ def _render_html_to_pdf(html_path: str, virtual_time_budget_ms: int = 15000) -> 
     """
     import os
     import subprocess
-    import sys
 
     if not os.path.exists(html_path):
         raise FileNotFoundError("HTML 文件不存在: %s" % html_path)

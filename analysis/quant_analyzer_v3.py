@@ -45,50 +45,96 @@ if _ANALYSIS_DIR not in sys.path:
 # 显式列名 (不用 import *), 让老 import 路径仍工作
 # ============================================================
 # utils (P2-A Phase 1)
-from analysis.utils import (
-    _json_default, _fmt_time, _to_float, _num_or_none,
-    _clean, _fnum, _fpct, _interpret_yoy, _interpret_qoq, _finance_talk,
-    _short_iso, _format_peg_talk,
-)
-# constants (P2-A Phase 1)
-from analysis.constants import (
-    _SRC_DESC, OPERATION_TEMPLATES, _STATE_DISPLAY,
-)
-# trading_plan (P2-A Phase 2)
-from analysis.trading_plan import (
-    _score_to_state, inject_state_to_plan, _state_display,
-)
-# three_levels (P2-A Phase 3)
-from analysis.three_levels import (
-    compute_three_levels, _klines_to_series, _series_ma, _series_boll,
-    _series_recent_high, _series_recent_low,
-)
-# data_fetcher (P2-A Phase 4 Task 4.1: 3 内部 fetcher 集中)
-from analysis.data_fetcher import (
-    _fetch_fund_flow_daily, _fetch_margin_history, _fetch_concept_peers,
-)
-# fetcher_dispatcher (P2-A Phase 4 Task 4.2: 4 独立 fetcher 软导入 + 调度)
-from analysis.fetcher_dispatcher import _NEW_IMPORTS, call_fetcher
 # fetcher_contract (P0-B 规范 §4: 4 状态契约, v3 老 try-import 已弃用)
 from fetcher_contract import (  # noqa: E402
-    status_of, is_error as _is_error_fc, is_ok, is_empty, is_unsupported,
-    from_legacy as _from_legacy,
-    STATUS_OK, STATUS_EMPTY, STATUS_ERROR, STATUS_UNSUPPORTED,
+    STATUS_EMPTY,
+    STATUS_ERROR,
+    STATUS_OK,
+    STATUS_UNSUPPORTED,
+    is_empty,
+    is_ok,
+    is_unsupported,
+    status_of,
 )
-_HAS_FETCHER_CONTRACT = True
-# report_md (P2-A Phase 5 Task 5.1)
-from analysis.report_md import write_markdown_report_v3
-# pipeline (P2-A Phase 5 Task 5.2: 6 编排辅助 + analyze_single_v3 + _emit + _dump_run_log)
-from analysis.pipeline import (
-    analyze_single_v3, _emit, _dump_run_log,
-    _classify_north_scope, _patch_v2_timers, _restore_v2,
-    _latest_trading_day, _kline_freshness, _retry_call,
+from fetcher_contract import (  # noqa: E402  # sys.path 兄弟目录引导
+    from_legacy as _from_legacy,
+)
+from fetcher_contract import (  # noqa: E402  # sys.path 兄弟目录引导
+    is_error as _is_error_fc,
 )
 
+# constants (P2-A Phase 1)
+from analysis.constants import (  # noqa: E402  # sys.path 兄弟目录引导
+    _SRC_DESC,
+    _STATE_DISPLAY,
+    OPERATION_TEMPLATES,
+)
+
+# data_fetcher (P2-A Phase 4 Task 4.1: 3 内部 fetcher 集中)
+from analysis.data_fetcher import (  # noqa: E402  # sys.path 兄弟目录引导
+    _fetch_concept_peers,
+    _fetch_fund_flow_daily,
+    _fetch_margin_history,
+)
+
+# fetcher_dispatcher (P2-A Phase 4 Task 4.2: 4 独立 fetcher 软导入 + 调度)
+from analysis.fetcher_dispatcher import (  # noqa: E402  # sys.path 兄弟目录引导
+    _NEW_IMPORTS,
+    call_fetcher,
+)
+
+# three_levels (P2-A Phase 3)
+from analysis.three_levels import (  # noqa: E402  # sys.path 兄弟目录引导
+    _klines_to_series,
+    _series_boll,
+    _series_ma,
+    _series_recent_high,
+    _series_recent_low,
+    compute_three_levels,
+)
+
+# trading_plan (P2-A Phase 2)
+from analysis.trading_plan import (  # noqa: E402  # sys.path 兄弟目录引导
+    _score_to_state,
+    _state_display,
+    inject_state_to_plan,
+)
+from analysis.utils import (  # noqa: E402  # sys.path 兄弟目录引导
+    _clean,
+    _finance_talk,
+    _fmt_time,
+    _fnum,
+    _format_peg_talk,
+    _fpct,
+    _interpret_qoq,
+    _interpret_yoy,
+    _json_default,
+    _num_or_none,
+    _short_iso,
+    _to_float,
+)
+
+_HAS_FETCHER_CONTRACT = True
+# report_md (P2-A Phase 5 Task 5.1)
 # v2 同源复用 (v3 顶层 import 仅做命名暴露, 主流程已用 pipeline 内的 v2)
 import quant_analyzer_v2 as v2  # noqa: E402
+
 # Section Registry (P1 §10.1, 5 sections 渲染列表; pipeline/report_md 也独立 import)
 from sections import enabled_sections  # noqa: E402
+
+# pipeline (P2-A Phase 5 Task 5.2: 6 编排辅助 + analyze_single_v3 + _emit + _dump_run_log)
+from analysis.pipeline import (  # noqa: E402  # sys.path 兄弟目录引导
+    _classify_north_scope,
+    _dump_run_log,
+    _emit,
+    _kline_freshness,
+    _latest_trading_day,
+    _patch_v2_timers,
+    _restore_v2,
+    _retry_call,
+    analyze_single_v3,
+)
+from analysis.report_md import write_markdown_report_v3  # noqa: E402  # sys.path 兄弟目录引导
 
 __all__ = [
     # utils

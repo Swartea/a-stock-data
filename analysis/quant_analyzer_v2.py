@@ -21,20 +21,19 @@ v2 (V3.7.2):    10 因子，22 端点，CLI 单票/批量分离，Markdown 报�
 免责声明: 本工具仅供数据分析参考，不构成任何投资建议。
 """
 
-import requests
-import urllib.request
-import json
-import time
-import random
+import io
 import math
 import os
-import sys
+import random
 import re
-import io
+import sys
+import time
 from datetime import datetime, timedelta
 from typing import Optional
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import requests
 from html_report import write_html_report as _write_html_report
 
 # ============================================================
@@ -162,7 +161,7 @@ def fetch_tencent_quote(codes) -> dict:
         if len(parts) < 50:
             results[original_code] = {"error": "字段不足"}
             continue
-        def g(i, default=0):
+        def g(i, default=0, parts=parts):
             try:
                 v = parts[i]
                 return float(v) if v else default
@@ -224,7 +223,7 @@ def fetch_full_valuation(code: str) -> dict:
         for df in dfs:
             cols = [str(c) for c in df.columns]
             if any("每股收益" in c or "均值" in c for c in cols):
-                def _pick(row, name):
+                def _pick(row, name, df=df):
                     for c in df.columns:
                         if name in str(c):
                             return row.get(c)
@@ -241,7 +240,7 @@ def fetch_full_valuation(code: str) -> dict:
                     if vn is not None and pd.notna(vn):
                         eps_next = float(vn)
                 break
-    except Exception as e:
+    except Exception:
         # 一致预期失败不算致命错误
         pass
 
@@ -725,7 +724,6 @@ def fetch_sw_stability(code: str) -> dict:
 
 def fetch_margin_trading(code: str) -> Optional[dict]:
     """融资融券最近一期（V3.7 用 eastmoney_datacenter）。"""
-    from urllib.parse import quote
     # 走 em_datacenter 的 report_name=RPTA_WEB_RZRQ_GGMX
     try:
         params = {
@@ -1200,9 +1198,8 @@ def fetch_cninfo_irm(code: str, limit: int = 10) -> list:
 
     数据源: 巨潮 IRM 平台 (需 POST + UA, 公开数据)
     """
-    import urllib.request
-    import urllib.parse
     import json as _json
+    import urllib.parse
     import warnings as _w
     _w.filterwarnings('ignore')
 
@@ -1305,16 +1302,29 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
     price = quote.get("price", 0)
     prev = quote.get("prev_close", 0)
     change_pct = round((price - prev) / prev * 100, 2) if prev else 0
-    if change_pct > 5: trend += 5; factors.append(f"涨{change_pct:+.1f}% +5")
-    elif change_pct > 2: trend += 3; factors.append(f"涨{change_pct:+.1f}% +3")
-    elif change_pct > 0: trend += 1; factors.append(f"涨{change_pct:+.1f}% +1")
-    elif change_pct < -5: trend -= 5; factors.append(f"跌{change_pct:+.1f}% -5")
-    elif change_pct < -2: trend -= 3; factors.append(f"跌{change_pct:+.1f}% -3")
-    elif change_pct < 0: trend -= 1; factors.append(f"跌{change_pct:+.1f}% -1")
+    if change_pct > 5:
+        trend += 5
+        factors.append(f"涨{change_pct:+.1f}% +5")
+    elif change_pct > 2:
+        trend += 3
+        factors.append(f"涨{change_pct:+.1f}% +3")
+    elif change_pct > 0:
+        trend += 1
+        factors.append(f"涨{change_pct:+.1f}% +1")
+    elif change_pct < -5:
+        trend -= 5
+        factors.append(f"跌{change_pct:+.1f}% -5")
+    elif change_pct < -2:
+        trend -= 3
+        factors.append(f"跌{change_pct:+.1f}% -3")
+    elif change_pct < 0:
+        trend -= 1
+        factors.append(f"跌{change_pct:+.1f}% -1")
     # 低开高走加分
     op = quote.get("open", 0)
     if op and price > op * 1.02:
-        trend += 1; factors.append("低开高走 +1")
+        trend += 1
+        factors.append("低开高走 +1")
     trend = max(0, min(trend, 12))
 
     # ---- 2. 估值因子 15分 ----
@@ -1322,31 +1332,61 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
     pe_ttm = quote.get("pe_ttm", 0) or valuation.get("pe_ttm", 0) or 0
     pb = quote.get("pb", 0) or valuation.get("pb", 0) or 0
     if pe_ttm > 0:
-        if pe_ttm < 15: val_score += 5; factors.append(f"PE={pe_ttm:.1f}极低 +5")
-        elif pe_ttm < 25: val_score += 3; factors.append(f"PE={pe_ttm:.1f}偏低 +3")
-        elif pe_ttm < 40: val_score += 1; factors.append(f"PE={pe_ttm:.1f}适中 +1")
-        elif pe_ttm < 80: val_score -= 1; factors.append(f"PE={pe_ttm:.1f}偏高 -1")
-        else: val_score -= 3; factors.append(f"PE={pe_ttm:.1f}极高 -3")
+        if pe_ttm < 15:
+            val_score += 5
+            factors.append(f"PE={pe_ttm:.1f}极低 +5")
+        elif pe_ttm < 25:
+            val_score += 3
+            factors.append(f"PE={pe_ttm:.1f}偏低 +3")
+        elif pe_ttm < 40:
+            val_score += 1
+            factors.append(f"PE={pe_ttm:.1f}适中 +1")
+        elif pe_ttm < 80:
+            val_score -= 1
+            factors.append(f"PE={pe_ttm:.1f}偏高 -1")
+        else:
+            val_score -= 3
+            factors.append(f"PE={pe_ttm:.1f}极高 -3")
 
     if pb > 0:
-        if pb < 2: val_score += 3; factors.append(f"PB={pb:.2f}极低 +3")
-        elif pb < 5: val_score += 2; factors.append(f"PB={pb:.2f}正常 +2")
-        elif pb < 10: val_score += 0; factors.append(f"PB={pb:.2f}偏高 ±0")
-        else: val_score -= 1; factors.append(f"PB={pb:.2f}极高 -1")
+        if pb < 2:
+            val_score += 3
+            factors.append(f"PB={pb:.2f}极低 +3")
+        elif pb < 5:
+            val_score += 2
+            factors.append(f"PB={pb:.2f}正常 +2")
+        elif pb < 10:
+            val_score += 0
+            factors.append(f"PB={pb:.2f}偏高 ±0")
+        else:
+            val_score -= 1
+            factors.append(f"PB={pb:.2f}极高 -1")
 
     # 一致预期消化
     digest = valuation.get("digest_years")
     if digest is not None and digest != 0:
-        if digest <= 2: val_score += 3; factors.append(f"PE消化{digest}年(快速) +3")
-        elif digest <= 4: val_score += 1; factors.append(f"PE消化{digest}年(合理) +1")
-        elif digest > 4: val_score -= 2; factors.append(f"PE消化{digest}年(慢) -2")
+        if digest <= 2:
+            val_score += 3
+            factors.append(f"PE消化{digest}年(快速) +3")
+        elif digest <= 4:
+            val_score += 1
+            factors.append(f"PE消化{digest}年(合理) +1")
+        elif digest > 4:
+            val_score -= 2
+            factors.append(f"PE消化{digest}年(慢) -2")
 
     # PEG 校验
     peg = valuation.get("peg")
     if peg and peg != float("inf"):
-        if peg < 1: val_score += 3; factors.append(f"PEG={peg}便宜 +3")
-        elif peg < 1.5: val_score += 1; factors.append(f"PEG={peg}合理 +1")
-        elif peg > 2: val_score -= 2; factors.append(f"PEG={peg}贵 -2")
+        if peg < 1:
+            val_score += 3
+            factors.append(f"PEG={peg}便宜 +3")
+        elif peg < 1.5:
+            val_score += 1
+            factors.append(f"PEG={peg}合理 +1")
+        elif peg > 2:
+            val_score -= 2
+            factors.append(f"PEG={peg}贵 -2")
 
     val_score = max(0, min(val_score, 15))
 
@@ -1356,13 +1396,17 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
         pe_pct = valuation_hist.get("pe_percentile_3y")
         if pe_pct is not None:
             if pe_pct < 20:
-                pct_score += 4; factors.append(f"PE历史分位{pe_pct}%(低位) +4")
+                pct_score += 4
+                factors.append(f"PE历史分位{pe_pct}%(低位) +4")
             elif pe_pct < 50:
-                pct_score += 2; factors.append(f"PE历史分位{pe_pct}%(中低) +2")
+                pct_score += 2
+                factors.append(f"PE历史分位{pe_pct}%(中低) +2")
             elif pe_pct > 80:
-                pct_score -= 3; factors.append(f"PE历史分位{pe_pct}%(高位) -3")
+                pct_score -= 3
+                factors.append(f"PE历史分位{pe_pct}%(高位) -3")
             elif pe_pct > 60:
-                pct_score -= 1; factors.append(f"PE历史分位{pe_pct}%(偏高) -1")
+                pct_score -= 1
+                factors.append(f"PE历史分位{pe_pct}%(偏高) -1")
             else:
                 factors.append(f"PE历史分位{pe_pct}%(中位) ±0")
     else:
@@ -1375,13 +1419,27 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
         s = fund["summary"]
         recent = s.get("recent_main_yi", 0)
         trend_str = s.get("trend", "")
-        if recent > 1: cap_score += 6; factors.append(f"近30min主力流入{recent:.2f}亿 +6")
-        elif recent > 0.3: cap_score += 3; factors.append(f"近30min主力流入{recent:.2f}亿 +3")
-        elif recent > 0: cap_score += 1; factors.append(f"近30min主力微流入{recent:.2f}亿 +1")
-        elif recent < -1: cap_score -= 4; factors.append(f"近30min主力流出{recent:.2f}亿 -4")
-        elif recent < -0.3: cap_score -= 2; factors.append(f"近30min主力流出{recent:.2f}亿 -2")
-        if "加速流入" in trend_str: cap_score += 2; factors.append(f"资金{trend_str} +2")
-        elif "加速流出" in trend_str: cap_score -= 2; factors.append(f"资金{trend_str} -2")
+        if recent > 1:
+            cap_score += 6
+            factors.append(f"近30min主力流入{recent:.2f}亿 +6")
+        elif recent > 0.3:
+            cap_score += 3
+            factors.append(f"近30min主力流入{recent:.2f}亿 +3")
+        elif recent > 0:
+            cap_score += 1
+            factors.append(f"近30min主力微流入{recent:.2f}亿 +1")
+        elif recent < -1:
+            cap_score -= 4
+            factors.append(f"近30min主力流出{recent:.2f}亿 -4")
+        elif recent < -0.3:
+            cap_score -= 2
+            factors.append(f"近30min主力流出{recent:.2f}亿 -2")
+        if "加速流入" in trend_str:
+            cap_score += 2
+            factors.append(f"资金{trend_str} +2")
+        elif "加速流出" in trend_str:
+            cap_score -= 2
+            factors.append(f"资金{trend_str} -2")
     else:
         factors.append("资金流数据不可用 0")
     cap_score = max(0, min(cap_score, 15))
@@ -1391,13 +1449,27 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
     turnover = quote.get("turnover_rate", 0)
     vol_ratio = quote.get("vol_ratio", 1)
     amp = quote.get("amplitude", 0)
-    if 2 < turnover < 8: mom_score += 2; factors.append(f"换手{turnover:.1f}%活跃 +2")
-    elif turnover >= 10: mom_score -= 1; factors.append(f"换手{turnover:.1f}%过高 -1")
-    elif turnover < 0.5: mom_score -= 1; factors.append(f"换手{turnover:.1f}%低迷 -1")
-    if 1.2 < vol_ratio < 3: mom_score += 1; factors.append(f"量比{vol_ratio:.1f}温和放量 +1")
-    elif vol_ratio > 5: mom_score -= 2; factors.append(f"量比{vol_ratio:.1f}异常 -2")
-    if amp > 8: mom_score -= 2; factors.append(f"振幅{amp:.1f}%剧烈 -2")
-    elif amp > 5: mom_score -= 1; factors.append(f"振幅{amp:.1f}%较大 -1")
+    if 2 < turnover < 8:
+        mom_score += 2
+        factors.append(f"换手{turnover:.1f}%活跃 +2")
+    elif turnover >= 10:
+        mom_score -= 1
+        factors.append(f"换手{turnover:.1f}%过高 -1")
+    elif turnover < 0.5:
+        mom_score -= 1
+        factors.append(f"换手{turnover:.1f}%低迷 -1")
+    if 1.2 < vol_ratio < 3:
+        mom_score += 1
+        factors.append(f"量比{vol_ratio:.1f}温和放量 +1")
+    elif vol_ratio > 5:
+        mom_score -= 2
+        factors.append(f"量比{vol_ratio:.1f}异常 -2")
+    if amp > 8:
+        mom_score -= 2
+        factors.append(f"振幅{amp:.1f}%剧烈 -2")
+    elif amp > 5:
+        mom_score -= 1
+        factors.append(f"振幅{amp:.1f}%较大 -1")
     mom_score = max(0, min(mom_score, 8))
 
     # ---- 6. 情绪因子 8分 ----
@@ -1411,29 +1483,50 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
                         hot_count += 1
                 except (ValueError, TypeError):
                     pass
-    if hot_count >= 5: sent_score += 3; factors.append(f"覆盖{hot_count}个上涨概念 +3")
-    elif hot_count >= 2: sent_score += 1; factors.append(f"覆盖{hot_count}个上涨概念 +1")
-    elif hot_count == 0: sent_score -= 1; factors.append("无热门概念 -1")
+    if hot_count >= 5:
+        sent_score += 3
+        factors.append(f"覆盖{hot_count}个上涨概念 +3")
+    elif hot_count >= 2:
+        sent_score += 1
+        factors.append(f"覆盖{hot_count}个上涨概念 +1")
+    elif hot_count == 0:
+        sent_score -= 1
+        factors.append("无热门概念 -1")
     # 北向 — 债 3 round 1 修法 (Task 5.3 follow-up)
     # 加 scope 标签: hsgt 接口返"全市场"沪+深股通, 不是个股北向, 显式标注避免误读为个股口径
     hsgt = macro.get("hsgt", {})
-    if hsgt.get("total_yi", 0) > 5: sent_score += 1; factors.append(f"北向资金(全市场)净流入{hsgt.get('total_yi',0):.1f}亿 +1")
-    elif hsgt.get("total_yi", 0) < -10: sent_score -= 1; factors.append(f"北向资金(全市场)净流出{-hsgt.get('total_yi',0):.1f}亿 -1")
+    if hsgt.get("total_yi", 0) > 5:
+        sent_score += 1
+        factors.append(f"北向资金(全市场)净流入{hsgt.get('total_yi',0):.1f}亿 +1")
+    elif hsgt.get("total_yi", 0) < -10:
+        sent_score -= 1
+        factors.append(f"北向资金(全市场)净流出{-hsgt.get('total_yi',0):.1f}亿 -1")
     sent_score = max(0, min(sent_score, 8))
 
     # ---- 7. 风险因子 10分 ----
     risk_score = 8  # 基础（高分起步，扣分制）
     mcap = quote.get("float_mcap", 0)
     if mcap > 0:
-        if mcap > 1000: risk_score += 1; factors.append(f"大盘股({mcap:.0f}亿) +1")
-        elif mcap < 50: risk_score -= 3; factors.append(f"小盘股({mcap:.0f}亿) -3")
-        elif mcap < 200: risk_score -= 1; factors.append(f"中盘股({mcap:.0f}亿) -1")
-    if pe_ttm > 100: risk_score -= 3; factors.append(f"PE>{pe_ttm:.0f}极高估 -3")
-    if price < 3: risk_score -= 2; factors.append(f"低价股({price:.2f}元) -2")
+        if mcap > 1000:
+            risk_score += 1
+            factors.append(f"大盘股({mcap:.0f}亿) +1")
+        elif mcap < 50:
+            risk_score -= 3
+            factors.append(f"小盘股({mcap:.0f}亿) -3")
+        elif mcap < 200:
+            risk_score -= 1
+            factors.append(f"中盘股({mcap:.0f}亿) -1")
+    if pe_ttm > 100:
+        risk_score -= 3
+        factors.append(f"PE>{pe_ttm:.0f}极高估 -3")
+    if price < 3:
+        risk_score -= 2
+        factors.append(f"低价股({price:.2f}元) -2")
     # 解禁风险
     if isinstance(lockup, dict) and "error" not in lockup:
         if lockup.get("max_ratio_pct", 0) > 5:
-            risk_score -= 2; factors.append(f"未来90天最大解禁{lockup.get('max_ratio_pct',0):.1f}% -2")
+            risk_score -= 2
+            factors.append(f"未来90天最大解禁{lockup.get('max_ratio_pct',0):.1f}% -2")
         elif lockup.get("n_upcoming", 0) > 0:
             factors.append(f"未来90天有{lockup.get('n_upcoming',0)}批解禁 ±0")
     risk_score = max(0, min(risk_score, 10))
@@ -1447,27 +1540,35 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
         price = quote.get("price", 0)
         # 获利比例
         if profit > 0.7:
-            chip_score += 2; factors.append(f"获利盘{profit*100:.1f}% +2")
+            chip_score += 2
+            factors.append(f"获利盘{profit*100:.1f}% +2")
         elif profit > 0.4:
-            chip_score += 1; factors.append(f"获利盘{profit*100:.1f}% +1")
+            chip_score += 1
+            factors.append(f"获利盘{profit*100:.1f}% +1")
         elif profit < 0.2:
-            chip_score -= 2; factors.append(f"套牢盘{(1-profit)*100:.1f}% -2")
+            chip_score -= 2
+            factors.append(f"套牢盘{(1-profit)*100:.1f}% -2")
         else:
             factors.append(f"获利盘{profit*100:.1f}% ±0")
         # 集中度
         if conc_90 < 0.15:
-            chip_score += 2; factors.append(f"90%集中度{conc_90*100:.1f}%(极集中) +2")
+            chip_score += 2
+            factors.append(f"90%集中度{conc_90*100:.1f}%(极集中) +2")
         elif conc_90 < 0.30:
-            chip_score += 1; factors.append(f"90%集中度{conc_90*100:.1f}%(集中) +1")
+            chip_score += 1
+            factors.append(f"90%集中度{conc_90*100:.1f}%(集中) +1")
         elif conc_90 > 0.50:
-            chip_score -= 1; factors.append(f"90%集中度{conc_90*100:.1f}%(发散) -1")
+            chip_score -= 1
+            factors.append(f"90%集中度{conc_90*100:.1f}%(发散) -1")
         # 套牢 vs 现价
         if price > 0 and avg_cost > 0:
             pct_off = (price - avg_cost) / avg_cost * 100
             if pct_off > 30:
-                chip_score += 1; factors.append(f"现价高于均成本{pct_off:+.1f}% +1")
+                chip_score += 1
+                factors.append(f"现价高于均成本{pct_off:+.1f}% +1")
             elif pct_off < -20:
-                chip_score -= 1; factors.append(f"现价低于均成本{pct_off:+.1f}% -1")
+                chip_score -= 1
+                factors.append(f"现价低于均成本{pct_off:+.1f}% -1")
     else:
         err = chip_data.get("error", "N/A") if chip_data else "未拉取"
         factors.append(f"筹码: {err[:40]} 0")
@@ -1481,16 +1582,20 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
         is_churning = sw_data.get("is_churning", False)
         # 行业变更次数 vs 中位数
         if n <= 2:
-            sw_score += 1; factors.append(f"行业变更{n}次(稳定) +1")
+            sw_score += 1
+            factors.append(f"行业变更{n}次(稳定) +1")
         elif n >= 7:
-            sw_score -= 2; factors.append(f"行业变更{n}次(剧烈) -2")
+            sw_score -= 2
+            factors.append(f"行业变更{n}次(剧烈) -2")
         elif n >= 5:
-            sw_score -= 1; factors.append(f"行业变更{n}次(偏多) -1")
+            sw_score -= 1
+            factors.append(f"行业变更{n}次(偏多) -1")
         else:
             factors.append(f"行业变更{n}次(中位) ±0")
         # 偏离全市场中位数
         if is_churning and n > median * 1.5:
-            sw_score -= 1; factors.append(f"行业变更远超市中位数({median}) -1")
+            sw_score -= 1
+            factors.append(f"行业变更远超市中位数({median}) -1")
         if sw_data.get("current_l1"):
             factors.append(f"当前申万一级:{sw_data['current_l1']} L2:{sw_data['current_l2']}")
     else:
@@ -1502,15 +1607,25 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
     dt_score = 5
     if isinstance(dragon, dict) and "error" not in dragon:
         n = dragon.get("n_records", 0)
-        if n == 0: dt_score -= 1; factors.append("近30日未上龙虎榜 -1")
-        elif n >= 3: dt_score += 3; factors.append(f"近30日上榜{n}次 +3")
-        else: dt_score += 1; factors.append(f"近30日上榜{n}次 +1")
+        if n == 0:
+            dt_score -= 1
+            factors.append("近30日未上龙虎榜 -1")
+        elif n >= 3:
+            dt_score += 3
+            factors.append(f"近30日上榜{n}次 +3")
+        else:
+            dt_score += 1
+            factors.append(f"近30日上榜{n}次 +1")
         # 净买入
         net_buys = [r.get("net_buy_wan", 0) for r in dragon.get("records", [])]
         if net_buys:
             avg_net = sum(net_buys) / len(net_buys)
-            if avg_net > 1000: dt_score += 2; factors.append(f"龙虎榜均净买{avg_net:.0f}万 +2")
-            elif avg_net < -1000: dt_score -= 3; factors.append(f"龙虎榜均净卖{-avg_net:.0f}万 -3")
+            if avg_net > 1000:
+                dt_score += 2
+                factors.append(f"龙虎榜均净买{avg_net:.0f}万 +2")
+            elif avg_net < -1000:
+                dt_score -= 3
+                factors.append(f"龙虎榜均净卖{-avg_net:.0f}万 -3")
     else:
         factors.append(f"龙虎榜:{dragon.get('error','N/A')[:30]} ±0")
     dt_score = max(0, min(dt_score, 10))
@@ -1530,12 +1645,18 @@ def compute_quant_score_v2(quote: dict, valuation: dict, blocks: list,
 
 def get_advice_v2(score: float) -> tuple:
     """评分 → 建议 (5 档)。"""
-    if score >= 75: return ("强烈看多", "🟢🟢", "可重仓介入，止损设20日均线-3%，目标60-80%仓位")
-    elif score >= 65: return ("看多", "🟢", "可逢调整建仓，仓位30-50%，设好止损")
-    elif score >= 55: return ("中性偏多", "🟡", "观望为主，轻仓试探")
-    elif score >= 45: return ("中性偏空", "🟡", "减仓观望，已有持仓设紧止损")
-    elif score >= 35: return ("看空", "🔴", "建议减仓至轻仓或清仓")
-    else: return ("强烈看空", "🔴🔴", "清仓回避，等底部放量企稳")
+    if score >= 75:
+        return ("强烈看多", "🟢🟢", "可重仓介入，止损设20日均线-3%，目标60-80%仓位")
+    elif score >= 65:
+        return ("看多", "🟢", "可逢调整建仓，仓位30-50%，设好止损")
+    elif score >= 55:
+        return ("中性偏多", "🟡", "观望为主，轻仓试探")
+    elif score >= 45:
+        return ("中性偏空", "🟡", "减仓观望，已有持仓设紧止损")
+    elif score >= 35:
+        return ("看空", "🔴", "建议减仓至轻仓或清仓")
+    else:
+        return ("强烈看空", "🔴🔴", "清仓回避，等底部放量企稳")
 
 
 # ============================================================
@@ -1611,7 +1732,7 @@ def analyze_single(code: str, name: str = "", output_md: bool = True) -> dict:
     if "error" not in val_hist:
         print(f"  估值分位(3年): PE {val_hist.get('pe_percentile_3y',0)}% / "
               f"PB {val_hist.get('pb_percentile_3y',0)}%")
-    print(f"\n  因子明细:")
+    print("\n  因子明细:")
     print(f"    趋势={score['trend']:>4}  估值={score['valuation']:>4}  "
           f"分位={score['valuation_pctile']:>4}  资金={score['capital']:>4}")
     print(f"    动量={score['momentum']:>4}  情绪={score['sentiment']:>4}  "
@@ -1651,32 +1772,47 @@ def analyze_single(code: str, name: str = "", output_md: bool = True) -> dict:
 
 def _interpret_pe(pe):
     """PE → 人话"""
-    if pe <= 0 or pe > 500: return "PE 无效（亏损或极端值）"
-    if pe < 15: return f"PE {pe:.1f} 极低，便宜"
-    if pe < 25: return f"PE {pe:.1f} 偏低，估值有吸引力"
-    if pe < 40: return f"PE {pe:.1f} 合理，可接受"
-    if pe < 80: return f"PE {pe:.1f} 偏贵，要谨慎"
+    if pe <= 0 or pe > 500:
+        return "PE 无效（亏损或极端值）"
+    if pe < 15:
+        return f"PE {pe:.1f} 极低，便宜"
+    if pe < 25:
+        return f"PE {pe:.1f} 偏低，估值有吸引力"
+    if pe < 40:
+        return f"PE {pe:.1f} 合理，可接受"
+    if pe < 80:
+        return f"PE {pe:.1f} 偏贵，要谨慎"
     return f"PE {pe:.1f} 极高估，泡沫风险"
 
 def _interpret_pctile(pct):
     """PE 分位 → 人话（数字越小越便宜）"""
-    if pct is None: return "无历史数据"
-    if pct < 10: return f"在历史 {pct}% 分位（接近 3 年最低，便宜区间）"
-    if pct < 30: return f"在历史 {pct}% 分位（便宜区间，可考虑）"
-    if pct < 60: return f"在历史 {pct}% 分位（合理区间，不贵不便宜）"
-    if pct < 80: return f"在历史 {pct}% 分位（偏贵区间，谨慎）"
+    if pct is None:
+        return "无历史数据"
+    if pct < 10:
+        return f"在历史 {pct}% 分位（接近 3 年最低，便宜区间）"
+    if pct < 30:
+        return f"在历史 {pct}% 分位（便宜区间，可考虑）"
+    if pct < 60:
+        return f"在历史 {pct}% 分位（合理区间，不贵不便宜）"
+    if pct < 80:
+        return f"在历史 {pct}% 分位（偏贵区间，谨慎）"
     return f"在历史 {pct}% 分位（接近 3 年最高，泡沫区间）"
 
 def _interpret_chips(cd):
     """筹码分布 → 人话"""
-    if not cd or "error" in cd: return None
+    if not cd or "error" in cd:
+        return None
     out = []
     profit = cd["profit_ratio"]
-    if profit > 0.7: out.append(f"🟢 {profit*100:.0f}% 持仓赚钱，套牢盘轻")
-    elif profit > 0.4: out.append(f"🟡 {profit*100:.0f}% 持仓赚钱，正常")
-    else: out.append(f"🔴 仅 {profit*100:.0f}% 持仓赚钱，套牢盘重")
+    if profit > 0.7:
+        out.append(f"🟢 {profit*100:.0f}% 持仓赚钱，套牢盘轻")
+    elif profit > 0.4:
+        out.append(f"🟡 {profit*100:.0f}% 持仓赚钱，正常")
+    else:
+        out.append(f"🔴 仅 {profit*100:.0f}% 持仓赚钱，套牢盘重")
 
-    peak = cd["peak_price"]; price = cd["price"]
+    peak = cd["peak_price"]
+    price = cd["price"]
     pct_off_peak = (price - peak) / peak * 100
     if -3 < pct_off_peak < 8:
         out.append(f"🟢 现价距筹码峰 {pct_off_peak:+.1f}%（主成本区附近，主力没动）")
@@ -1688,9 +1824,12 @@ def _interpret_chips(cd):
         out.append(f"🟡 现价距筹码峰 {pct_off_peak:+.1f}%")
 
     conc90 = (cd.get("concentration_90") or 0) * 100
-    if conc90 < 15: out.append(f"🟢 90% 集中度 {conc90:.1f}% 极集中（容易拉升）")
-    elif conc90 < 30: out.append(f"🟡 90% 集中度 {conc90:.1f}% 集中")
-    else: out.append(f"🟡 90% 集中度 {conc90:.1f}% 发散（拉升难度大）")
+    if conc90 < 15:
+        out.append(f"🟢 90% 集中度 {conc90:.1f}% 极集中（容易拉升）")
+    elif conc90 < 30:
+        out.append(f"🟡 90% 集中度 {conc90:.1f}% 集中")
+    else:
+        out.append(f"🟡 90% 集中度 {conc90:.1f}% 发散（拉升难度大）")
 
     avg = cd["avg_cost"]
     pct_off_cost = (price - avg) / avg * 100
@@ -1705,7 +1844,8 @@ def _interpret_chips(cd):
 def _make_trading_plan(q, v, cd, score_total):
     """生成具体买卖点位 + 仓位（核心:报告开头那个 "能不能买" 框）"""
     price = q.get("price", 0)
-    if price <= 0: return None
+    if price <= 0:
+        return None
 
     # 进场价: 现价 -3% ~ 现价之间
     entry_low = round(price * 0.97, 2)
@@ -1729,18 +1869,26 @@ def _make_trading_plan(q, v, cd, score_total):
     take_profit_3 = round(price * 1.50, 2)   # +50%
 
     # 仓位: 由评分决定（65+ 满仓 30-50%，55-65 轻仓 20-30%，<55 不建议）
-    if score_total >= 75: position = "可重仓 60-80%"
-    elif score_total >= 65: position = "可建仓 30-50%"
-    elif score_total >= 55: position = "轻仓试探 10-20%"
-    elif score_total >= 45: position = "不进场 / 已有持仓减仓"
-    else: position = "清仓回避"
+    if score_total >= 75:
+        position = "可重仓 60-80%"
+    elif score_total >= 65:
+        position = "可建仓 30-50%"
+    elif score_total >= 55:
+        position = "轻仓试探 10-20%"
+    elif score_total >= 45:
+        position = "不进场 / 已有持仓减仓"
+    else:
+        position = "清仓回避"
 
     # 持仓周期: 看趋势分
     # 用一个简单规则: 评分高 + 一致预期 CAGR 高 → 中线
     cagr = (v.get("cagr_pct") or 0)
-    if cagr >= 20: period = "中线 3-6 个月"
-    elif cagr >= 10: period = "中线 1-3 个月"
-    else: period = "短线 1-2 周"
+    if cagr >= 20:
+        period = "中线 3-6 个月"
+    elif cagr >= 10:
+        period = "中线 1-3 个月"
+    else:
+        period = "短线 1-2 周"
 
     return {
         "entry_low": entry_low, "entry_high": entry_high,
@@ -1752,14 +1900,17 @@ def _make_trading_plan(q, v, cd, score_total):
 
 def _make_signal_list(score, factors):
     """把因子分翻译成 "好消息/坏消息" 列表"""
-    good = []; bad = []
+    good = []
+    bad = []
     for f in factors:
         s = f.strip()
-        if not s: continue
+        if not s:
+            continue
         # 解析 +N / -N
         import re as _re
         m = _re.search(r'([+\-]\d+)\s*$', s)
-        if not m: continue
+        if not m:
+            continue
         val = int(m.group(1))
         if val > 0:
             # 提取原因（去掉分数）
@@ -1775,10 +1926,14 @@ def write_markdown_report(r: dict) -> str:
     """输出单票 Markdown 报告 — 人话版（V2.2）
     结构: 一分钟结论 → 好/坏信号 → 详细数据 → 操作计划 → 三种情景
     """
-    code = r["code"]; name = r["name"]
-    q = r["quote"]; v = r["valuation"]; s = r["score"]
+    code = r["code"]
+    name = r["name"]
+    q = r["quote"]
+    v = r["valuation"]
+    s = r["score"]
     score_total = s["total"]
-    emoji = r["emoji"]; advice = r["advice"]
+    emoji = r["emoji"]
+    advice = r["advice"]
 
     outdir = os.path.expanduser(f"~/Documents/a-stock-reports/{datetime.now().strftime('%Y-%m-%d')}")
     os.makedirs(outdir, exist_ok=True)
@@ -1804,21 +1959,21 @@ def write_markdown_report(r: dict) -> str:
     # ============================================================
     lines += [
         f"# {name} ({code})",
-        f"",
+        "",
         f"**{emoji} {advice}**  |  综合 **{score_total}/100 分**  |  "
         f"{datetime.now().strftime('%Y-%m-%d %H:%M')}  "
         f"价 {price:.2f}元 ({change_pct:+.2f}%)",
-        f"",
-        f"## 🎯 一分钟结论",
-        f"",
+        "",
+        "## 🎯 一分钟结论",
+        "",
     ]
 
     if plan:
         # 进场 / 仓位 / 止损 / 三档止盈
         action = "✅ 可以建仓" if score_total >= 65 else ("⚠️ 轻仓试探" if score_total >= 55 else "❌ 不建议进场")
         lines += [
-            f"| 项目 | 我的建议 |",
-            f"|------|----------|",
+            "| 项目 | 我的建议 |",
+            "|------|----------|",
             f"| **判断** | {action}（{plan['position']}）|",
             f"| **分批进场价** | {plan['entry_low']:.2f} ~ {plan['entry_high']:.2f} 元 |",
             f"| **止损位** | {plan['stop_loss']:.2f} 元（跌 {plan['stop_loss_pct']:.1f}% 必走）|",
@@ -1826,25 +1981,27 @@ def write_markdown_report(r: dict) -> str:
             f"| **第二止盈 (+25%)** | {plan['tp2']:.2f} 元 |",
             f"| **第三止盈 (+50%)** | {plan['tp3']:.2f} 元 |",
             f"| **建议持仓周期** | {plan['period']} |",
-            f"",
+            "",
             f"> 💡 **操作口诀**：现价附近分两批进（如各 1/2 仓），跌到 {plan['stop_loss']:.2f} 必走，"
             f"涨到 {plan['tp1']:.2f} 先卖一半锁利，剩下一半等 {plan['tp2']:.2f} 或 {plan['tp3']:.2f}。",
-            f"",
+            "",
         ]
 
     # ============================================================
     # 1. 好消息 vs 坏消息 (一眼看到该不该动)
     # ============================================================
-    lines += [f"## 👍 看好这票的理由"]
+    lines += ["## 👍 看好这票的理由"]
     if good_signals:
-        for g in good_signals: lines.append(g)
+        for g in good_signals:
+            lines.append(g)
     else:
         lines.append("(暂时没有发现明确的正面信号)")
     lines.append("")
 
-    lines += [f"## 👎 要小心的信号"]
+    lines += ["## 👎 要小心的信号"]
     if bad_signals:
-        for b in bad_signals: lines.append(b)
+        for b in bad_signals:
+            lines.append(b)
     else:
         lines.append("✅ 没有发现明显负面信号")
     lines.append("")
@@ -1852,7 +2009,7 @@ def write_markdown_report(r: dict) -> str:
     # ============================================================
     # 2. 估值人话解读 (PE / PB / 历史分位)
     # ============================================================
-    lines += [f"## 💰 估值贵不贵"]
+    lines += ["## 💰 估值贵不贵"]
     lines += [f"- **{pe_talk}**"]
     if pb > 0:
         pb_talk = "PB 偏高" if pb > 10 else ("PB 偏高" if pb > 5 else "PB 偏低")
@@ -1880,7 +2037,7 @@ def write_markdown_report(r: dict) -> str:
     # 3. 筹码人话解读
     # ============================================================
     if chips_talks:
-        lines += [f"## 🎰 主力和散户的筹码状态"]
+        lines += ["## 🎰 主力和散户的筹码状态"]
         for t in chips_talks:
             lines.append(f"- {t}")
         lines.append("")
@@ -1889,17 +2046,17 @@ def write_markdown_report(r: dict) -> str:
     # 4. 实时行情 (作为佐证，简短)
     # ============================================================
     lines += [
-        f"## 📊 实时行情",
-        f"",
-        f"| 字段 | 值 |",
-        f"|------|-----|",
+        "## 📊 实时行情",
+        "",
+        "| 字段 | 值 |",
+        "|------|-----|",
         f"| 价格 | {price:.2f} 元（{change_pct:+.2f}%）|",
         f"| 涨跌停价 | {q.get('limit_up',0):.2f} / {q.get('limit_down',0):.2f} |",
         f"| 振幅 | {q.get('amplitude',0):.2f}% |",
         f"| 换手 | {q.get('turnover_rate',0):.2f}% |",
         f"| 量比 | {q.get('vol_ratio',0):.2f} |",
         f"| 流通市值 | {mcap:.2f} 亿 |",
-        f"",
+        "",
     ]
 
     # ============================================================
@@ -1907,17 +2064,17 @@ def write_markdown_report(r: dict) -> str:
     # ============================================================
     if v.get("pe_fwd") or v.get("eps_cur"):
         lines += [
-            f"## 🔮 机构怎么看的",
-            f"",
-            f"| 指标 | 值 | 说明 |",
-            f"|------|-----|------|",
+            "## 🔮 机构怎么看的",
+            "",
+            "| 指标 | 值 | 说明 |",
+            "|------|-----|------|",
             f"| 覆盖机构 | {v.get('analyst_count',0)} 家 | {'≥5 家才算靠谱' if v.get('analyst_count',0) >= 5 else '<5 家预期不太准'} |",
             f"| 当年 EPS 预期 | {v.get('eps_cur','N/A')} | 2026 年赚多少 |",
             f"| 次年 EPS 预期 | {v.get('eps_next','N/A')} | 2027 年赚多少 |",
             f"| 预期增速 | {v.get('cagr_pct','N/A')}% | {'≥30% 是高增长' if (v.get('cagr_pct') or 0) >= 30 else '<30% 是普通增长'} |",
             f"| 前向 PE | {v.get('pe_fwd','N/A')} | 用明年预期利润算 |",
             f"| PEG | {v.get('peg','N/A')} | 越低越便宜 |",
-            f"",
+            "",
         ]
 
     # ============================================================
@@ -1925,14 +2082,14 @@ def write_markdown_report(r: dict) -> str:
     # ============================================================
     if "error" not in vh:
         lines += [
-            f"## 📈 过去 3 年估值在啥位置",
-            f"",
-            f"| 指标 | 当前 | 3 年分位 | 历史区间 | 解读 |",
-            f"|------|------|---------|---------|------|",
+            "## 📈 过去 3 年估值在啥位置",
+            "",
+            "| 指标 | 当前 | 3 年分位 | 历史区间 | 解读 |",
+            "|------|------|---------|---------|------|",
             f"| PE(TTM) | {vh.get('current_pe','?')} | {vh.get('pe_percentile_3y','?')}% | "
             f"{vh.get('pe_min','?')} ~ {vh.get('pe_max','?')} | {_interpret_pctile(vh.get('pe_percentile_3y'))} |",
             f"| PB(MRQ) | {vh.get('current_pb','?')} | {vh.get('pb_percentile_3y','?')}% | - | - |",
-            f"",
+            "",
         ]
 
     # ============================================================
@@ -1941,9 +2098,9 @@ def write_markdown_report(r: dict) -> str:
     if cd and "error" not in cd:
         lines += [
             f"## 🎰 筹码分布明细 ({cd.get('n_days','?')} 个交易日)",
-            f"",
-            f"| 指标 | 值 | 解释 |",
-            f"|------|-----|------|",
+            "",
+            "| 指标 | 值 | 解释 |",
+            "|------|-----|------|",
             f"| 获利比例 | {cd['profit_ratio']*100:.2f}% | 现价之下持仓占比 |",
             f"| 平均成本 | {cd['avg_cost']:.2f} | 所有人持仓的平均价格 |",
             f"| 90% 成本区间 | {cd['cost_90'][0]:.2f} ~ {cd['cost_90'][1]:.2f} | 5%~95% 分位的持仓价 |",
@@ -1952,10 +2109,10 @@ def write_markdown_report(r: dict) -> str:
             f"| 70% 集中度 | {cd['concentration_70']*100:.2f}% | - |",
             f"| 筹码峰 | {cd['peak_price']:.2f} 元 | 最密集的持仓价位 |",
             f"| 窗口累计换手 | {cd.get('total_turnover_pct','?')}% | {'换手充分，筹码可信' if (cd.get('total_turnover_pct',0) or 0) > 200 else '换手不够，筹码数据精度有限'} |",
-            f"",
+            "",
         ]
     elif cd and "error" in cd:
-        lines += [f"## 🎰 筹码分布", f"", f"> ⚠️ {cd['error']}", f""]
+        lines += ["## 🎰 筹码分布", "", f"> ⚠️ {cd['error']}", ""]
 
     # ============================================================
     # 8. 申万行业
@@ -1966,22 +2123,22 @@ def write_markdown_report(r: dict) -> str:
         median = sw.get("median_changes", 0)
         sw_talk = "很稳定" if n <= 2 else ("稳定" if n <= median else "行业换过几次")
         lines += [
-            f"## 🏭 申万行业分类",
-            f"",
+            "## 🏭 申万行业分类",
+            "",
             f"- 当前一级行业代码: **{sw.get('current_l1', '?')}** （自 {sw.get('since', '?')} 起）",
             f"- 历史变更 {n} 次（中位数 {median}） — {sw_talk}",
             f"- {'⚠️ 行业换得太多，历史数据可能有偏差' if sw.get('is_churning') else ''}",
-            f"",
+            "",
         ]
 
     # ============================================================
     # 9. 因子得分 (技术细节，给好奇心重的)
     # ============================================================
     lines += [
-        f"## 🔬 10 因子打分明细",
-        f"",
-        f"| 因子 | 得分 | 满分 |",
-        f"|------|------|------|",
+        "## 🔬 10 因子打分明细",
+        "",
+        "| 因子 | 得分 | 满分 |",
+        "|------|------|------|",
         f"| 趋势 | {s['trend']} | 12 |",
         f"| 估值 | {s['valuation']} | 15 |",
         f"| 估值分位 | {s['valuation_pctile']} | 8 |",
@@ -1993,7 +2150,7 @@ def write_markdown_report(r: dict) -> str:
         f"| 申万稳定 | {s['sw_stability']} | 6 |",
         f"| 龙虎榜 | {s['dragon']} | 10 |",
         f"| **综合** | **{s['total']}** | **100** |",
-        f"",
+        "",
     ]
 
     # ============================================================
@@ -2001,23 +2158,23 @@ def write_markdown_report(r: dict) -> str:
     # ============================================================
     if plan:
         lines += [
-            f"## 🎲 如果接下来…",
-            f"",
+            "## 🎲 如果接下来…",
+            "",
             f"**…涨到 {plan['tp1']:.2f} (+10%)**：卖 1/2 仓锁利，留 1/2 看 {plan['tp2']:.2f}",
-            f"",
+            "",
             f"**…横盘不动**：观察一周，如果一直横在 {plan['entry_low']:.2f}~{price:.2f} 区间不破 "
             f"{plan['stop_loss']:.2f} 就继续持有；跌破止损线必走",
-            f"",
+            "",
             f"**…跌到 {plan['stop_loss']:.2f}**：必走，不留恋。可能的原因: 大盘崩、个股出利空、行业被砍",
-            f"",
+            "",
         ]
 
     lines += [
-        f"---",
-        f"",
+        "---",
+        "",
         f"⚠️ 免责声明: 本报告基于公开数据的多因子量化模型生成，不构成投资建议。"
         f" 数据时点 {datetime.now().strftime('%Y-%m-%d %H:%M')}，市场随时变化，请独立判断。",
-        f"",
+        "",
     ]
 
     with open(path, "w", encoding="utf-8") as f:
@@ -2047,7 +2204,7 @@ def analyze_batch(codes: list):
     print(f"  {'代码':<10} {'名称':<8} {'价格':<10} {'涨跌':<8} {'PE':<8} {'PB':<6} {'综合':<6} {'建议'}")
 
     results = []
-    for code, name, tag in codes:
+    for code, name, _tag in codes:
         code = normalize_code(code)
         r = analyze_single(code, name, output_md=False)
         if "error" in r:
@@ -2063,10 +2220,10 @@ def analyze_batch(codes: list):
     if results:
         results.sort(key=lambda x: x["score"]["total"], reverse=True)
         print(f"\n{'='*90}")
-        print(f"  最终排序:")
+        print("  最终排序:")
         for i, r in enumerate(results, 1):
             print(f"  {i}. {r['code']} {r['name']:<6} {r['score']['total']}分 {r['emoji']}")
-    print(f"\n  ⚠️ 免责声明: 基于公开数据的多因子量化模型，不构成投资建议。")
+    print("\n  ⚠️ 免责声明: 基于公开数据的多因子量化模型，不构成投资建议。")
 
 
 # ============================================================

@@ -2,7 +2,6 @@ import analysis.pipeline as pipeline
 from analysis.orchestration import fetching
 from analysis.orchestration.source_status import SourceStatusRecorder
 
-
 LABEL = "公告"
 
 

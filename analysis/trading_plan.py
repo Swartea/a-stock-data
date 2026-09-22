@@ -17,7 +17,6 @@ from typing import Any, Dict, Optional
 
 from analysis.constants import OPERATION_TEMPLATES, STATE_DISPLAY
 
-
 # 5 状态机阈值 (债 1 修法, Task 5.1 锁定)
 _THRESHOLDS = (
     (65, "bullish"),       # 看多 (≥65)

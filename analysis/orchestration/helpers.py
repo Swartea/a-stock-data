@@ -7,7 +7,8 @@ Phase 1A 先从 ``analysis.pipeline`` 复制出不依赖 V2 monkey-patch、
 确保每次变更都能单独回退和验证。
 """
 
-from datetime import date, datetime, time as dtime, timedelta
+from datetime import date, datetime, timedelta
+from datetime import time as dtime
 
 
 def _latest_trading_day() -> date:

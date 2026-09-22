@@ -10,8 +10,8 @@
 - 两次模拟生成不互覆盖
 """
 import json
-import re
 import os
+import re
 from datetime import datetime
 
 import pytest

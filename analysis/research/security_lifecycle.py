@@ -10,13 +10,12 @@ and A5 PIT evaluation. Intervals are half-open: [effective_from, effective_to).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, fields
 from enum import Enum
-import re
 
 from analysis.research.pit_guard import PITDecision, evaluate_pit
 from analysis.research.time_semantics import TimeMetadata
-
 
 _SECURITY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 

@@ -6,20 +6,38 @@
 - status_of / is_error / is_empty / is_ok / is_unsupported 检测
 - from_legacy 适配老 ad-hoc 格式
 """
+import json
 import os
 import sys
-import json
 
 sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
 
 import pytest
 
 from analysis.fetcher_contract import (
-    STATUS_OK, STATUS_EMPTY, STATUS_ERROR, STATUS_UNSUPPORTED,
+    ERR_NET_SSL,
+    ERR_NET_TIMEOUT,
+    ERR_PARSE,
+    ERR_UNKNOWN,
+    ERR_UNSUPPORTED,
+    ERR_VALIDATION,
+    STATUS_EMPTY,
+    STATUS_ERROR,
+    STATUS_OK,
+    STATUS_UNSUPPORTED,
     VALID_STATUSES,
-    ERR_NET_TIMEOUT, ERR_NET_SSL, ERR_PARSE, ERR_VALIDATION, ERR_UNSUPPORTED, ERR_UNKNOWN,
-    make_error, make_result, make_ok, make_empty, make_error_result, make_unsupported,
-    status_of, is_error, is_empty, is_ok, is_unsupported, from_legacy,
+    from_legacy,
+    is_empty,
+    is_error,
+    is_ok,
+    is_unsupported,
+    make_empty,
+    make_error,
+    make_error_result,
+    make_ok,
+    make_result,
+    make_unsupported,
+    status_of,
 )
 
 
@@ -32,7 +50,7 @@ def test_status_constants():
     assert STATUS_EMPTY == "empty"
     assert STATUS_ERROR == "error"
     assert STATUS_UNSUPPORTED == "unsupported"
-    assert VALID_STATUSES == {"ok", "empty", "error", "unsupported"}
+    assert {"ok", "empty", "error", "unsupported"} == VALID_STATUSES
 
 
 def test_error_codes_stable():

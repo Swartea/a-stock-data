@@ -11,7 +11,6 @@ import pytest
 import analysis.pipeline as pipeline
 from analysis.reporting import artifact_writer
 
-
 FIXED_NOW = RealDateTime(2026, 9, 15, 22, 53, 0)
 
 

@@ -7,9 +7,8 @@ HTML 报告生成模块 (V2.2) — 供 quant_analyzer_v2.py 调用
 
 4 个 SVG 图都是纯手写, 不依赖任何 CDN/JS 库, 单文件 50KB 内.
 """
-import os
 import math
-import datetime
+import os
 from datetime import datetime
 
 
@@ -211,7 +210,7 @@ def _svg_radar(score_dict, width=380, height=340):
         parts.append('<polygon points="{p}" fill="none" stroke="#eee"/>'.format(p=' '.join(pts)))
 
     # 轴线 + 标签
-    for j, (name, key, mx) in enumerate(labels):
+    for j, (name, _key, _mx) in enumerate(labels):
         ang = -math.pi / 2 + 2 * math.pi * j / n_axes
         parts.append('<line x1="{x1}" y1="{y1}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="#eee"/>'.format(
             x1=cx, y1=cy, x2=cx + R*math.cos(ang), y2=cy + R*math.sin(ang)))
@@ -222,7 +221,7 @@ def _svg_radar(score_dict, width=380, height=340):
 
     # 数据多边形
     data_pts = []
-    for j, (name, key, mx) in enumerate(labels):
+    for j, (_name, key, mx) in enumerate(labels):
         ang = -math.pi / 2 + 2 * math.pi * j / n_axes
         v = score_dict.get(key, 0) / mx
         r = R * v
@@ -231,7 +230,7 @@ def _svg_radar(score_dict, width=380, height=340):
     parts.append('<polygon points="{p}" fill="#2962ff" fill-opacity="0.35" stroke="#2962ff" stroke-width="2"/>'.format(p=' '.join(data_pts)))
 
     # 顶点圆 + 分数
-    for j, (name, key, mx) in enumerate(labels):
+    for j, (_name, key, mx) in enumerate(labels):
         ang = -math.pi / 2 + 2 * math.pi * j / n_axes
         v = score_dict.get(key, 0) / mx
         r = R * v

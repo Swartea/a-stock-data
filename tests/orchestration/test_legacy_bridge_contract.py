@@ -5,7 +5,6 @@ import pytest
 import analysis.pipeline as pipeline
 from analysis.orchestration import legacy_bridge
 
-
 EXPECTED_V2_FN_TO_SRC = {
     "fetch_tencent_quote": "行情",
     "fetch_full_valuation": "估值一致预期",
@@ -76,7 +75,7 @@ def test_legacy_source_and_result_field_mappings_are_locked():
         fn_name: EXPECTED_FIELD_OF[label]
         for fn_name, label in EXPECTED_V2_FN_TO_SRC.items()
     }
-    assert legacy_bridge._TOP_FIELD_OF == expected_top
+    assert expected_top == legacy_bridge._TOP_FIELD_OF
 
     # pipeline keeps importing these names so its existing result/status logic
     # sees the same exact mappings after extraction.

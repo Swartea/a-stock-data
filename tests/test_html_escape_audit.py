@@ -146,7 +146,8 @@ def test_md_layer_uses_markdown_table_no_raw_html():
     # 实际: 抓 600693-2230.md 检查
     md_path = "/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/2026-09-11/600693-东百集团-2230.md"
     if os.path.exists(md_path):
-        md = open(md_path, encoding="utf-8").read()
+        with open(md_path, encoding="utf-8") as f:
+            md = f.read()
         # 不应有 <script> 或 <iframe>
         assert "<script" not in md.lower(), "MD 文件不应嵌入 <script>"
         assert "<iframe" not in md.lower(), "MD 文件不应嵌入 <iframe>"

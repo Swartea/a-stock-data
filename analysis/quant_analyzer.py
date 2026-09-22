@@ -15,15 +15,12 @@ A 股多因子量化交易分析器
 免责声明: 本工具仅供数据分析参考，不构成任何投资建议。
 """
 
-import requests
-import urllib.request
-import json
-import time
 import random
-import os
-import sys
+import time
+import urllib.request
 from datetime import datetime
-from pathlib import Path
+
+import requests
 
 # ============================================================
 # 配置
@@ -49,8 +46,10 @@ def em_get(url, params=None, headers=None, timeout=15):
 # 辅助函数
 # ============================================================
 def get_prefix(code: str) -> str:
-    if code.startswith(("6", "9")): return "sh"
-    elif code.startswith("8"): return "bj"
+    if code.startswith(("6", "9")):
+        return "sh"
+    elif code.startswith("8"):
+        return "bj"
     return "sz"
 
 def normalize_code(code: str) -> str:
@@ -107,7 +106,7 @@ def fetch_eastmoney_concept_blocks(code: str) -> list:
         return [{"name": it.get("f14", ""), "code": it.get("f12", ""),
                  "change_pct": it.get("f3", ""), "lead_stock": it.get("f128", "")}
                 for it in blocks]
-    except:
+    except Exception:
         return []
 
 
@@ -160,7 +159,7 @@ def fetch_eastmoney_fund_flow(code: str) -> dict:
             "trend": trend,
             "data_points": len(rows),
         }
-    except:
+    except Exception:
         return {}
 
 
@@ -176,7 +175,7 @@ def fetch_thx_hot_stocks() -> list:
         return [{"code": row.get("code",""), "name": row.get("name",""),
                  "change": row.get("change", 0), "reason": row.get("reason","")}
                 for row in (d.get("data") or [])]
-    except:
+    except Exception:
         return []
 
 
@@ -198,7 +197,7 @@ def fetch_hsgt_realtime() -> dict:
             "total_hsgt": (hgt[-1] + sgt[-1]) if hgt and sgt else 0,
             "data_points": len(times),
         }
-    except:
+    except Exception:
         return {}
 
 
@@ -218,7 +217,7 @@ def fetch_industry_ranking(top_n: int = 10) -> list:
         return [{"name": it.get("f14",""), "change_pct": it.get("f3",""),
                  "up_count": it.get("f104",""), "down_count": it.get("f105",""),
                  "lead_stock": it.get("f128","")} for it in diff]
-    except:
+    except Exception:
         return []
 
 
@@ -240,12 +239,6 @@ def compute_quant_score(code: str, name: str, quote: dict, blocks: list,
       风险因子 ~ 15分
     """
     factors = []
-    weight_trend = 20
-    weight_value = 15
-    weight_capital = 20
-    weight_momentum = 15
-    weight_sentiment = 15
-    weight_risk = 15
 
     # ---- 趋势因子 (20分) ----
     trend_score = 0
@@ -255,21 +248,21 @@ def compute_quant_score(code: str, name: str, quote: dict, blocks: list,
 
     if change_pct > 5:
         trend_score += 18
-        factors.append(f"涨幅>5% +18")
+        factors.append("涨幅>5% +18")
     elif change_pct > 2:
         trend_score += 14
-        factors.append(f"涨幅>2% +14")
+        factors.append("涨幅>2% +14")
     elif change_pct > 0:
         trend_score += 8
-        factors.append(f"收涨 +8")
+        factors.append("收涨 +8")
     elif change_pct > -2:
         trend_score += 5
-        factors.append(f"小幅回调 +5")
+        factors.append("小幅回调 +5")
     elif change_pct > -5:
         trend_score += 2
-        factors.append(f"中幅下跌 +2")
+        factors.append("中幅下跌 +2")
     else:
-        factors.append(f"大幅下跌 0")
+        factors.append("大幅下跌 0")
 
     # 开盘 vs 收盘
     open_p = quote.get("open", 0)
@@ -300,7 +293,7 @@ def compute_quant_score(code: str, name: str, quote: dict, blocks: list,
             factors.append(f"PE={pe:.1f}极高 0")
     else:
         value_score += 3
-        factors.append(f"PE为负(亏损) +3(中性)")
+        factors.append("PE为负(亏损) +3(中性)")
 
     if pb > 0:
         if pb < 2:
@@ -401,7 +394,7 @@ def compute_quant_score(code: str, name: str, quote: dict, blocks: list,
         factors.append(f"覆盖{hot_count}个上涨概念 +1")
     else:
         sentiment_score -= 2
-        factors.append(f"无热门概念 -2")
+        factors.append("无热门概念 -2")
 
     # 北向资金影响
     if hsgt and hsgt.get("total_hsgt", 0) > 5:
@@ -431,7 +424,7 @@ def compute_quant_score(code: str, name: str, quote: dict, blocks: list,
 
     if pe > 0 and pe > 100:
         risk_score -= 3
-        factors.append(f"PE>100高估值风险 -3")
+        factors.append("PE>100高估值风险 -3")
 
     if price < 5:
         risk_score -= 3
@@ -550,12 +543,12 @@ def analyze_stocks(codes: list):
     # 排序和推荐
     results.sort(key=lambda x: x["score_data"]["total_score"], reverse=True)
     print(f"\n{'='*90}")
-    print(f"  最终排序:")
+    print("  最终排序:")
     for i, res in enumerate(results, 1):
         sd = res["score_data"]
         print(f"  {i}. {res['code']} {res['name']:<6} {sd['total_score']}分 {res['emoji']}")
-    print(f"\n  ⚠️ 免责声明: 以上分析仅基于公开数据的多因子量化模型，不构成投资建议。")
-    print(f"  股市有风险，投资需谨慎。请结合基本面与个人风险承受能力做出决策。")
+    print("\n  ⚠️ 免责声明: 以上分析仅基于公开数据的多因子量化模型，不构成投资建议。")
+    print("  股市有风险，投资需谨慎。请结合基本面与个人风险承受能力做出决策。")
     print(f"{'='*90}")
 
 

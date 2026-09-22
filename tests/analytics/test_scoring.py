@@ -8,8 +8,10 @@ pipeline cutover.
 import pytest
 
 from analysis.analytics.scoring import (
-    _SCORING_BREAKDOWN_GROUPS,
     _SCORE_DIM_MAX,
+    _SCORING_BREAKDOWN_GROUPS,
+)
+from analysis.analytics.scoring import (
     _build_scoring_breakdown as staged_build_scoring_breakdown,
 )
 from analysis.pipeline import _build_scoring_breakdown as pipeline_build_scoring_breakdown

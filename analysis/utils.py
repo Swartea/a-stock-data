@@ -46,7 +46,7 @@ def json_default(obj: Any) -> Any:
             pass
     if isinstance(obj, set):
         try:
-            return sorted(list(obj))
+            return sorted(obj)
         except TypeError:
             return list(obj)
     if isinstance(obj, bytes):

@@ -3,8 +3,8 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from analysis.research.time_semantics import (
-    TIME_FIELDS,
     TIME_FIELD_SEMANTICS,
+    TIME_FIELDS,
     TimeMetadata,
 )
 

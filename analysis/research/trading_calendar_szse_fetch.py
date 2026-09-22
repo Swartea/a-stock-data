@@ -22,7 +22,6 @@ from .trading_calendar_evidence import (
     trading_calendar_evidence_from_szse_rows,
 )
 
-
 SZSE_TRADING_CALENDAR_URL = (
     "https://www.szse.cn/api/report/exchange/onepersistenthour/monthList"
 )

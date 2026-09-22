@@ -2,7 +2,6 @@ from types import SimpleNamespace
 
 from analysis.orchestration import fetching
 
-
 SRC_DESC = {"融资融券": "融资融券明细"}
 
 

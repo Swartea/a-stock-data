@@ -7,12 +7,13 @@ section registry 字段（Phase 1: irm）的非空契约。
 
 灰度策略: spec §3.3 — "先保留 4 旧 fetcher 走老路径，5 新节走新注册表；下版本统一"
 """
-import os
-import sys
 import json
-import pytest
+import os
 import subprocess
+import sys
 from datetime import datetime
+
+import pytest
 
 WORKDIR = "/Users/swarteachou/Desktop/大A数据"
 
@@ -25,7 +26,7 @@ def _latest_result_v3(code: str = "600693", name: str = "东百集团") -> dict:
         pytest.skip(f"未找到 {day_dir}（需先跑 V3 至少一次）")
     pattern_files = [f for f in os.listdir(day_dir) if f.startswith("result_v3-") and f.endswith(".json")]
     if not pattern_files:
-        pytest.skip(f"未找到 result_v3-*.json（需先跑 V3）")
+        pytest.skip("未找到 result_v3-*.json（需先跑 V3）")
     latest = max(pattern_files, key=lambda f: os.path.getmtime(os.path.join(day_dir, f)))
     with open(os.path.join(day_dir, latest), "r", encoding="utf-8") as f:
         return json.load(f)

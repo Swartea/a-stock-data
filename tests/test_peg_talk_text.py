@@ -12,9 +12,11 @@
   - 严守: PEG 公式 (pe_ttm / cagr_pct) 不动, 只改阈值
 """
 import sys
+
 sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
 
 import pytest
+
 from analysis.quant_analyzer_v3 import _format_peg_talk  # noqa: E402
 
 

@@ -19,7 +19,9 @@ sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
 
 import pytest
 from quant_analyzer_v3 import (
-    _score_to_state, OPERATION_TEMPLATES, _STATE_DISPLAY,
+    _STATE_DISPLAY,
+    OPERATION_TEMPLATES,
+    _score_to_state,
 )
 
 
@@ -76,7 +78,6 @@ def test_template_has_three_sections(state):
 
 def test_no_buy_only_template():
     """禁止出现只含"分两批进场/持有 3-6 个月"的单一 buy 模板（债 1 根因）"""
-    raw_templates = " ".join(OPERATION_TEMPLATES.values())
     # bullish 模板当然有"分两批进场"，但其他 4 状态模板必须**不**写买入结构
     for state in ("mild_bull", "neutral", "mild_bear", "bearish"):
         assert "分两批进场" not in OPERATION_TEMPLATES[state], \
@@ -125,8 +126,8 @@ def _latest_result_v3_600693(mock_result_v3=None):
 
     P1.5 整改: 接受 conftest mock_result_v3 fixture, 优先用 mock 跨用户可跑
     """
-    import os
     import json as _json
+    import os
     from datetime import datetime
     if mock_result_v3 is not None:
         with open(mock_result_v3, "r", encoding="utf-8") as f:

@@ -17,8 +17,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from urllib.parse import quote
+from typing import Any, Dict, List
 
 import analysis.quant_analyzer_v2 as v2
 from analysis.utils import num_or_none
