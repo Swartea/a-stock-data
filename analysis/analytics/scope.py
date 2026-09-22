@@ -5,6 +5,17 @@ contract and rendered labels unchanged while moving the responsibility out of
 the orchestration module.
 """
 
+# 北向单日净买入合理性上限 (亿元)。
+# 依据: 沪深港通开通以来, 单日净买入历史极值约 ±200 亿量级, 正常单日波动
+# 多在 ±几十亿; 2024-08 起港交所已停止披露实时北向资金流, 上游 (同花顺等)
+# 改为盘后/低频披露, 接口易返回累计或陈旧值 (实跑曾见 深股通 +379.8 亿)。
+# 单日 |沪股通| 或 |深股通| 超过该阈值即视为可疑, 在 label 中显式标注,
+# scope 仍保持 market (不改动分类行为)。
+NORTH_DAILY_PLAUSIBLE_LIMIT_YI = 150.0
+
+# 可疑值标注后缀 (追加在全市场口径 label 末尾)
+NORTH_SUSPICIOUS_SUFFIX = "（⚠数据可疑：超单日合理区间，可能为累计或陈旧值）"
+
 
 def _classify_north_scope(north_data) -> tuple:
     """根据北向接口返回字段推断 scope, 返回 (scope, label)。
@@ -73,11 +84,16 @@ def _classify_north_scope(north_data) -> tuple:
             hgt, sgt, total = float(hgt), float(sgt), float(total)
         except (TypeError, ValueError):
             hgt, sgt, total = 0.0, 0.0, 0.0
-        return (
-            "market",
+        label = (
             f"北向资金(全市场口径): 沪股通 {hgt:+.1f} 亿 / "
-            f"深股通 {sgt:+.1f} 亿 ｜ 合计 {total:+.1f} 亿",
+            f"深股通 {sgt:+.1f} 亿 ｜ 合计 {total:+.1f} 亿"
         )
+        # 合理性校验 (2026-09-22): 单日 |沪股通|/|深股通| 超 150 亿 → 疑似累计/陈旧值,
+        # label 追加显式标注, scope 保持 market 不变。
+        if (abs(hgt) > NORTH_DAILY_PLAUSIBLE_LIMIT_YI
+                or abs(sgt) > NORTH_DAILY_PLAUSIBLE_LIMIT_YI):
+            label += NORTH_SUSPICIOUS_SUFFIX
+        return ("market", label)
 
     if has_stock and not has_market:
         # 个股北向持股变化 (前向兼容, 暂未启用)
