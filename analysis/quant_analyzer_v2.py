@@ -34,7 +34,17 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import requests
-from html_report import write_html_report as _write_html_report
+
+try:
+    # 包内导入优先: 支持 `import analysis.quant_analyzer_v2` (包外可导入)
+    from .html_report import write_html_report as _write_html_report
+except ImportError:
+    # 兜底: 在 analysis/ 目录内作为顶层模块运行时, 兄弟目录裸导入
+    # (与 quant_analyzer_v3.py / pipeline.py 的 _ANALYSIS_DIR 引导一致)
+    _ANALYSIS_DIR = os.path.dirname(os.path.abspath(__file__))
+    if _ANALYSIS_DIR not in sys.path:
+        sys.path.insert(0, _ANALYSIS_DIR)
+    from html_report import write_html_report as _write_html_report
 
 # ============================================================
 # 配置 & 节流（来自 V3.7.2 SKILL.md）
