@@ -134,7 +134,12 @@ exclude = '''
 # mypy 配置
 # ============================================================
 [tool.mypy]
-python_version = "3.10"
+# 类型检查以开发/CI 实际解释器 3.12 为准 (venv = Python 3.12):
+# numpy 类型存根 (numpy/__init__.pyi) 使用 3.12 的 type 语句,
+# 若按 requires-python 下限 3.10 检查会直接 syntax error, 一行都查不到。
+# requires-python >=3.10 约束的是运行兼容性, 由 pytest/ruff 保障;
+# mypy 的目标是真实跑完并报告错误, 故与 venv 解释器保持一致。
+python_version = "3.12"
 warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = true
