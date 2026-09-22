@@ -339,7 +339,7 @@ def write_markdown_report_v3(r: dict) -> str:
     rl = r.get("run_log") or {}
     src_status = rl.get("sources") or {}
     # 关键源 (缺失会影响核心结论) vs 增量源
-    KEY_SRCS = ["行情", "估值一致预期", "概念板块", "K线筹码", "估值历史分位", "解禁日历", "申万分类"]
+    KEY_SRCS = ["行情", "估值一致预期", "概念板块", "筹码K线", "估值历史分位", "解禁日历", "申万分类"]
     INCR_SRCS = ["龙虎榜", "宏观底色", "当日资金流", "资金面-5日主力", "融资融券", "公告", "财务摘要", "研报观点", "新闻舆情"]
     failed_key = [(k, src_status.get(k, "—")) for k in KEY_SRCS if "error" in str(src_status.get(k, "ok"))]
     failed_incr = [(k, src_status.get(k, "—")) for k in INCR_SRCS if "error" in str(src_status.get(k, "ok"))]
@@ -371,7 +371,7 @@ def write_markdown_report_v3(r: dict) -> str:
                 "行情": "现价/PE/PB/市值缺失, 报告无法继续",
                 "估值一致预期": "PE/PEG 估值因子按中性计, 估值分位缺",
                 "概念板块": "情绪/板块轮动因子按中性计",
-                "K线筹码": "三价位/均线/布林/支撑/压力全部缺, 改用 trading_plan 默认值",
+                "筹码K线": "三价位/均线/布林/支撑/压力全部缺, 改用 trading_plan 默认值",
                 "估值历史分位": "PE/PB 3年分位缺失, 估值高低判断缺历史锚",
                 "解禁日历": "风险表'解禁压力'段标'数据源暂缺'",
                 "申万分类": "申万行业因子按 v2 默认中性计, 行业稳定性不评估",
