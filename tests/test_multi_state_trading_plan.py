@@ -13,9 +13,10 @@
   - MD/HTML 渲染器从 plan["template_used"] 读，3 渲染器全部同步
 """
 import sys
+from pathlib import Path
 
 # 约定: tests/ 目录用 sys.path 注入 analysis/，与同仓其他测试一致
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "analysis"))
 
 import pytest
 from quant_analyzer_v3 import (
@@ -133,7 +134,7 @@ def _latest_result_v3_600693(mock_result_v3=None):
         with open(mock_result_v3, "r", encoding="utf-8") as f:
             return _json.load(f), str(mock_result_v3)
     today = datetime.now().strftime("%Y-%m-%d")
-    day_dir = f"/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/{today}"
+    day_dir = str(Path(__file__).resolve().parents[1] / "reports" / "600693_东百集团" / today)
     if not os.path.exists(day_dir):
         pytest.skip(f"未找到 {day_dir}（需先跑 V3 至少一次）")
     files = [f for f in os.listdir(day_dir) if f.startswith("result_v3-") and f.endswith(".json")]

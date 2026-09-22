@@ -12,8 +12,9 @@
   - 严守: PEG 公式 (pe_ttm / cagr_pct) 不动, 只改阈值
 """
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 

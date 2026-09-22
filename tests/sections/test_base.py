@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "analysis"))
 from sections._base import Section
 
 def test_section_abstract_cannot_instantiate():

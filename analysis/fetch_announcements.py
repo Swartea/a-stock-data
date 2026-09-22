@@ -16,8 +16,8 @@
 失败返回 {"error": str}。
 
 自跑:
-    bash /Users/swarteachou/Desktop/大A数据/scripts/run_in_venv.sh \\
-        /Users/swarteachou/Desktop/大A数据/analysis/fetch_announcements.py
+    bash scripts/run_in_venv.sh \
+    analysis/fetch_announcements.py
 """
 
 import json

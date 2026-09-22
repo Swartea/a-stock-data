@@ -12,10 +12,11 @@ import os
 import subprocess
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
-WORKDIR = "/Users/swarteachou/Desktop/大A数据"
+WORKDIR = str(Path(os.environ.get("DA_A_DATA_DIR", str(Path(__file__).resolve().parents[1]))).resolve())
 
 
 def _latest_result_v3(code: str = "600693", name: str = "东百集团") -> dict:

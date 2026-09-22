@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from sections.irm import IRMSection
 from sections.irm.fetcher import fetch_irm
 from sections.irm.render import render_html, render_md

@@ -144,7 +144,7 @@ def test_md_layer_uses_markdown_table_no_raw_html():
     """md 报告层应避免嵌入原始 HTML (只走 markdown 表格)"""
     # md 文件生成用 | 表格, 不嵌入 <script> 标签
     # 实际: 抓 600693-2230.md 检查
-    md_path = "/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/2026-09-11/600693-东百集团-2230.md"
+    md_path = str(WORKDIR / "reports" / "600693_东百集团" / "2026-09-11" / "600693-东百集团-2230.md")
     if os.path.exists(md_path):
         with open(md_path, encoding="utf-8") as f:
             md = f.read()

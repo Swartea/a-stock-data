@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", "/Users/swarteachou/Desktop/大A数据")).resolve()
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", str(Path(__file__).resolve().parents[1]))).resolve()
 sys.path.insert(0, str(WORKDIR))
 sys.path.insert(0, str(WORKDIR / "analysis"))
 

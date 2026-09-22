@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from sections.holders import HoldersSection
 from sections.holders.fetcher import fetch_holders, _raw_fetch
 from sections.holders.render import render_html, render_md

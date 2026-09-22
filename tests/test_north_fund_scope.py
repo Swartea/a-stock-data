@@ -17,11 +17,11 @@
   个股北向特征 (前向兼容, 暂未启用):
     stock_change_pct / stock_holding_ratio / holdings_change / north_holding_pct
 """
-import os
 import sys
+from pathlib import Path
 
 # 绝对 import: ROOT 加入 sys.path, 让 `from analysis.xxx import yyy` 生效
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 

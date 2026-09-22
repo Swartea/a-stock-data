@@ -5,7 +5,7 @@ from pathlib import Path
 
 # P1.5 整改: 用 conftest 的 WORKDIR 取代硬编码个人路径
 # conftest 通过 sys.path / pytest 自动注入, 这里直接 import os.environ
-WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", "/Users/swarteachou/Desktop/大A数据")).resolve()
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", str(Path(__file__).resolve().parents[1]))).resolve()
 sys.path.insert(0, str(WORKDIR / "analysis"))
 
 

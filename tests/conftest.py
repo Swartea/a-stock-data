@@ -4,7 +4,7 @@
 规范 §10: 配置集中管理; 路径不应硬编码。
 
 提供:
-- WORKDIR: 仓库根目录 (优先 env DA_A_DATA_DIR, 兜底 /Users/swarteachou/Desktop/大A数据)
+- WORKDIR: 仓库根目录 (优先 env DA_A_DATA_DIR, 兜底 Path(__file__) 推导的仓库根)
 - ANALYSIS_DIR: analysis/ 目录
 - TESTS_DIR: tests/ 目录
 - mock_result_v3(tmp_path): 在 tmp_path 生成 mock result_v3-{HHMM}.json
@@ -25,8 +25,8 @@ import pytest
 # ============================================================
 # 路径 fixture
 # ============================================================
-# WORKDIR: 仓库根目录; 优先 env 覆盖 (CI/不同机器)
-WORKDIR_DEFAULT = "/Users/swarteachou/Desktop/大A数据"
+# WORKDIR: 仓库根目录; 优先 env 覆盖 (CI/不同机器), 兜底从本文件位置推导
+WORKDIR_DEFAULT = str(Path(__file__).resolve().parents[1])
 WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", WORKDIR_DEFAULT)).resolve()
 ANALYSIS_DIR = WORKDIR / "analysis"
 TESTS_DIR = WORKDIR / "tests"

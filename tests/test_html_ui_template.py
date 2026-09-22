@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", "/Users/swarteachou/Desktop/大A数据")).resolve()
+WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", str(Path(__file__).resolve().parents[1]))).resolve()
 REPORTS_DIR = WORKDIR / "reports"
 """Task 6.1: V3 HTML UI 升级 — CSS 模板集成测试
 

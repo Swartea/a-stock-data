@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, "/Users/swarteachou/Desktop/大A数据/analysis")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from sections.dividend import DividendSection
 from sections.dividend.fetcher import fetch_dividend, _raw_fetch
 from sections.dividend.render import render_html, render_md

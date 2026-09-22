@@ -325,7 +325,7 @@ def _latest_result_v3_600693(mock_result_v3=None):
             return json.load(f), str(mock_result_v3)
     # 兜底: 读当日 result (依赖个人路径, 仅本机可跑)
     today = __import__("datetime").datetime.now().strftime("%Y-%m-%d")
-    day_dir = f"/Users/swarteachou/Desktop/大A数据/reports/600693_东百集团/{today}"
+    day_dir = str(WORKDIR / "reports" / "600693_东百集团" / today)
     if not os.path.exists(day_dir):
         pytest.skip(f"未找到 {day_dir}（需先跑 V3 至少一次）")
     files = [f for f in os.listdir(day_dir) if f.startswith("result_v3-") and f.endswith(".json")]
