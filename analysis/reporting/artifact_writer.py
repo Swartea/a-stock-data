@@ -23,13 +23,17 @@ REPORTS_ROOT = os.path.normpath(os.path.join(_ANALYSIS_DIR, "..", "reports"))
 
 
 def _emit(code: str, name: str, result: dict) -> dict:
-    """6 件套落盘 (out_dir 内, 同 HHMM 时间戳命名):
-    ① {code}-{name}-{HHMM}.md            (必需, §7 必需产物)
-    ② result_v3.json                     (必需, 完整 result dict)
-    ③ run_log.json                       (必需, 链路记录)
-    ④ {code}-{name}-{HHMM}.html          (允许降级, 写 run_log.html_status)
-    ⑤ {code}-{name}-{HHMM}.docx          (允许降级, 写 run_log.docx_status)
-    ⑥ {code}-{name}-{HHMM}.pdf           (允许降级, html_report_v3 写 result.pdf_status)
+    """6 件套落盘 (out_dir 内, 统一 v3-{YYYYMMDD}-{HHMM} 时间戳命名):
+    ① {code}-{name}-v3-{YYYYMMDD}-{HHMM}.md      (必需, §7 必需产物)
+    ② result_v3-{HHMM}.json                      (必需, 完整 result dict)
+    ③ run_log-{HHMM}.json                        (必需, 链路记录)
+    ④ {code}-{name}-v3-{YYYYMMDD}-{HHMM}.html    (允许降级, 写 run_log.html_status)
+    ⑤ {code}-{name}-v3-{YYYYMMDD}-{HHMM}.docx    (允许降级, 写 run_log.docx_status)
+    ⑥ {code}-{name}-v3-{YYYYMMDD}-{HHMM}.pdf     (允许降级, html_report_v3 写 result.pdf_status)
+
+    命名统一 (2026-09-22): MD/DOCX 词干对齐 HTML 的 {code}-{name}-v3-{yyyymmdd}-{hhmm}
+    (此前 MD/DOCX 缺 v3 与日期段, 与 HTML 不一致); run_log/result_v3 命名不变
+    (tests/test_run_log_schema.py 锁 run_log-{HHMM}.json 契约)。
 
     P1-A (2026-09-11, §7): 输出 deliverable_status = complete / partial / failed
       - complete: 3 必需 + 3 允许降级全活
@@ -44,7 +48,8 @@ def _emit(code: str, name: str, result: dict) -> dict:
     )
     os.makedirs(day_dir, exist_ok=True)
     hhmm = datetime.now().strftime("%H%M")
-    base = f"{code}-{safe_name}-{hhmm}"
+    yyyymmdd = datetime.now().strftime("%Y%m%d")
+    base = f"{code}-{safe_name}-v3-{yyyymmdd}-{hhmm}"
     md_path = os.path.join(day_dir, f"{base}.md")
     html_path = os.path.join(day_dir, f"{base}.html")
     docx_path = os.path.join(day_dir, f"{base}.docx")

@@ -61,8 +61,8 @@ def _install_optional_success(monkeypatch):
     html_module = ModuleType("html_report_v3")
 
     def write_html_report_v3(result, day_dir):
-        html_path = Path(day_dir) / "600693-东百集团-2253.html"
-        pdf_path = Path(day_dir) / "600693-东百集团-2253.pdf"
+        html_path = Path(day_dir) / "600693-东百集团-v3-20260915-2253.html"
+        pdf_path = Path(day_dir) / "600693-东百集团-v3-20260915-2253.pdf"
         html_path.write_text("<html>ok</html>", encoding="utf-8")
         pdf_path.write_bytes(b"%PDF-1.4 contract")
         result["pdf_status"] = "ok"
@@ -117,12 +117,23 @@ def test_emit_complete_delivery_writes_timestamped_required_artifacts_and_final_
 
     day_dir = tmp_path / "600693_东百集团" / "2026-09-15"
     assert Path(files["day_dir"]) == day_dir
-    assert Path(files["md"]).name == "600693-东百集团-2253.md"
+    assert Path(files["md"]).name == "600693-东百集团-v3-20260915-2253.md"
     assert Path(files["json"]).name == "result_v3-2253.json"
     assert Path(files["run_log"]).name == "run_log-2253.json"
-    assert Path(files["html"]).name == "600693-东百集团-2253.html"
-    assert Path(files["docx"]).name == "600693-东百集团-2253.docx"
-    assert Path(files["pdf"]).name == "600693-东百集团-2253.pdf"
+    assert Path(files["html"]).name == "600693-东百集团-v3-20260915-2253.html"
+    assert Path(files["docx"]).name == "600693-东百集团-v3-20260915-2253.docx"
+    assert Path(files["pdf"]).name == "600693-东百集团-v3-20260915-2253.pdf"
+
+    # 命名统一契约 (2026-09-22): MD/HTML/DOCX/PDF 词干均为
+    # {code}-{name}-v3-{YYYYMMDD}-{HHMM}; run_log/result_v3 保持 {HHMM} 不变
+    import re
+
+    for key in ("md", "html", "docx", "pdf"):
+        assert re.match(
+            r"600693-东百集团-v3-\d{8}-\d{4}\." + key, Path(files[key]).name
+        ), f"{key} 命名应为 {{code}}-{{name}}-v3-{{YYYYMMDD}}-{{HHMM}}"
+    assert re.match(r"run_log-\d{4}\.json", Path(files["run_log"]).name)
+    assert re.match(r"result_v3-\d{4}\.json", Path(files["json"]).name)
 
     status = files["status"]
     assert status["md"] == "ok"
@@ -325,7 +336,7 @@ def test_emit_pdf_libreoffice_fallback_can_reach_complete(
     html_module = ModuleType("html_report_v3")
 
     def write_html_report_v3(result, day_dir):
-        html_path = Path(day_dir) / "600693-东百集团-2253.html"
+        html_path = Path(day_dir) / "600693-东百集团-v3-20260915-2253.html"
         html_path.write_text("<html>ok</html>", encoding="utf-8")
         result["pdf_status"] = "error:TimeoutExpired: chrome timeout"
         result["pdf_path"] = None
@@ -411,7 +422,7 @@ def test_emit_missing_libreoffice_records_capability_gap_and_stays_partial(
     html_module = ModuleType("html_report_v3")
 
     def write_html_report_v3(result, day_dir):
-        html_path = Path(day_dir) / "600693-东百集团-2253.html"
+        html_path = Path(day_dir) / "600693-东百集团-v3-20260915-2253.html"
         html_path.write_text("<html>ok</html>", encoding="utf-8")
         result["pdf_status"] = "error:TimeoutExpired: chrome timeout"
         result["pdf_path"] = None
