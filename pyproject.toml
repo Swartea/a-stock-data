@@ -21,6 +21,7 @@ dependencies = [
     "baostock>=0.9,<1.0",        # K 线 (前复权, V2 筹码)
     "mootdx>=0.10,<1.0",         # 通达信本地行情 (备用)
     "python-docx>=1.1,<2.0",     # DOCX 渲染
+    "truststore>=0.8,<1.0",      # 申万表 SSL：走系统信任库（证书链缺中间证书）
 ]
 
 [project.optional-dependencies]

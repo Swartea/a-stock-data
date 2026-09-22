@@ -621,17 +621,41 @@ def fetch_chip_distribution(code: str, lookback_days: int = 250) -> dict:
         return {"error": f"chip_distribution 失败: {e}"}
 
 
+_SW_SSL_INJECTED = False
+
+
+def _sw_inject_system_trust() -> None:
+    """用系统钥匙串信任库验证申万官网证书（只注入一次，全局生效）。
+
+    申万官网证书链缺中间证书，certifi 仅有根 CA 建不起链；
+    truststore 走系统信任库（macOS 钥匙串等）可补全。不可用时退回
+    requests 默认行为——红线：绝不退到 verify=False。
+    """
+    global _SW_SSL_INJECTED
+    if _SW_SSL_INJECTED:
+        return
+    _SW_SSL_INJECTED = True
+    try:
+        import truststore
+    except ImportError:
+        return
+    truststore.inject_into_ssl()
+
+
 def sw_industry_history() -> Optional[pd.DataFrame]:
     """申万行业归属变迁史 — 每只股票每次行业调整一行 (V3.7)"""
     if _SW_CACHE["df"] is not None:
         return _SW_CACHE["df"]
+    _sw_inject_system_trust()
     try:
-        r = requests.get(SW_URL, headers={"User-Agent": UA}, timeout=60)
+        r = requests.get(SW_URL, headers={"User-Agent": UA,
+                                          "Referer": "https://www.swsresearch.com/"},
+                         timeout=60)
         r.raise_for_status()
         df = pd.read_excel(io.BytesIO(r.content))
     except requests.exceptions.SSLError as e:
         print("[WARN] sw_industry_history SSL 握手失败。")
-        print("       这是本机 CA 包过旧导致，修复: pip install -U certifi")
+        print("       申万官网证书链不完整，建议: pip install truststore")
         print(f"       原始: {e}")
         return None
     except Exception as e:
