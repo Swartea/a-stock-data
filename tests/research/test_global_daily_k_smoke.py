@@ -518,6 +518,58 @@ def test_uppercase_index_id_returns_validation_not_crash() -> None:
 
 
 @pytest.mark.parametrize(
+    "raw_symbol",
+    [
+        "hkHSI",   # HK provider symbol with mixed casing
+        "us.INX",  # US provider symbol with mixed casing
+        "IXIC",    # bare publisher local_code, all uppercase
+        "HSI",     # bare publisher local_code, all uppercase
+        "^GSPC",   # Yahoo-style decorated short name
+        "^IXIC",   # Yahoo-style decorated short name
+        "N225",    # Nikkei short name with uppercase letter
+    ],
+)
+def test_unqualified_raw_symbol_returns_unsupported(raw_symbol: str) -> None:
+    """Mapping rework: unqualified raw symbols must return UNSUPPORTED.
+
+    These seven inputs are *not* qualified canonical ``index_id`` shapes:
+    they are mixed-case provider symbols, all-caps publisher local codes,
+    and Yahoo-style decorated short names. Lowercasing them never lands
+    on any of the nine canonical V1 ids, so the lookup must surface as
+    ``UNSUPPORTED / retryable=False`` and must not touch the transport.
+
+    Note the asymmetry with
+    :func:`test_uppercase_index_id_returns_validation_not_crash`: an
+    uppercase *qualified* id (e.g. ``CN.INDEX.CSI.000300``) still maps
+    to ``VALIDATION`` because the caller was clearly addressing a known
+    index but with the wrong casing. These seven, by contrast, are not
+    in the V1 set at all.
+    """
+
+    called: list[Any] = []
+
+    def _transport(*args: Any, **kwargs: Any) -> Any:
+        called.append((args, kwargs))
+        raise AssertionError(
+            "transport must not be called for unqualified raw symbol"
+        )
+
+    result = fetch_global_daily_k(
+        raw_symbol,
+        "2026-09-01",
+        "2026-09-25",
+        transport=_transport,
+        now=_NOW,
+    )
+
+    assert fetcher_contract.is_unsupported(result)
+    assert result["data"] is None
+    assert result["error"]["code"] == fetcher_contract.ERR_UNSUPPORTED
+    assert result["error"]["retryable"] is False
+    assert called == []
+
+
+@pytest.mark.parametrize(
     "compact",
     ["20260901", "2026-09-1", "2026/09/01", "2026-W39-6", ""],
 )
