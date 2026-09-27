@@ -208,9 +208,11 @@ def test_empty_window_uses_existing_empty_contract() -> None:
     [
         ({"status": "login_error"}, fetcher_contract.ERR_NET_CONN),
         ({"status": "query_error"}, fetcher_contract.ERR_UNKNOWN),
+        ({"status": "malformed"}, fetcher_contract.ERR_PARSE),
         ({"status": "worker_error"}, fetcher_contract.ERR_UNKNOWN),
         ({"status": "ok", "rows": None}, fetcher_contract.ERR_UNKNOWN),
         ({"status": "timeout"}, fetcher_contract.ERR_NET_TIMEOUT),
+        (None, fetcher_contract.ERR_UNKNOWN),
     ],
 )
 def test_sdk_and_process_failures_map_to_stable_errors(

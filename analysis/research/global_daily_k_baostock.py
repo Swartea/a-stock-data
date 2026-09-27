@@ -257,7 +257,22 @@ def fetch_baostock_daily_k(
             retryable=False,
         )
 
-    protocol = _run_baostock_child(_query_baostock, code, start_date, end_date)
+    try:
+        protocol = _run_baostock_child(
+            _query_baostock, code, start_date, end_date
+        )
+    except Exception:
+        return _error(
+            fetcher_contract.ERR_UNKNOWN,
+            "BaoStock Daily-K worker failed",
+            retryable=True,
+        )
+    if not isinstance(protocol, Mapping):
+        return _error(
+            fetcher_contract.ERR_UNKNOWN,
+            "BaoStock Daily-K worker returned no valid response",
+            retryable=True,
+        )
     status = protocol.get("status")
     if status == "timeout":
         return _error(
@@ -276,6 +291,12 @@ def fetch_baostock_daily_k(
             fetcher_contract.ERR_UNKNOWN,
             "BaoStock Daily-K query failed",
             retryable=True,
+        )
+    if status == "malformed":
+        return _error(
+            fetcher_contract.ERR_PARSE,
+            "BaoStock Daily-K response has an invalid schema",
+            retryable=False,
         )
     if status != "ok" or not isinstance(protocol.get("rows"), list):
         return _error(
