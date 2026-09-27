@@ -91,7 +91,24 @@ request. There is no legacy analyzer re-export.
 * `index_id` — canonical lowercase Research-Engine id from the table above.
   Bare provider symbols like `"sh000300"` or `"us.INX"` are **not** accepted
   by the fetcher and return `status=unsupported` (the bare-code lookup is
-  intentionally absent).
+  intentionally absent). The fetcher distinguishes two rejection paths so
+  callers do not confuse a known-but-mis-cased id with a genuinely unknown
+  symbol:
+
+  * **Uppercase / mixed-case *qualified* index id** — e.g. `"CN.INDEX.CSI.000300"`.
+    Lowercasing the input lands on one of the nine canonical V1 ids above,
+    so the fetcher returns `status=error, code=VALIDATION, retryable=False`
+    ("wrong casing of a known id"). The transport is not called.
+  * **Unqualified / unknown raw symbol** — e.g. `"hkHSI"`, `"us.INX"`,
+    `"IXIC"`, `"HSI"`, `"^GSPC"`, `"^IXIC"`, `"N225"`, or `"sh000300"`.
+    Lowercasing the input does **not** land on any canonical V1 id (mixed-case
+    provider symbols, all-caps publisher local codes, Yahoo-style decorated
+    short names, bare codes), so the fetcher returns
+    `status=unsupported, code=UNSUPPORTED, retryable=False`. The transport
+    is not called. Bare-code inference is intentionally absent in both
+    directions — a wrong-cased known id is not silently coerced to its
+    lowercase form, and an unknown token is not silently treated as a
+    provider symbol.
 * `start_date`, `end_date` — strict `YYYY-MM-DD` strings, inclusive window.
   `start_date <= end_date`. Maximum inclusive window: 366 calendar days.
 * `transport` — keyword-only, defaults to `requests_json_transport`. Must be

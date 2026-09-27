@@ -12,7 +12,13 @@ It deliberately does not:
 * wire into the legacy V3 pipeline,
 * model constituents, weights, valuation, taxonomy, or quote fields,
 * treat the listed set as a global claim — Nikkei and every other non-listed
-  index are explicitly unsupported (not silently inferred).
+  index are explicitly unsupported (not silently inferred),
+* silently lowercase arbitrary caller input to resolve it as an
+  ``index_id``. A wrong casing of a *registered* canonical id is rejected
+  as ``VALIDATION``; any other unknown / unqualified symbol (mixed-case
+  provider symbols like ``"us.INX"`` or short names like ``"N225"``) is
+  rejected as ``UNSUPPORTED``. Bare-code inference is not allowed either
+  way.
 
 Adding more indices later is additive: extend ``_GLOBAL_INDEX_SPECS`` and the
 ``build_global_index_symbol_registry`` mapping in lockstep, without changing
@@ -248,19 +254,46 @@ def list_global_indices() -> tuple[GlobalIndexSpec, ...]:
 
 
 def get_global_index(index_id: str) -> GlobalIndexSpec:
-    """Return the spec for ``index_id`` or raise ``KeyError`` if unknown.
+    """Return the spec for ``index_id`` or raise if it is unknown / non-canonical.
 
-    ``index_id`` must be the canonical lowercase token accepted by
-    :class:`IndexIdentity` (the same shape the rest of the Research Engine
-    uses). Bare provider symbols like ``"sh000001"`` are intentionally
-    rejected here — bare-code inference is not allowed.
+    Two distinct rejection paths exist so callers can tell *bad casing of a
+    known id* apart from *unknown / unqualified symbols*:
+
+    * ``ValueError`` (mapped to ``VALIDATION`` by the fetcher) — the
+      ``index_id`` lowercases to one of the nine canonical V1 ids in
+      :data:`_GLOBAL_INDEX_SPECS` but the caller passed a non-canonical
+      casing. The fetcher contract treats this as a malformed input, not
+      as a "we don't know that one" answer, because the caller was clearly
+      trying to address a known index and just got the case wrong.
+    * ``KeyError`` (mapped to ``UNSUPPORTED`` by the fetcher) — the
+      ``index_id`` is not in the V1 set, including bare provider symbols
+      like ``"sh000001"`` / ``"us.INX"``, short names like ``"N225"``,
+      and any other unknown token. Bare-code inference is intentionally
+      not allowed; nothing here silently lowercases arbitrary input to
+      make it match a spec.
+
+    The lowercase check is the only shape gate — there is no regex pre-
+    filter. ``"^GSPC"`` (a Yahoo-style decorator) is therefore rejected as
+    ``KeyError``/``UNSUPPORTED``, not ``VALIDATION``, because no registered
+    id lowercases to ``"^gspc"``.
     """
 
     if not isinstance(index_id, str):
         raise TypeError("index_id must be a string")
     canonical = index_id.strip()
+    if not canonical:
+        raise ValueError("index_id must not be empty")
+
     if canonical != canonical.lower():
-        raise ValueError("index_id must use canonical lowercase form")
+        # Wrong casing. Check whether the lowercase form matches a registered
+        # id: if it does, the caller is addressing a known index with bad
+        # casing (VALIDATION); if it does not, the symbol is unqualified and
+        # therefore unsupported. This keeps "uppercase canonical id" distinct
+        # from "unknown / raw provider symbol / short name".
+        for spec in _GLOBAL_INDEX_SPECS:
+            if spec.identity.index_id == canonical.lower():
+                raise ValueError("index_id must use canonical lowercase form")
+        raise KeyError(f"unknown global index id: {index_id!r}")
 
     for spec in _GLOBAL_INDEX_SPECS:
         if spec.identity.index_id == canonical:
