@@ -1,8 +1,8 @@
 # Global Market Daily-K V2.1 — A-share Fallback Research & Decision
 
-> Evidence record, not a design change. This document records the 2026-09-27
-> probe of A-share fallback providers against the V1 Tencent Daily-K contract.
-> No production code, registry, or provider ordering was modified.
+> Research evidence and implementation record for the 2026-09-27 V2.1 A-share
+> fallback evaluation. Probe facts below were collected before implementation;
+> the outcome section records the subsequent provider-chain change.
 
 | Field | Value |
 |---|---|
@@ -10,7 +10,7 @@
 | Research date | 2026-09-27 (Asia/Shanghai) |
 | Scope | Four V1 A-share indices only: `cn.index.sse.000001`, `cn.index.szse.399001`, `cn.index.szse.399006`, `cn.index.csi.000300` |
 | Candidate providers probed | BaoStock (Python SDK over TCP) and Eastmoney push2 history endpoint (also reached transitively via AkShare upstream). AkShare was absent from this runtime. |
-| Out of scope | HK/US indices, ordering changes, contract edits, runtime installs |
+| Out of scope | HK/US fallback, volume contract changes, runtime installs |
 
 ## 1. Symbol & provider mappings
 
@@ -156,70 +156,64 @@ that either.
 - AkShare upstream (file containing `index_zh_a_hist`):
   <https://github.com/akfamily/akshare/blob/main/akshare/index/index_zh_em.py>
 
-## 4. Decision
+## 4. Research decision
 
-**No production provider-chain change in this round.**
+At the research gate, **no candidate had sufficient evidence for production
+onboarding**. BaoStock's missing bounded timeout and the unresolved service
+and data-coverage questions remained open; Eastmoney could not be reached from
+the research host.
 
-- V2's default chain stays `(tencent_daily_k_provider(),)`. BaoStock and
-  Eastmoney/AkShare are **not** added to the fallback sequence.
-- The decisive unresolved risk is that the **BaoStock SDK lacks bounded
-  connect/read timeouts** and **may block the synchronous fallback call**
-  under a real upstream stall, and that its **broad exception handling
-  may print the exception and return no response** rather than
-  propagating it. This combination is enough to defer onboarding until
-  either a bounded timeout is exposed by the SDK, a fork-and-timeout
-  wrapper is added, or the broad exception path is replaced with a
-  structured error mapping — without unsafe process-global socket
-  changes. Whether the call returns, blocks, fails, or corrupts state
-  under a real stall is **not** directly observed or sourced in this
-  round.
-- Independently, the host used for this research could not retrieve
-  Eastmoney data over TLS (`requests.exceptions.SSLError`, no HTTP
-  status / body), so the Eastmoney path cannot be evaluated against V1
-  from this host without a network-layer change.
-- Published SLA, freshness objective, license/commercial terms, and
-  full-history coverage for BaoStock and Eastmoney push2 were **not**
-  established in this round.
-- The 40 paired bars did not surface a measured OHLC defect large enough
-  to disqualify either provider on data quality alone. **This document
-  does not claim the measured OHLC values are bad.**
-- Volume semantics are not reconciled — the V1 `volume = None` contract
-  is retained, and no business interpretation of BaoStock vs. Tencent
-  volume series is asserted.
+- The measured BaoStock / Tencent paired bars do not establish which provider
+  is authoritative. The short two-window sample is availability evidence,
+  not long-range coverage evidence.
+- Volume semantics are not reconciled. V1 `volume = None` remains unchanged.
 
-## 5. Evidence needed before onboarding any candidate
+## 5. Implementation outcome
 
-The following items block a future V2.x onboarding PR. None of them is
-in scope for this record.
+After the evidence record was reviewed, the user explicitly approved adding
+BaoStock to the A-share fallback chain while retaining the open risks below.
+The adapter runs each SDK login/query in a spawned child process with a hard
+10-second deadline; the parent terminates and reaps a timed-out child.
 
-1. **Bounded connect/read behavior** for BaoStock without unsafe
-   process-global socket changes (e.g. a fork-and-timeout harness or an
-   upstream PR exposing socket timeouts). The chosen approach must not
-   mutate `socket.setdefaulttimeout` for the whole process.
-2. **Structured error mapping**: a BaoStock adapter that surfaces
-   distinct outcomes for non-trading-day windows vs. unknown-symbol
-   windows so V2's `UNSUPPORTED` / `VALIDATION` / `PARSE` taxonomy can
-   be applied unambiguously, and that replaces the broad
-   print-and-return-no-response path with a propagated error.
-3. **Longer-period availability/quality checks** spanning at least one
-   full Chinese exchange holiday cluster (Spring Festival, National Day)
-   and one partial-delisting event. Two short five-session windows are
-   not enough to claim production readiness.
-4. **Clarity on service terms**: published SLA, freshness objective,
-   license/commercial terms, and full-history coverage for both
-   BaoStock and Eastmoney push2.
-5. **Assigned source provenance**: a stable `name` and wire-level
-   `source` token for the new provider descriptor. Neither candidate
-   payload carries a publisher provenance field, so the wrapper must
-   own this string.
+- The four supported A-share chains are Tencent → BaoStock. HK and US remain
+  Tencent-only. V2 orchestration metadata and error envelopes are reused.
+- The adapter assigns source provenance `baostock.daily_k`, validates
+  normalized identity/date/OHLC, and always emits `volume = None`.
+- The implementation does not establish BaoStock SLA, freshness, service
+  terms, full-history coverage, or a distinction between valid empty results
+  and unsupported symbols. Those remain operational risks.
+- An implementation smoke queried all four indices for `2024-08-19..23`;
+  each source returned five matching sessions per index. Maximum absolute
+  OHLC deltas (index points) were 0.0047 (上证), 0.0050 (深证成指), 0.0045
+  (创业板指), and 0.0050 (沪深300). BaoStock rows kept `volume = None`.
+  This remains a short sample, not a coverage or authority claim.
 
-## 6. What this document does not do
+The following risks remain material for deployment:
+
+- The BaoStock SDK exposes no internal connect/read deadline; the adapter
+  bounds wall-clock time through process isolation. Process spawn availability
+  and cleanup are tested offline, but a live upstream stall was not induced.
+- Published SLA, freshness objective, license/commercial terms, and full
+  history coverage for BaoStock and Eastmoney push2 were not established.
+- BaoStock returns success with empty rows for both a weekend and an unknown
+  symbol. The adapter only calls its fixed four-index map, but an empty
+  response cannot prove that the upstream recognized a requested code.
+
+## 6. Evidence needed to reduce remaining risk
+
+1. Confirm BaoStock service terms, freshness expectations, and coverage for
+   the required historical windows.
+2. Validate date availability across longer historical periods and exchange
+   holiday clusters.
+3. Seek a distinct unsupported-symbol signal from BaoStock, or retain the
+   ambiguity as a documented provider limitation.
+4. Observe process-isolated timeout and cleanup behavior under controlled
+   network-stall testing before increasing call concurrency.
+
+## 7. What this implementation does not do
 
 - It does not edit `analysis/research/global_daily_k.py`,
-  `analysis/research/global_daily_k_service.py`,
-  `analysis/research/global_indices.py`, the registry, the tests, or
-  any provider descriptor.
-- It does not propose a BaoStock or AkShare adapter implementation.
-- It does not claim measured OHLC data are bad.
-- It does not expand scope to HK/US indices, intraday data, or volume
-  semantics.
+  `analysis/research/global_indices.py`, or any legacy pipeline/analyzer.
+- It does not change the A-share `volume = None` contract.
+- It does not add fallback for HK/US or introduce UI, intraday data, or
+  automatic trading.

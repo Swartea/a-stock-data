@@ -4,7 +4,8 @@ This module sits on top of the V1 ``fetch_global_daily_k`` fetcher and adds:
 
 * a small ``DailyKProvider`` descriptor so callers/tests can inject ordered
   fallback providers,
-* a default provider list whose only member is the existing Tencent primary,
+* an index-aware default provider list (Tencent primary, plus the scoped
+  BaoStock fallback for four A-share indices),
 * per-attempt health metadata (status, code, message) and an ordered
   ``provider_attempts`` list,
 * a stable ``degraded`` flag and ``source_used`` marker identifying which
@@ -127,15 +128,25 @@ def tencent_daily_k_provider() -> DailyKProvider:
     )
 
 
-def default_daily_k_providers() -> tuple[DailyKProvider, ...]:
-    """Return the default provider list (Tencent only).
+def default_daily_k_providers(
+    index_id: str | None = None,
+) -> tuple[DailyKProvider, ...]:
+    """Return the default chain, with BaoStock limited to four A-share ids.
 
-    No second provider is registered by default because no verified alternative
-    endpoint exists in V2. Callers and tests can pass an explicit ``providers``
-    argument to inject ordered fallback providers.
+    The optional id preserves the historical no-argument Tencent-only helper
+    behavior. The service supplies its requested id to enable the first
+    verified A-share fallback; HK and US indices remain Tencent-only.
     """
 
-    return (tencent_daily_k_provider(),)
+    primary = tencent_daily_k_provider()
+    from .global_daily_k_baostock import (
+        BAOSTOCK_INDEX_CODES,
+        baostock_daily_k_provider,
+    )
+
+    if index_id in BAOSTOCK_INDEX_CODES:
+        return (primary, baostock_daily_k_provider())
+    return (primary,)
 
 
 def _is_aware_iso_datetime(value: Any) -> bool:
@@ -741,7 +752,7 @@ def fetch_global_daily_k_service(
     """
 
     if providers is None:
-        providers = default_daily_k_providers()
+        providers = default_daily_k_providers(index_id)
     # Reject strings/bytes — both are Sequences but never valid provider
     # collections. ``isinstance(providers, Sequence)`` alone would silently
     # accept a string and then crash later with ``AttributeError`` on
