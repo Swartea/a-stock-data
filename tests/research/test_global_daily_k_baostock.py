@@ -321,6 +321,13 @@ def test_default_routing_is_a_share_only() -> None:
     ] == ["tencent"]
 
 
+def test_malformed_index_id_is_validated_before_default_routing() -> None:
+    result = fetch_global_daily_k_service([], START, END, now=NOW)  # type: ignore[arg-type]
+    assert result["status"] == fetcher_contract.STATUS_ERROR
+    assert result["error"]["code"] == fetcher_contract.ERR_VALIDATION
+    assert result["provider_attempts"] == ()
+
+
 def test_default_chain_tencent_success_skips_baostock() -> None:
     with mock.patch.object(bao, "_run_baostock_child") as runner:
         result = fetch_global_daily_k_service(

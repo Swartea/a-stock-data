@@ -144,7 +144,7 @@ def default_daily_k_providers(
         baostock_daily_k_provider,
     )
 
-    if index_id in BAOSTOCK_INDEX_CODES:
+    if isinstance(index_id, str) and index_id in BAOSTOCK_INDEX_CODES:
         return (primary, baostock_daily_k_provider())
     return (primary,)
 
