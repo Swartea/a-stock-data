@@ -99,7 +99,11 @@
 
 保持不变：29 个 result 顶层字段名与顺序、`sections_data` 末尾 splat 覆盖语义、`macro` 原地写入、`scoring_breakdown` 接线、控制台文案与打印顺序；AST 对比确认字段集合与顺序与拆分前逐项一致，仅 2 处为有意参数化（`code6`→`code` 形参、`datetime.now`→`now_fn` 形参）。
 
-尚未拆分：`analyze_single_v3` 的 fetch 编排、freshness guard 收尾、`_emit` 产物输出与控制台摘要仍在主流程内。**Phase 1H 整体未完成。**
+已完成 **1H-2 finalization 子步**：`analysis/orchestration/finalization.py` 抽出成功路径收尾块 `finalize_successful_run`，覆盖原 §6 freshness guard + run_log 时点、§7 `_emit` 产物输出与控制台摘要三段，`pipeline.py` 已接线并直接 `return` 其返回值，11 个针对性单测（`tests/orchestration/test_pipeline_finalization.py`）通过。
+
+保持不变：操作顺序（guard → 时点 → `_emit` → 控制台摘要）、`run_log` 原地写入语义（`guard` / `finished_at` / `total_sec`）、返回 `result` 对象同一性（不复制、不重建）、`_emit` 位置入参 `(code6, result["name"], result)`、guard 行与控制台摘要逐字文案、三价位条件块（`plan` 与 `three_levels` 支撑/压力/止损的判定与 plan 兜底）、仅打印存在的产物路径与恒打印的 `状态:` 行。四个 helper（`_kline_freshness` / `_record_kline_freshness_guard` / `_finalize_run_log_timing` / `_emit`）由 `pipeline.py` 在调用点注入而非模块内 import，使 `analysis.pipeline` 上的 monkeypatch 面（`test_kline_guard_helper_contract.py` / `test_run_log_finalization_helper_contract.py` 等契约测试）继续生效。
+
+尚未拆分：`analyze_single_v3` 的 **V2 入口阶段（`v2.analyze_single` 重试时间盒 + `_patch_v2_timers` / `_restore_v2`）与 fetch 编排阶段（`_call_new` 四路 + Section Registry + 两融 + supplements）仍在主流程内**。**Phase 1H 整体未完成**（build、finalize 两个子步已完成，entry / fetch 两阶段待拆）。
 
 ## 渐进式验收规则
 

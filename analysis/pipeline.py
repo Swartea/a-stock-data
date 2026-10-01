@@ -63,6 +63,9 @@ from analysis.data_fetcher import (  # noqa: E402  # sys.path 兄弟目录引导
     _fetch_margin_history,
 )
 from analysis.fetcher_dispatcher import _NEW_IMPORTS  # noqa: E402  # sys.path 兄弟目录引导
+from analysis.orchestration.finalization import (  # noqa: E402  # sys.path 兄弟目录引导
+    finalize_successful_run,
+)
 from analysis.orchestration.fetching import (  # noqa: E402  # sys.path 兄弟目录引导
     _call_new,
     _fetch_margin,
@@ -313,36 +316,25 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
           f"情绪 {_bd['sentiment']['score']}/{_bd['sentiment']['max']} | "
           f"风险 {_bd['risk']['score']}/{_bd['risk']['max']}")
 
-    # ---- 6. run_log 收尾: guard + 时点 ----
-    fresh = _kline_freshness(chip_data)
-    _record_kline_freshness_guard(run_log, fresh)
-    print(f"\n[guard] {run_log['guard']['kline_freshness']}")
-
-    _finalize_run_log_timing(run_log, started, datetime.now, time.time)
-
-    # ---- 7. 输出: 五件套 (MD + result_v3.json + HTML + DOCX + run_log.json) ----
-    files = _emit(code6, result["name"], result)
-
-    # 控制台摘要
-    print("\n" + "=" * 72)
-    print(f"【V3】{result['name']} ({code6}) 综合 {score_total}分 "
-          f"{result['emoji']}{result['advice']}  耗时 {run_log['total_sec']}s")
-    # 三价位(同源) — 债 2 修法 (Task 5.2): 优先读 result['three_levels'] 4 候选取最近者;
-    # 兜底用 plan['entry_low'/'tp1'/'stop_loss']（V2 同源），保证控制台/HTML/MD 输出口径一致
-    tl3 = result.get("three_levels") or {}
-    if plan and (tl3.get("support") or tl3.get("resistance") or tl3.get("stop_loss")):
-        print(f"  三价位(同源): 支撑={(tl3.get('support') or plan['entry_low']):.2f} "
-              f"压力={(tl3.get('resistance') or plan['tp1']):.2f} "
-              f"止损={(tl3.get('stop_loss') or plan['stop_loss']):.2f} "
-              f"(4 候选支撑={list((tl3.get('support_candidates') or {}).keys())}, "
-              f"3 候选压力={list((tl3.get('resistance_candidates') or {}).keys())})")
-    for key in ("md", "json", "html", "docx", "run_log"):
-        p = files.get(key)
-        if p:
-            print(f"  {key.upper()}: {p}")
-    st = files.get("status", {})
-    print(f"  状态: html={st.get('html')}  docx={st.get('docx')}")
-    return result
+    # ---- 6+7. 收尾 (Phase 1H-2): guard + 时点 + 落盘 + 控制台摘要 ----
+    # 顺序 / run_log 变更 / return 对象同一性 / _emit 入参 / 控制台文案与拆分前逐字一致
+    # (见 docs/10 §1H-2)。四个 helper 由本模块按调用点注入, 保持 pipeline 上的
+    # monkeypatch 面 (tests/orchestration 契约测试) 继续生效。
+    return finalize_successful_run(
+        code=code6,
+        result=result,
+        plan=plan,
+        score_total=score_total,
+        chip_data=chip_data,
+        run_log=run_log,
+        started=started,
+        kline_freshness=_kline_freshness,
+        record_kline_freshness_guard=_record_kline_freshness_guard,
+        finalize_run_log_timing=_finalize_run_log_timing,
+        emit=_emit,
+        now_fn=datetime.now,
+        time_fn=time.time,
+    )
 
 
 # ============================================================
