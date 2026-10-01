@@ -103,7 +103,11 @@
 
 保持不变：操作顺序（guard → 时点 → `_emit` → 控制台摘要）、`run_log` 原地写入语义（`guard` / `finished_at` / `total_sec`）、返回 `result` 对象同一性（不复制、不重建）、`_emit` 位置入参 `(code6, result["name"], result)`、guard 行与控制台摘要逐字文案、三价位条件块（`plan` 与 `three_levels` 支撑/压力/止损的判定与 plan 兜底）、仅打印存在的产物路径与恒打印的 `状态:` 行。四个 helper（`_kline_freshness` / `_record_kline_freshness_guard` / `_finalize_run_log_timing` / `_emit`）由 `pipeline.py` 在调用点注入而非模块内 import，使 `analysis.pipeline` 上的 monkeypatch 面（`test_kline_guard_helper_contract.py` / `test_run_log_finalization_helper_contract.py` 等契约测试）继续生效。
 
-尚未拆分：`analyze_single_v3` 的 **V2 入口阶段（`v2.analyze_single` 重试时间盒 + `_patch_v2_timers` / `_restore_v2`）与 fetch 编排阶段（`_call_new` 四路 + Section Registry + 两融 + supplements）仍在主流程内**。**Phase 1H 整体未完成**（build、finalize 两个子步已完成，entry / fetch 两阶段待拆）。
+已完成 **1H-3 V2 入口子步**：`analysis/orchestration/v2_entry.py` 抽出 `run_v2_entry`（返回 `V2EntryResult(base_result, fatal)`），覆盖原 §1 的 `v2.analyze_single` 重试时间盒与 `_patch_v2_timers` / `_restore_v2` 计时生命周期，`pipeline.py` 已接线，24 个针对性单测（`tests/orchestration/test_v2_entry.py`）通过。
+
+保持不变：尝试次数上限 3 次（`MAX_ATTEMPTS`，失败时循环上限语义等价）、每轮尝试前清空 `_src_meta`、命中无 `error` 的结果即 `break`、`v2.analyze_single(code, name, output_md=False)` 调用形态、每次报错都打印重试行并 `sleep(3)`（含最后一次，原有行为）、timer 在 `finally` 中无条件恢复、patch 仍在 `try` 之外（patch 自身抛错不触发 restore）、意外异常继续向上抛出。`base_result` 原样返回（不复制不重建），`"error" in base_result` 的致命分支判定与 `run_log["fatal"]` 文案、`_finalize_run_log_timing` → `_dump_run_log` → 控制台中止行的顺序均留在 `pipeline.py` 未动。`_patch_v2_timers` / `_restore_v2` / `_fmt_time` / `time.sleep` 四个 seam 由 `pipeline.py` 在调用点注入而非模块内 import，使 `analysis.pipeline` 上的 monkeypatch 面（`test_legacy_bridge_contract.py` / `test_fatal_run_log_timing_contract.py` 等契约测试）继续生效；新模块不 import `quant_analyzer_v2`，单测全部注入 fake、无网络。
+
+尚未拆分：`analyze_single_v3` 的 **fetch 编排阶段（`_call_new` 四路 + Section Registry + 两融 + supplements）仍在主流程内**。**Phase 1H 整体未完成**（build、finalize、entry 三个子步已完成，fetch 阶段待拆）。
 
 ## 渐进式验收规则
 

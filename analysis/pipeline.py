@@ -97,6 +97,9 @@ from analysis.orchestration.source_status import (  # noqa: E402  # sys.path 兄
     _record_sw_tls_failure,
     _record_v2_source_statuses,
 )
+from analysis.orchestration.v2_entry import (  # noqa: E402  # sys.path 兄弟目录引导
+    run_v2_entry,
+)
 from analysis.reporting.artifact_writer import (  # noqa: E402  # sys.path 兄弟目录引导
     _dump_run_log,
     _emit,
@@ -158,26 +161,28 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     run_log = _initialize_run_log(started)
 
     # ---- 1. V2 全链路 (10 数据类, 计时包装) ----
-    saved = _patch_v2_timers(v2, _src_meta, _fmt_time)
-    base_result = {}
-    fatal = None
-    try:
-        for attempt in range(1, 4):                      # 网络重试时间盒 3 次
-            _src_meta.clear()
-            base_result = v2.analyze_single(code, name, output_md=False)
-            if "error" not in base_result:
-                break
-            fatal = base_result["error"]
-            print(f"[v3] 第 {attempt} 次尝试失败: {fatal}, 3 秒后重试…")
-            time.sleep(3)
-        if "error" in base_result:
-            run_log["fatal"] = f"V2 行情链路失败(腾讯为终点, 禁止陈旧价兜底): {fatal}"
-            _finalize_run_log_timing(run_log, started, datetime.now, time.time)
-            _dump_run_log(code, name, run_log)
-            print(f"\n[✗] 分析中止: {run_log['fatal']}")
-            return {"error": run_log["fatal"], "run_log": run_log}
-    finally:
-        _restore_v2(v2, saved)
+    # Phase 1H-3: V2 调用 / 3 次重试时间盒 / timer 生命周期已抽到
+    # analysis.orchestration.v2_entry; 致命 run_log 收尾仍留在本函数。
+    # patch/restore/时间格式化/sleep 四个 seam 按调用点注入 (而非模块内 import),
+    # 保持 analysis.pipeline 上的 monkeypatch 面继续生效 (见 docs/10 §1H-3)。
+    _entry = run_v2_entry(
+        code=code,
+        name=name,
+        v2_module=v2,
+        recorder=_src_meta,
+        patch_timers=_patch_v2_timers,
+        restore_timers=_restore_v2,
+        fmt_time=_fmt_time,
+        sleep=time.sleep,
+    )
+    base_result = _entry.base_result
+    fatal = _entry.fatal
+    if "error" in base_result:
+        run_log["fatal"] = f"V2 行情链路失败(腾讯为终点, 禁止陈旧价兜底): {fatal}"
+        _finalize_run_log_timing(run_log, started, datetime.now, time.time)
+        _dump_run_log(code, name, run_log)
+        print(f"\n[✗] 分析中止: {run_log['fatal']}")
+        return {"error": run_log["fatal"], "run_log": run_log}
 
     # ---- 1.5 申万 SSL 失败处理 (P0-C 规范整改, 2026-09-11, §5 'TLS 证书校验') ----
     # 历史: 本机 CA 证书链过旧 → swsresearch.com HTTPS 握手失败 (SSL EOF);
