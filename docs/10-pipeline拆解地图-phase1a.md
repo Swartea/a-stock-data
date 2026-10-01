@@ -58,19 +58,19 @@
 ### 6. 主流程
 - `analyze_single_v3`
 
-当前同时负责：
+当前同时负责（1/4/5/6 已分别委托给 `v2_entry` / `fetch_stage` / `result_builder` / `finalization`，本函数只做调用与结果解包）：
 1. 调 V2 全链路；
 2. V2 fallback/SSL 处理；
 3. 交易计划和三价位；
-4. 追加 fetcher；
-5. Section Registry；
-6. 两融和 supplements；
-7. result 组装；
-8. 北向口径接线；
-9. scoring breakdown；
-10. freshness guard；
-11. artifact 输出；
-12. 控制台摘要。
+4. 追加 fetcher（→ `fetch_stage`）；
+5. Section Registry（→ `fetch_stage`）；
+6. 两融和 supplements（→ `fetch_stage`）；
+7. result 组装（→ `result_builder`）；
+8. 北向口径接线（→ `result_builder`）；
+9. scoring breakdown（→ `result_builder`）；
+10. freshness guard（→ `finalization`）；
+11. artifact 输出（→ `finalization`）；
+12. 控制台摘要（→ `finalization`）。
 
 最终目标：`analyze_single_v3` 只负责调用阶段函数和组装阶段结果，保留为兼容门面。
 
@@ -91,7 +91,7 @@
 5. **Phase 1E ✅**：引入 `SourceStatusRecorder`，把 `_src_meta` 从裸全局 dict 变成有边界的状态对象；先建立兼容层和测试，不直接改 V2 monkey-patch 行为。
 6. **Phase 1F ✅**：抽 V2 legacy bridge，保留行为但隔离 monkey-patch。
 7. **Phase 1G ✅**：抽 artifact writer，保持 deliverable contract 不变。
-8. **Phase 1H**：最后再拆 `analyze_single_v3` 的 fetch / build / finalize 阶段。
+8. **Phase 1H ✅**：最后再拆 `analyze_single_v3` 的 fetch / build / finalize 阶段（4 个子步全部完成：build、finalize、entry、fetch）。
 
 ### Phase 1H 进展（有界子步，非整阶段完成）
 
@@ -107,7 +107,11 @@
 
 保持不变：尝试次数上限 3 次（`MAX_ATTEMPTS`，失败时循环上限语义等价）、每轮尝试前清空 `_src_meta`、命中无 `error` 的结果即 `break`、`v2.analyze_single(code, name, output_md=False)` 调用形态、每次报错都打印重试行并 `sleep(3)`（含最后一次，原有行为）、timer 在 `finally` 中无条件恢复、patch 仍在 `try` 之外（patch 自身抛错不触发 restore）、意外异常继续向上抛出。`base_result` 原样返回（不复制不重建），`"error" in base_result` 的致命分支判定与 `run_log["fatal"]` 文案、`_finalize_run_log_timing` → `_dump_run_log` → 控制台中止行的顺序均留在 `pipeline.py` 未动。`_patch_v2_timers` / `_restore_v2` / `_fmt_time` / `time.sleep` 四个 seam 由 `pipeline.py` 在调用点注入而非模块内 import，使 `analysis.pipeline` 上的 monkeypatch 面（`test_legacy_bridge_contract.py` / `test_fatal_run_log_timing_contract.py` 等契约测试）继续生效；新模块不 import `quant_analyzer_v2`，单测全部注入 fake、无网络。
 
-尚未拆分：`analyze_single_v3` 的 **fetch 编排阶段（`_call_new` 四路 + Section Registry + 两融 + supplements）仍在主流程内**。**Phase 1H 整体未完成**（build、finalize、entry 三个子步已完成，fetch 阶段待拆）。
+已完成 **1H-4 fetch 子步**：`analysis/orchestration/fetch_stage.py` 抽出 `run_fetch_stage`（返回 `FetchStageResult(fetched, sections_data, margin)`），覆盖原 §3 的 `_record_v2_source_statuses` 逐类状态判定与 §4 的 V3 追加数据块（4 新 fetcher + Section Registry + 两融 + supplements），`pipeline.py` 已接线，29 个针对性单测（`tests/orchestration/test_pipeline_fetch_stage.py`）通过。
+
+保持不变：操作顺序（状态记录 → 建 `fetched` → banner 打印 → 公告/财务/研报/新闻 4 次 `_call_new` → `enabled_sections()` → `_fetch_sections` → `_fetch_margin` → `_fetch_supplements`）、`fetched` 8 个 key 的名称与插入顺序及初始 `None` 值、研报 `days=200` 位置参数、Section Registry 灰度口径（spec §3.3）、`base_result.get("blocks", [])` 缺省语义、`_src_meta` / `run_log` 共享对象原地变更、`base_result` / section 对象 / fetched 载荷的对象同一性、banner 文案与打印位置、`fetched["margin"] is margin`、补充取数"失败不致命"仍由 helper 内部记入 supplements（本阶段不新增 try/except，重试/超时语义完全留在既有 helper）。全部 pipeline 级依赖（`_record_v2_source_statuses` / `_FIELD_OF` / `_SRC_DESC` / `status_of` / `_call_new` / `_fetch_sections` / `enabled_sections` / `_fetch_margin` / `_fetch_supplements` / `_fmt_time` / `_NEW_IMPORTS` / `v2.fetch_margin_trading` / 3 个补充 fetcher）由 `pipeline.py` 在调用点注入而非模块内 import，使 `analysis.pipeline` 上的 monkeypatch 面继续生效；新模块不 import `analysis.pipeline` 与 `quant_analyzer_v2`（单测以 AST 校验零 `analysis.*` 依赖），全部单测注入 fake、无网络。V2 调用、TLS 处理、三价位、result 组装与成功收尾仍留在 `pipeline.py` 未动。
+
+**Phase 1H 状态：4 个子步全部完成（build / finalize / V2 entry / fetch）**，`analyze_single_v3` 已无待抽取的编排阶段。剩余可选收敛项（非本阶段范围）：`pipeline.py` 顶部 20+ 个 helper 仍按注入 seam 方式逐个显式传参，可在后续阶段收敛为显式 context 对象；`analysis/orchestration/fetching.py` 与 `legacy_bridge.py` 内的 v3 透传 re-export 契约保持不变。
 
 ## 渐进式验收规则
 

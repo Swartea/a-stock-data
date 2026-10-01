@@ -25,6 +25,7 @@ V3 编排层 (P2-A Phase 5 Task 5.2, 2026-09-13)
 - analysis.data_fetcher: _fetch_fund_flow_daily / _fetch_margin_history / _fetch_concept_peers
 - analysis.fetcher_dispatcher: call_fetcher
 - analysis.orchestration.result_builder: build_result_v3 / apply_north_scope / apply_scoring_breakdown (Phase 1H)
+- analysis.orchestration.fetch_stage: run_fetch_stage (§3 状态记录 + §4 追加取数, Phase 1H-4)
 - analysis.reporting.artifact_writer: _emit / _dump_run_log
 - quant_analyzer_v2 (根模块): analyze_single, _make_trading_plan, _make_signal_list, fetch_margin_trading
 
@@ -63,6 +64,9 @@ from analysis.data_fetcher import (  # noqa: E402  # sys.path 兄弟目录引导
     _fetch_margin_history,
 )
 from analysis.fetcher_dispatcher import _NEW_IMPORTS  # noqa: E402  # sys.path 兄弟目录引导
+from analysis.orchestration.fetch_stage import (  # noqa: E402  # sys.path 兄弟目录引导
+    run_fetch_stage,
+)
 from analysis.orchestration.finalization import (  # noqa: E402  # sys.path 兄弟目录引导
     finalize_successful_run,
 )
@@ -226,64 +230,35 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     # 规则文档: analysis/references/three-levels-rules.md (§6 规范"区间极值/跨价"另命名要求)
     three_levels = compute_three_levels(q, chip_data, plan)
 
-    # ---- 3. 逐类状态判定 (V2 的 10 类) ----
-    _record_v2_source_statuses(
-        base_result,
-        _src_meta,
-        run_log,
-        _FIELD_OF,
-        _SRC_DESC,
+    # ---- 3. 逐类状态判定 + 4. V3 追加数据块 (Phase 1H-4) ----
+    # 状态记录与追加取数编排已抽到 analysis.orchestration.fetch_stage;
+    # V2 调用 / TLS 处理 / 三价位 / result 组装 / 成功收尾仍留在本函数。
+    # 全部 pipeline 级依赖在调用点注入 (而非模块内 import), 保持
+    # analysis.pipeline 上的 monkeypatch 面继续生效 (见 docs/10 §1H-4)。
+    _fetch = run_fetch_stage(
+        base_result=base_result,
+        code=code6,
+        recorder=_src_meta,
+        run_log=run_log,
+        record_v2_source_statuses=_record_v2_source_statuses,
+        field_of=_FIELD_OF,
+        src_desc=_SRC_DESC,
+        status_of=status_of,
+        call_new=_call_new,
+        fetch_sections=_fetch_sections,
+        enabled_sections=enabled_sections,
+        fetch_margin=_fetch_margin,
+        fetch_supplements=_fetch_supplements,
+        new_imports=_NEW_IMPORTS,
+        fmt_time=_fmt_time,
+        margin_trading=v2.fetch_margin_trading,
+        fetch_fund_flow_daily=_fetch_fund_flow_daily,
+        fetch_margin_history=_fetch_margin_history,
+        fetch_concept_peers=_fetch_concept_peers,
     )
-
-    # ---- 4. V3 追加数据块: 4 新 fetcher + 两融 (逐个记录耗时/状态/实际源) ----
-    fetched = {"announcements": None, "finance": None, "news": None,
-               "research": None, "margin": None,
-               "fund_daily5": None, "margin_hist": None, "peers": None}
-
-    print("\n[V3+] 追加数据块: 公告 / 财务 / 研报 / 新闻 / Section Registry / 两融 / 5日资金 / 同业…")
-    fetched["announcements"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "公告", "公告", code6,
-    )
-    fetched["finance"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "财务摘要", "财务", code6,
-    )
-    fetched["research"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "研报观点", "研报", code6, 200,
-    )  # days=200: 小票近90日常无覆盖(真实)
-    fetched["news"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "新闻舆情", "新闻", code6,
-    )
-    # Section Registry: 5 新节走新路径（灰度老路径仍保留 4 旧 fetcher；spec §3.3）
-    sections = enabled_sections()
-    sections_data = _fetch_sections(run_log, sections, code6, base_result)
-
-    margin = _fetch_margin(
-        run_log,
-        _SRC_DESC,
-        _fmt_time,
-        v2.fetch_margin_trading,
-        code6,
-    )
-    fetched["margin"] = margin
-
-    # 附加: 近5日主力 + 两融方向历史 + 同业(概念口径) — 失败不致命, 记入 supplements
-    # 灰度保留：spec §3.3（"先保留 4 旧 fetcher 走老路径，5 新节走新注册表；下版本统一"）
-    _fetch_supplements(
-        _src_meta,
-        run_log,
-        fetched,
-        _SRC_DESC,
-        _fmt_time,
-        code6,
-        base_result.get("blocks", []),
-        _fetch_fund_flow_daily,
-        _fetch_margin_history,
-        _fetch_concept_peers,
-    )
+    fetched = _fetch.fetched
+    sections_data = _fetch.sections_data
+    margin = _fetch.margin
 
     # ---- 5. 组装 result_v3 (契约) + 5.5 北向口径 + 5.6 评分构成 ----
     # Phase 1H: 组装与两步富化已抽到 analysis.orchestration.result_builder;
