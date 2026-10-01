@@ -24,6 +24,7 @@ V3 编排层 (P2-A Phase 5 Task 5.2, 2026-09-13)
 - analysis.three_levels: compute_three_levels
 - analysis.data_fetcher: _fetch_fund_flow_daily / _fetch_margin_history / _fetch_concept_peers
 - analysis.fetcher_dispatcher: call_fetcher
+- analysis.orchestration.result_builder: build_result_v3 / apply_north_scope / apply_scoring_breakdown (Phase 1H)
 - analysis.reporting.artifact_writer: _emit / _dump_run_log
 - quant_analyzer_v2 (根模块): analyze_single, _make_trading_plan, _make_signal_list, fetch_margin_trading
 
@@ -82,6 +83,11 @@ from analysis.orchestration.legacy_bridge import (  # noqa: E402  # sys.path 兄
     _V2_FN_TO_SRC,  # noqa: F401  # v3 透传契约
     _patch_v2_timers,
     _restore_v2,
+)
+from analysis.orchestration.result_builder import (  # noqa: E402  # sys.path 兄弟目录引导
+    apply_north_scope,
+    apply_scoring_breakdown,
+    build_result_v3,
 )
 from analysis.orchestration.source_status import (  # noqa: E402  # sys.path 兄弟目录引导
     SourceStatusRecorder,
@@ -271,42 +277,35 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
         _fetch_concept_peers,
     )
 
-    # ---- 5. 组装 result_v3 (契约) ----
-    result = {
-        "code": code6, "name": base_result.get("name") or name,
-        "quote": q, "valuation": v, "blocks": base_result.get("blocks", []),
-        "fund": base_result.get("fund", {}), "valuation_hist": base_result.get("valuation_hist", {}),
-        "lockup": base_result.get("lockup", {}), "dragon": base_result.get("dragon", {}),
-        "macro": base_result.get("macro", {}), "chip_data": chip_data,
-        "sw_data": base_result.get("sw_data", {}),
-        "announcements": fetched["announcements"], "finance": fetched["finance"],
-        "news": fetched["news"], "research": fetched["research"],
-        "margin": margin, "peers": fetched["peers"],
-        "fund_daily5": fetched["fund_daily5"], "margin_hist": fetched["margin_hist"],
-        "score": score, "advice": base_result["advice"], "emoji": base_result["emoji"],
-        "detail": base_result["detail"], "trading_plan": plan,
-        "three_levels": three_levels,  # 债 2 修法 (Task 5.2): 4 候选取最近者, 与 trading_plan 同源 K 线
-        "signals": {"good": good_signals, "bad": bad_signals},
-        "run_log": run_log,
-        "report_date": datetime.now().strftime("%Y-%m-%d"),
-        **sections_data,  # Phase 1: 注入 section.label (irm) 作为 result 顶层 key
-    }
+    # ---- 5. 组装 result_v3 (契约) + 5.5 北向口径 + 5.6 评分构成 ----
+    # Phase 1H: 组装与两步富化已抽到 analysis.orchestration.result_builder;
+    # 字段名/默认值/顺序/控制台文案与拆分前逐字一致 (见 docs/10 §1H)。
+    result = build_result_v3(
+        code=code6,
+        name=name,
+        base_result=base_result,
+        fetched=fetched,
+        margin=margin,
+        plan=plan,
+        three_levels=three_levels,
+        good_signals=good_signals,
+        bad_signals=bad_signals,
+        run_log=run_log,
+        sections_data=sections_data,
+        now_fn=datetime.now,
+    )
 
     # ---- 5.5 北向资金口径分类 (债 3 修法, Task 5.3) ----
     # 在 result 顶层加 macro.north_scope + macro.north_label,
     # 渲染层 (MD/HTML/DOCX) 直接读 north_label 替代 hardcode, 杜绝"全市场当个股"误读。
     # 严守 Task 5.1/5.2 锁定: 不覆盖 trading_plan / three_levels。
-    _north_data = (result.get("macro") or {}).get("hsgt") or {}
-    _scope, _label = _classify_north_scope(_north_data)
-    result["macro"]["north_scope"] = _scope      # "market" / "stock" / "mixed" / "unknown"
-    result["macro"]["north_label"] = _label      # 模板直接用的字符串 (含 scope 关键词)
+    _scope, _label = apply_north_scope(result, _classify_north_scope)
     print(f"[v3] 北向资金 scope={_scope} label='{_label}'")
 
     # ---- 5.6 痛 7 修法 (报告质量债 2.0 批次 C, 2026-09-14): 5 维评分构成 ----
     # 把 V2 10 维评分聚合成 5 维 (技术/资金/估值/情绪/风险), 让综合评分不再是黑盒。
     # 报告层 (MD/HTML) 直接读 result["scoring_breakdown"], 缺字段时按"评分构成数据缺失"降级占位。
-    result["scoring_breakdown"] = _build_scoring_breakdown(score)
-    _bd = result["scoring_breakdown"]
+    _bd = apply_scoring_breakdown(result, _build_scoring_breakdown)
     print(f"[v3] 评分构成: 总分 {_bd['total']['score']}/{_bd['total']['max']} | "
           f"技术 {_bd['tech']['score']}/{_bd['tech']['max']} | "
           f"资金 {_bd['capital']['score']}/{_bd['capital']['max']} | "
