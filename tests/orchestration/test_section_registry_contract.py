@@ -420,4 +420,3 @@ def test_empty_registry_file_enables_all_five_sections(monkeypatch, tmp_path):
 
 def _load_disabled_list():
     return list(sections._load_disabled())
-
