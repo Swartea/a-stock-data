@@ -360,21 +360,38 @@
 
 ### P2-2：V3 的 fetch_docx_subprocess 兜底（line 696-704）写过且不清理临时文件
 
-- **位置**：`analysis/quant_analyzer_v3.py:697-704`
-- **现象**：第一次 import 失败时 spawn subprocess，但子进程的 stderr/stdout 不捕获；3 次失败后合并到 docx_err 但 e1 原 stack 丢失。
-- **修法**：subprocess.run 加 `capture_output=True, text=True`，e1 写进 log 方便排查。
+- **状态**：已修复（2026-10-02，commit `9240b13`）— 行为已变更，诊断信息不再丢失
+- **当前位置**：`analysis/reporting/artifact_writer.py:47-76`（`_subprocess_diagnostic` 有界诊断提取）+ `analysis/reporting/artifact_writer.py:183-203`（`subprocess.run` 捕获 + `docx_err` 合并）
+  - 说明：该逻辑已从 `analysis/quant_analyzer_v3.py:697-704` 迁出至 `analysis/reporting/` 包，原行号已失效
+- **修复行为**：
+  ```python
+  subprocess.run(..., capture_output=True, text=True)   # 捕获 stdout/stderr
+  ```
+  - 子进程 stdout/stderr 现被捕获并合并进 `docx_err`，`e1` 原 stack 得以保留
+  - 新增 `_subprocess_diagnostic()`，从 `CalledProcessError` / `TimeoutExpired` 提取有界诊断（头部 = 异常类型 + returncode，stderr 优先），单条流上限 `_SUBPROCESS_STREAM_LIMIT=80`，避免无界输出
+  - `check` / `timeout` 语义保持不变，完整命令行仍只落在 `docx_err`，诊断中不重复
+- **保留的不确定性**：`_DOCX_ERR_LIMIT = 600` 仍是 `docx_err` 写入 `result_v3.json` 的硬上限；流内容较长时 `stderr` 片段按优先级截断，可能仍不足以完整还原子进程现场
+- **测试覆盖**：`tests/reporting/test_artifact_delivery_contract.py`
+- ~~原修法建议~~：subprocess.run 加 `capture_output=True, text=True`，e1 写进 log 方便排查。
 
 ### P2-3：`md_to_docx.py:50-77` 用 `_ensure` 包装插入 XML 但捕获 `Exception` 太宽
 
-- **位置**：`analysis/md_to_docx.py:73-76`
+- **状态**：已修复（2026-10-02，commit `214d9b3`）— 行为已变更，真实缺陷不再被静默吞掉
+- **当前位置**：`analysis/md_to_docx.py:79-98`（`_INSERT_INCOMPATIBLE` 白名单 + `_ensure`）
+  - 说明：行号已随白名单常量的引入从 `73-76` 下移
+- **修复行为**：
   ```python
+  _INSERT_INCOMPATIBLE = (KeyError, ValueError)   # 原 except Exception
   try:
       parent.insert_element_before(el, *successors)
-  except Exception:
-      parent.append(el)               # 静默失败
+  except _INSERT_INCOMPATIBLE:
+      parent.append(el)               # 仅契约不兼容才降级
   ```
-- **现象**：任何 `insert_element_before` 失败都被吞；DOCX 排版异常时排错极难。
-- **修法**：改 `except (KeyError, ValueError, AttributeError)`，其他异常 raise。
+  - 原本被 bare `except Exception` 静默吞掉的 `RuntimeError` / `AttributeError` / `LxmlError` / `TypeError` 等现在向上抛出，DOCX 排版异常可正常暴露
+  - `append` 降级仅保留给文档化的两类契约不兼容：`KeyError`（`qn()` 前缀未在 nsmap 登记）、`ValueError`（`qn()` 收到非 `pfx:local` 形式标签名）——两者只说明"按 OOXML 顺序插入"不可满足，退化是正确的
+- **保留的不确定性**：白名单按当前 python-docx / lxml 版本的行为圈定；若上游改写 `insert_element_before` 抛出新的异常类型，这些异常会从"被静默吞掉"变为"向上抛"，属于有意的行为变化
+- **测试覆盖**：`tests/test_md_to_docx_ensure.py`
+- ~~原修法建议~~：改 `except (KeyError, ValueError, AttributeError)`，其他异常 raise。
 
 ### P2-4：`fetch_announcements` 的 orgId 缓存无失效（`_CNINFO_ORGID_MAP`）
 
@@ -418,15 +435,17 @@
 
 ### P2-7：`quant_analyzer_v3.py:1310-1317` 的 PEG 显示 `v.get("peg")` 可能显示 None
 
-- **位置**：`analysis/quant_analyzer_v3.py:1310-1317`
-  ```python
-  if v.get("peg") and v["peg"] != float("inf"):
-      peg = v["peg"]
-      peg_talk = "PEG < 1, 便宜区" if peg < 1 else (...)
-      L.append(f"- **PEG {peg}** — {peg_talk}")
-  ```
-- **现象**：EPS 缺失（analyst_count=0）时 `peg=None`，**报告里直接不显示 PEG**，对"散户看 PEG"用户是隐藏信息。
-- **修法**：peg=None 时显示 "PEG 无一致预期，无法计算"，而不是"消失"。
+- **状态**：已修复（2026-10-02，commit `d348909`）— 行为已变更，PEG 不再"消失"
+- **当前位置**：`analysis/report_md.py:68-108`（`_PEG_FORMULA_HINT` + `_peg_state` + `_peg_tier_label`）+ `analysis/report_md.py:467-475`（估值表格渲染）
+  - 说明：该逻辑已从 `analysis/quant_analyzer_v3.py:1310-1317` 迁至 `analysis/report_md.py`，原行号已失效
+- **修复行为**：
+  - 新增 `_peg_state(peg)` 显式判定可用性，覆盖缺失/`None`、`NaN`、`±inf`、非数值（含 `bool`）、以及 `<=0`（增速为 0 或负，上游不会产出有效 PEG）五类不可用情形
+  - 不可用时表格单元格显示显式标记 `"不可用"`，表后附完整原因说明，不再静默留白
+  - 可用时沿用 4 档措辞 `<1 便宜 / 1-1.5 合理 / 1.5-3 偏贵 / >=3 极贵`
+  - 原因文案带公式提示 `_PEG_FORMULA_HINT`（PEG = PE(TTM) ÷ 机构一致预期净利增速），公式本身未改动（见 `quant_analyzer_v2`）
+- **保留的不确定性**：本条仅修复**显示层**。当 EPS 缺失（`analyst_count=0`）时 `peg=None` 是上游事实，PEG 仍然算不出来；报告从"看不见"变成"看得见为什么算不出"，不代表估值数据可得性提升。P0-1 的 PEG 公式口径问题（`cagr * 100`）**未**因本条修复。
+- **测试覆盖**：`tests/test_md_layout.py`
+- ~~原修法建议~~：peg=None 时显示 "PEG 无一致预期，无法计算"，而不是"消失"。
 
 ### P2-8：`html_report_v3.py:540-622` 的 `_render_checklist` 内嵌买卖文案过长（80+ 行），不易维护
 
