@@ -21,6 +21,71 @@ if _ANALYSIS_DIR not in sys.path:
 
 REPORTS_ROOT = os.path.normpath(os.path.join(_ANALYSIS_DIR, "..", "reports"))
 
+# DOCX subprocess 兜底诊断上限 (P2-2, 2026-10-02): 保留失败现场但禁止无界输出
+_DOCX_FALLBACK_TIMEOUT = 180
+_DOCX_STATUS_LIMIT = 120  # docx_status 既有长度契约, 不放宽
+_DOCX_ERR_LIMIT = 600  # docx_err 写 result_v3.json 的上限
+_SUBPROCESS_DIAG_LIMIT = 200  # 诊断总上限
+_SUBPROCESS_STREAM_LIMIT = 80  # 单条 stdout/stderr 上限
+_DOCX_STATUS_ERR_RESERVE = 60  # 拼接诊断时为导入路径主错误保留的最小长度
+
+
+def _clip(raw, limit: int) -> str:
+    """单行化 + 截断任意 subprocess 输出 (bytes/str/None), 永不抛异常。"""
+    if raw is None:
+        return ""
+    if isinstance(raw, (bytes, bytearray)):
+        raw = bytes(raw).decode("utf-8", "replace")
+    text = " ".join(str(raw).split())
+    if not text:
+        return ""
+    if len(text) > limit:
+        text = text[: max(0, limit - 3)] + "..."
+    return text
+
+
+def _subprocess_diagnostic(exc: Exception) -> str:
+    """从 subprocess 异常提取有界诊断 (CalledProcessError/TimeoutExpired 的
+    stdout/stderr), 不暴露无界输出; 无流信息的异常返回空串。
+
+    头部保持紧凑 (类型 + returncode), 让 stderr 片段在 status 的短预算内
+    仍可存活; 完整命令行已在 docx_err 中, 诊断里不重复。
+    """
+    head = type(exc).__name__
+    returncode = getattr(exc, "returncode", None)
+    if returncode is not None:
+        head = f"{head} rc={returncode}"
+    else:
+        detail = _clip(exc, 60)
+        if detail and not detail.startswith(head):
+            head = f"{head}: {detail}"
+
+    parts = [head]
+    seen = set()
+    # stderr 优先: 失败现场通常在 stderr, 短预算下先保住它
+    for label in ("stderr", "stdout", "output"):
+        if label in seen:
+            continue
+        text = _clip(getattr(exc, label, None), _SUBPROCESS_STREAM_LIMIT)
+        if not text:
+            continue
+        seen.add(label)
+        label = "stdout" if label == "output" else label
+        parts.append(f"{label}={text}")
+    return _clip(" ".join(parts), _SUBPROCESS_DIAG_LIMIT)
+
+
+def _docx_failure_status(err: str, diag: str) -> str:
+    """error: 前缀 + 主错误 + 有界诊断, 且整体不超过 _DOCX_STATUS_LIMIT。"""
+    if not diag:
+        return f"error:{err[:_DOCX_STATUS_LIMIT]}"
+    prefix = "error:"
+    sep = " | "
+    diag_head = _clip(diag, _DOCX_STATUS_LIMIT - _DOCX_STATUS_ERR_RESERVE)
+    head_budget = _DOCX_STATUS_LIMIT - len(prefix) - len(sep) - len(diag_head)
+    head = err[: max(0, head_budget)]
+    return f"{prefix}{head}{sep}{diag_head}"
+
 
 def _emit(code: str, name: str, result: dict) -> dict:
     """6 件套落盘 (out_dir 内, 统一 v3-{YYYYMMDD}-{HHMM} 时间戳命名):
@@ -103,6 +168,7 @@ def _emit(code: str, name: str, result: dict) -> dict:
     # ④ DOCX (允许降级)
     docx_status = "error:未执行"
     docx_err = ""
+    docx_subprocess_diag = ""
     t0 = time.time()
     try:
         sys.path.insert(0, _ANALYSIS_DIR)
@@ -114,6 +180,7 @@ def _emit(code: str, name: str, result: dict) -> dict:
         try:
             import subprocess
 
+            # P2-2: 捕获 stdout/stderr 保住失败现场 (check/timeout 语义不变)
             subprocess.run(
                 [
                     sys.executable,
@@ -122,12 +189,18 @@ def _emit(code: str, name: str, result: dict) -> dict:
                     docx_path,
                 ],
                 check=True,
-                timeout=180,
+                timeout=_DOCX_FALLBACK_TIMEOUT,
+                capture_output=True,
+                text=True,
             )
             docx_status = "ok(import失败→subprocess)"
         except Exception as e2:  # noqa: BLE001
+            docx_subprocess_diag = _subprocess_diagnostic(e2)
             docx_err = f"{e1} | subprocess: {e2}"
-            docx_status = f"error:{docx_err[:120]}"
+            if docx_subprocess_diag:
+                docx_err = f"{docx_err} | {docx_subprocess_diag}"
+            docx_err = _clip(docx_err, _DOCX_ERR_LIMIT)
+            docx_status = _docx_failure_status(docx_err, docx_subprocess_diag)
     docx_ms = round((time.time() - t0) * 1000)
 
     # ⑤ PDF (允许降级): Chrome 主路径失败后，DOCX → LibreOffice 作为第二渲染器
@@ -230,6 +303,7 @@ def _emit(code: str, name: str, result: dict) -> dict:
         "md_status": md_status,
         "html_status": html_status,
         "docx_status": docx_status,
+        "docx_subprocess_diag": docx_subprocess_diag,
         "pdf_status": pdf_status,
         "pdf_renderer": pdf_renderer,
         "pdf_fallback_status": pdf_fallback_status,
