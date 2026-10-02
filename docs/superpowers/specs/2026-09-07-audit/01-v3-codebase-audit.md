@@ -396,43 +396,74 @@
 
 ### P2-4：`fetch_announcements` 的 orgId 缓存无失效（`_CNINFO_ORGID_MAP`）
 
-- **位置**：`analysis/fetch_announcements.py:186-194`
+- **状态**：已修复（2026-10-02）— 行为已变更，映射表按 TTL 过期后重新拉取
+- **当前位置**：`analysis/fetch_announcements.py:45-48`（`CNINFO_ORGID_TTL_SECONDS` + `_CNINFO_ORGID_FETCHED_AT`）、`analysis/fetch_announcements.py:68-85`（`_refresh_cninfo_orgid_map`）、`analysis/fetch_announcements.py:88-92`（`_cninfo_orgid_cache_expired`）
+  - 说明：原审计引用的 `186-194` 是永久缓存的旧实现，行号与逻辑均已失效
+- **修复行为**：
   ```python
-  global _CNINFO_ORGID_MAP
-  if not _CNINFO_ORGID_MAP:
-      try:
-          r = requests.get(CNINFO_ORGID_URL, ..., timeout=20)
-          _CNINFO_ORGID_MAP = ...
-      except Exception:
-          pass
+  CNINFO_ORGID_TTL_SECONDS = 24 * 60 * 60
+  _CNINFO_ORGID_FETCHED_AT = None          # time.monotonic() 基准
+
+  def _cninfo_orgid_cache_expired() -> bool:
+      if not _CNINFO_ORGID_MAP or _CNINFO_ORGID_FETCHED_AT is None:
+          return True
+      return (time.monotonic() - _CNINFO_ORGID_FETCHED_AT) >= CNINFO_ORGID_TTL_SECONDS
   ```
-- **现象**：模块级 dict 永久缓存，**永不刷新**。新上市股票 / 退市 → 永远查不到。
-- **修法**：加 `if time.time() - _CNINFO_LOADED_AT > 86400: 刷新`，或加 LRU 缓存大小限制。
+  - 缓存现在 24h TTL 到期即刷新，新上市 / 退市股票不再是"永久查不到"
+  - 用 `time.monotonic()` 而非 `time.time()`，系统时间回拨/调时不会让缓存意外永不过期
+  - 刷新走 `_refresh_cninfo_orgid_map()`：先拉进临时 dict 并经 `_parse_orgid_payload`（`analysis/fetch_announcements.py:51-64`）校验，**只有拿到非空映射才原子替换**缓存与时间戳
+  - 网络失败、解析异常、空表三种情况都 `return False` **保留旧缓存**继续复用（原实现是无条件 `pass`，把失败当成功）
+  - `raise_for_status()` 显式校验 HTTP 状态码
+- **剩余兜底**：硬编码 orgId fallback 仍保留（见 `analysis/fetch_announcements.py:233-236` 的 `_CNINFO_ORGID_MAP.get(code)` 及沪市指数白名单 `_SH_INDEX`）；首次拉取失败时仍会退化到硬编码值，此时新股票仍查不到，需等下一次调用重试
+- **测试覆盖**：`tests/test_fetch_announcements_orgid_cache.py`（`test_fresh_cache_hit_does_not_refetch`、`test_expired_cache_triggers_refresh`、`test_failed_refresh_keeps_stale_mapping`、`test_initial_fetch_failure_falls_back_to_hardcoded`）
+- ~~原修法建议~~：加 `if time.time() - _CNINFO_LOADED_AT > 86400: 刷新`，或加 LRU 缓存大小限制。
 
 ### P2-5：`_kline_freshness` 不识别中国法定节假日
 
-- **位置**：`analysis/quant_analyzer_v3.py:207-217`（`_latest_trading_day`）和 220-239（`_kline_freshness`）
-- **现象**：9-7（周一）跑出 WARN 因为 baostock 滞后 3 天到 9-4；注释里说"节假日不在库, 仅提示"，但代码确实没库。
-- **修法**：要么在 `analysis/references/` 维护一份中国法定节假日 CSV（一年 ~10 个），要么承认 baostock 滞后是常态，把 WARN 等级改 INFO 或不写进 fallback_chain。
+- **状态**：已修复（2026-10-02）— 行为已变更，法定节假日由深交所官方月历显式判定
+- **当前位置**：`analysis/orchestration/helpers.py:132-141`（`_latest_trading_day`）、`analysis/orchestration/helpers.py:82-115`（`_latest_explicit_open_day`）、`analysis/orchestration/helpers.py:117-129`（`_weekday_trading_day_estimate`）、`analysis/orchestration/helpers.py:144-180`（`_kline_freshness`）
+  - 说明：该逻辑已从 `analysis/quant_analyzer_v3.py:207-239` 迁出至 `analysis/orchestration/` 包，原行号已失效
+- **修复行为**：
+  ```python
+  def _latest_trading_day() -> date:
+      now = datetime.now()
+      return _latest_explicit_open_day(now) or _weekday_trading_day_estimate(now)
+  ```
+  - 不再维护本地节假日 CSV，改为消费**官方证据**：`analysis/research/trading_calendar.py`（`TradingDayStatus`）+ `analysis/research/trading_calendar_szse_fetch.py`（`fetch_szse_trading_calendar`），用深交所官方月历显式证明开市/休市
+  - 三态语义：遇 `CLOSED` 继续向前回溯；遇 `UNKNOWN`（证据缺行）**立即放弃**——缺行不等于休市，绝不推断；回溯上限 `_CALENDAR_MAX_MONTHS` / `_CALENDAR_MAX_SCAN_DAYS`（`analysis/orchestration/helpers.py` 顶部常量）
+  - 9:30 前后起点不同（`_MARKET_OPEN_TIME`），与原工作日口径行为一致
+  - `_kline_freshness` 返回契约不变（`ok / warn / na` + `last_bar` / `expected` / `text`），调用方 `analysis/pipeline.py:318-319`（`_record_kline_freshness_guard`）无需改动
+  - 节假日导致的滞后现在会把 `expected` 前移到真实最近开市日，WARN 不再误报
+- **剩余兜底**：证据不可用（网络失败、跨月超出回溯范围、某日 `UNKNOWN`）时回退到 `_weekday_trading_day_estimate`（仅处理周末，不含法定节假日），此时节假日仍可能产生一次 WARN；日历结果按 `time.monotonic()` 做有界缓存（`_calendar_cache`），缓存失效需重新拉取
+- **测试覆盖**：`tests/research/test_trading_calendar.py`（`test_missing_weekend_is_unknown_not_inferred_closed`、`test_calendar_day_preserves_three_state_open_semantics` 等）、`tests/orchestration/test_kline_guard_helper_contract.py`、`tests/orchestration/test_helpers.py`
+- ~~原修法建议~~：要么在 `analysis/references/` 维护一份中国法定节假日 CSV（一年 ~10 个），要么承认 baostock 滞后是常态，把 WARN 等级改 INFO 或不写进 fallback_chain。
 
 ### P2-6：`quant_analyzer_v3.py:418-460` 的申万 SSL 重试 hook 在 try/finally 中改全局
 
-- **位置**：`analysis/quant_analyzer_v3.py:421-460`
+- **状态**：已修复（2026-10-02）— 行为已变更，全局 `requests.get` 劫持已不存在
+- **原审计引用**：`analysis/quant_analyzer_v3.py:421-460` 的 `_orig_get = _req.get` / `_req.get = _patched_get` / `finally: _req.get = _orig_get` 临时改写模块级 `requests.get` 的模式，在当前代码中**已不存在**
+- **当前位置**：`analysis/quant_analyzer_v2.py:633-651`（`_SW_SSL_INJECTED` + `_sw_inject_system_trust`）、`analysis/quant_analyzer_v2.py:654-672`（`sw_industry_history` 调用点）、`analysis/quant_analyzer_v2.py:709`（`fetch_sw_stability`）
+- **当前行为**：
   ```python
-  _orig_get = _req.get
-  def _patched_get(url, *a, **k): ...
-  t0 = time.time()
-  sw_retry = {"error": "未执行"}
-  try:
-      _req.get = _patched_get
-      sw_retry = v2.fetch_sw_stability(code6)
-  except Exception as e:
-      sw_retry = {"error": str(e)}
-  finally:
-      _req.get = _orig_get
+  def _sw_inject_system_trust() -> None:
+      """…不可用时退回 requests 默认行为——红线：绝不退到 verify=False。"""
+      global _SW_SSL_INJECTED
+      if _SW_SSL_INJECTED:
+          return
+      _SW_SSL_INJECTED = True
+      try:
+          import truststore
+      except ImportError:
+          return
+      truststore.inject_into_ssl()
   ```
-- **现象**：临时改 `requests.get` 全局函数，V3 任何子流程的 `requests.get` 都会被劫持（即便 swsresearch 域名）。**重入时若 V2 内部有 `requests.get` 调用都会被改写**。
-- **修法**：改为 `requests.Session().get` 的 session 局部 patch，或下推给 v2.fetch_sw_stability 接受 `verify` 参数。
+  - 申万 SSL 问题改由 **truststore 注入系统信任库**（macOS 钥匙串等）解决，`inject_into_ssl()` 一次性注入进程级 SSL context，由 `_SW_SSL_INJECTED` 幂等保护，**不触碰 `requests.get`**
+  - truststore 不可用时**保留 requests 标准 TLS 校验**，即正常 `verify` 语义
+  - **没有 `verify=False` 兜底**：`analysis/` 下已无该参数（`analysis/pipeline.py:175-176` 记录了移除原因；`analysis/orchestration/source_status.py:104` 明确 "不再 verify=False 兜底"）
+  - 现状是 `Session` 的用法仅限普通会话构造（`analysis/quant_analyzer.py:31`、`analysis/quant_analyzer_v2.py:55`、`analysis/fetch_announcements.py:165`、`analysis/fetch_research_reports.py:155`），无任何针对 `requests.get` 的猴子补丁
+- **剩余兜底 / 风险**：注入是**进程级**的（`_SW_SSL_INJECTED` 一旦为 True 不再重复注入），若同进程内其他 HTTP 客户端也不使用系统信任库，会一并受信任库策略影响；SSL 握手失败时 `sw_industry_history` 捕获 `SSLError` 并返回 `None`（`analysis/quant_analyzer_v2.py:665-669`），降级路径以 WARN 文本提示 `pip install truststore`
+- **测试覆盖**：`tests/` 下无针对本条的直接用例；`analysis/research/` 与 `tests/` 中未检索到 truststore 注入行为的专项测试。以上结论基于对当前源码的静态阅读，**不代表已有测试证明旧的全局 hook 已被移除**——移除本身只是"当前源码中不再出现该模式"的事实陈述。
+- ~~原修法建议~~：改为 `requests.Session().get` 的 session 局部 patch，或下推给 v2.fetch_sw_stability 接受 `verify` 参数。
 
 ### P2-7：`quant_analyzer_v3.py:1310-1317` 的 PEG 显示 `v.get("peg")` 可能显示 None
 
