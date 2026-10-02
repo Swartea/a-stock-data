@@ -302,6 +302,11 @@
      ```
   2. 否则在 V3 端把 sources 写成 dict（结构改动大）
 - **影响面**：6 块内容的"📡 数据源：xxx · 时点：报告日期" 全部退化到报告日，时点标注失效
+- **状态**：✅ 已修复（2026-10-02）。`_source_time` 改为优先读 `run_log["source_meta"]`（精确匹配 + 关键字子串扫描，
+  保留 `as_of > at > fetched_at > ts > date > data_end > time` 字段优先级与 16 字符截断），
+  仅当 `source_meta` 无命中时才回退到 `run_log["sources"]` 中 dict 型的老格式元数据；当前契约下
+  `sources` 里的字符串状态值（`"ok, 1772ms"`）不作为时点。无可用时点仍返回调用方传入的 `default`。
+  回归测试：`tests/test_html_source_time.py`。
 
 ---
 
