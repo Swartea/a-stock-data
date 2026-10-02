@@ -1,0 +1,15 @@
+# analysis/sections/registry.yaml
+# Section Registry — 全局开关（按需启用/禁用章节）
+#
+# 文档来源：docs/superpowers/specs/2026-09-07-a-stock-data-skill-optimize-design.md §6.2
+#
+# Schema:
+#   disabled_sections: list[str]
+#     - 空列表 = 全部启用（默认）
+#     - 填入 section label = 该节跳过 fetch + 跳过 render（报告不显示该 block）
+#     - 可用 label: irm / holders / dividend / board / dragon_market
+#
+# 例：速度优先时关掉打板与龙虎榜
+#   disabled_sections: [board, dragon_market]
+
+disabled_sections: []
