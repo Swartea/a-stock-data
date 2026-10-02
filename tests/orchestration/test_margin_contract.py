@@ -66,8 +66,8 @@ def _run_pipeline_with_margin(monkeypatch, margin_fetcher, clock=None):
         "analyze_single",
         lambda *_args, **_kw: _base_result(),
     )
-    monkeypatch.setattr(pipeline.v2, "_make_trading_plan", lambda *_args, **_kw: None)
-    monkeypatch.setattr(pipeline.v2, "_make_signal_list", lambda *_args, **_kw: ([], []))
+    monkeypatch.setattr(pipeline, "_v2_plan", lambda *_args, **_kw: None)
+    monkeypatch.setattr(pipeline, "_v2_signals", lambda *_args, **_kw: ([], []))
     monkeypatch.setattr(pipeline.v2, "fetch_margin_trading", margin_fetcher)
 
     monkeypatch.setattr(pipeline, "compute_three_levels", lambda *_args, **_kw: {})

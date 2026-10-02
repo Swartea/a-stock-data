@@ -214,30 +214,36 @@
 
 ---
 
-### P1-2：V2 5 处 `_interpret_pe/_interpret_pctile/_make_trading_plan/_make_signal_list/_interpret_chips` 是私有函数被 V3 跨模块引用（隐性耦合）
+### P1-2：V2 5 处 `_interpret_pe/_interpret_pctile/_make_trading_plan/_make_signal_list/_interpret_chips` 是私有函数被 V3 跨模块引用（隐性耦合）—— ✅ 已修
 
-- **位置**：`analysis/quant_analyzer_v3.py:467-468, 1303, 1363`
-  ```python
-  plan = v2._make_trading_plan(q, v, chip_data, score_total)
-  good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
-  ...
-  pe_talk = v2._interpret_pe(q.get("pe_ttm", 0))
-  ...
-  chips_talks = v2._interpret_chips(cd)
-  ```
+> **状态**：已修（2026-10-02）。原审计记录的 `analysis/quant_analyzer_v3.py:467-468, 1303, 1363` 是 P2-A 模块拆分前的旧位置；
+> 抽取后实际调用点已迁移到 `analysis/pipeline.py`（编排层）与 `analysis/report_md.py`（MD 渲染层）。
+- **修前位置**（模块拆分后现状）:
+  - `analysis/pipeline.py:56` 显式导入块（新增）
+  - `analysis/pipeline.py:211` `plan = _v2_plan(q, v, chip_data, score_total)`（原 `v2._make_trading_plan`）
+  - `analysis/pipeline.py:219` `good_signals, bad_signals = _v2_signals(score, score["factors"])`（原 `v2._make_signal_list`）
+  - `analysis/report_md.py:47` 显式导入块（新增）
+  - `analysis/report_md.py:1015` `pe_talk = _v2_pe(q.get("pe_ttm", 0))`（原 `v2._interpret_pe`）
+  - `analysis/report_md.py:1065` `_v2_pctile(vh.get('pe_percentile_3y'))`（原 `v2._interpret_pctile`）
+  - `analysis/report_md.py:1075` `chips_talks = _v2_chips(cd)`（原 `v2._interpret_chips`）
 - **现象**：V3 用了 5 个 V2 私有（下划线）函数；V2 任何 signature 变动都会无声破坏 V3 报告。
 - **根因**：V3 设计稿 §3.2 没规划 V2/V3 接口边界，V3 直接 `from quant_analyzer_v2 import _interpret_pe as v2_pe` 是更稳的写法。
-- **修法**（P1）：
-  1. `quant_analyzer_v3.py:53` 之后加显式导入：
+- **修法**（P1，落地形态）:
+  1. `analysis/pipeline.py:54` 之后显式导入本模块实际使用的两个 helper:
      ```python
-     from quant_analyzer_v2 import (
-         _interpret_pe as _v2_pe, _interpret_pctile as _v2_pctile,
-         _interpret_chips as _v2_chips, _make_trading_plan as _v2_plan,
+     from quant_analyzer_v2 import (  # noqa: E402
          _make_signal_list as _v2_signals,
+         _make_trading_plan as _v2_plan,
      )
      ```
-  2. 调用处替换为 `_v2_pe(...)`，避免 `v2._` 的魔法查找
-- **影响面**：V2 改私有函数 → V3 报告悄无声息地错或崩
+  2. `analysis/report_md.py:47` 之后显式导入 3 个解释函数（`_v2_pe` / `_v2_pctile` / `_v2_chips`）
+  3. 5 处调用点全部替换为显式别名，模块内不再有 `v2._xxx` 魔法查找
+- **影响面**：V2 helper 改名或删除时，显式导入会在模块加载时失败；参数签名不兼容则在具体调用处暴露，不再隐藏跨模块依赖
+- **不变项**（§1 不修改业务口径）: V2 实现零改动；`v2.analyze_single` / `v2.fetch_margin_trading` /
+  `_patch_v2_timers(v2, …)` 仍走共享模块（`_patch_v2_timers` 只包装 `fetch_*`，不涉及这 5 个私有，计时行为不变）；
+  输出字段、兜底路径、公共 API 与 `quant_analyzer_v3` 透传契约均未变
+- **回归防护**（`tests/orchestration/test_call_new_contract.py`）: 别名绑定恒等性、AST 级 `v2._xxx` 访问断言、
+  别名快照独立性、测试桩不污染共享 V2 模块、共享 `v2` 公共面兼容性
 
 ---
 

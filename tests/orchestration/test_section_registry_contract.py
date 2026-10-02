@@ -74,8 +74,8 @@ def _run_pipeline_with_sections(monkeypatch, sections, clock=None):
         "analyze_single",
         lambda *_args, **_kw: base_result,
     )
-    monkeypatch.setattr(pipeline.v2, "_make_trading_plan", lambda *_args, **_kw: None)
-    monkeypatch.setattr(pipeline.v2, "_make_signal_list", lambda *_args, **_kw: ([], []))
+    monkeypatch.setattr(pipeline, "_v2_plan", lambda *_args, **_kw: None)
+    monkeypatch.setattr(pipeline, "_v2_signals", lambda *_args, **_kw: ([], []))
 
     monkeypatch.setattr(pipeline, "compute_three_levels", lambda *_args, **_kw: {})
     monkeypatch.setattr(pipeline, "_call_new", lambda *_args, **_kw: None)

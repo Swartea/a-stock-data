@@ -80,8 +80,8 @@ def _run_pipeline_with_supplements(
         return _base_result(blocks)
 
     monkeypatch.setattr(pipeline.v2, "analyze_single", analyze_single)
-    monkeypatch.setattr(pipeline.v2, "_make_trading_plan", lambda *_args, **_kw: None)
-    monkeypatch.setattr(pipeline.v2, "_make_signal_list", lambda *_args, **_kw: ([], []))
+    monkeypatch.setattr(pipeline, "_v2_plan", lambda *_args, **_kw: None)
+    monkeypatch.setattr(pipeline, "_v2_signals", lambda *_args, **_kw: ([], []))
 
     monkeypatch.setattr(pipeline, "compute_three_levels", lambda *_args, **_kw: {})
     monkeypatch.setattr(pipeline, "_call_new", lambda *_args, **_kw: None)

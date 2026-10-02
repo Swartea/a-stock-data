@@ -25,7 +25,8 @@ V3 编排层 (P2-A Phase 5 Task 5.2, 2026-09-13)
 - analysis.data_fetcher: _fetch_fund_flow_daily / _fetch_margin_history / _fetch_concept_peers
 - analysis.fetcher_dispatcher: call_fetcher
 - analysis.reporting.artifact_writer: _emit / _dump_run_log
-- quant_analyzer_v2 (根模块): analyze_single, _make_trading_plan, _make_signal_list, fetch_margin_trading
+- quant_analyzer_v2 (根模块): analyze_single, fetch_margin_trading
+- quant_analyzer_v2 显式私有别名 (P1-2, import-time 绑定): _v2_plan/_v2_signals
 
 向 v3 兼容:
 - v3 顶部 from analysis.pipeline import analyze_single_v3, _emit 透传
@@ -45,6 +46,14 @@ if _ANALYSIS_DIR not in sys.path:
 # 兄弟模块 (§1 业务口径, 阈值/模板不动)
 # V2 同源复用 (只读引用, 不修改 v2)
 import quant_analyzer_v2 as v2  # noqa: E402
+
+# V2 私有函数的显式导入边界 (P1-2, 审计 §P1-2):
+# 只导入本模块直接调用的两个 helper。V2 改名/删除时会在模块导入期报错；
+# 参数签名不兼容则会在具体调用处暴露。只读引用, 不修改 V2 实现。
+from quant_analyzer_v2 import (  # noqa: E402
+    _make_signal_list as _v2_signals,
+    _make_trading_plan as _v2_plan,
+)
 
 # Section Registry (P1 §10.1, 5 sections 渲染列表, 与 v3 line 108 一致)
 from sections import enabled_sections  # noqa: E402
@@ -193,7 +202,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     vh = base_result.get("valuation_hist") or {}
 
     # ---- 2. 三价位 (V2 同源模型: 腾讯实时价 + baostock 筹码K线, 债4) ----
-    plan = v2._make_trading_plan(q, v, chip_data, score_total)
+    plan = _v2_plan(q, v, chip_data, score_total)
     # ---- 2.1 多空状态机注入 (债 1 修法, Task 5.1 + 批次 E 痛 3 PE 旁路) ----
     # 在 trading_plan 上加 state + template_used + state_after_pe_bypass + bypass_applied 字段,
     # 渲染层 (MD/HTML) 直接读 plan["template_used"] 即可, 不再各自写硬编码模板。
@@ -201,7 +210,7 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     #            (防"PE 高估时给中性偏多"自相矛盾, 典型例子: 杰瑞 53 分 + PE 87.8%)
     pe_pctile = vh.get("pe_percentile_3y")
     inject_state_to_plan(plan, score_total, pe_pctile) if plan else None
-    good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
+    good_signals, bad_signals = _v2_signals(score, score["factors"])
 
     # ---- 2.2 三价位表 (债 2 修法, Task 5.2 + P0-A 规范整改, 2026-09-11): 支撑下沿/压力上沿 ----
     # 候选价从 chip_data['kline'] (~250 日 baostock 前复权 K 线) 自算 MA/布林/前高/前低;

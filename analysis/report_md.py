@@ -19,7 +19,7 @@
                   _short_iso, _format_peg_talk, _json_default
 - analysis.constants: _SRC_DESC, OPERATION_TEMPLATES, _STATE_DISPLAY, _NEW_IMPORTS
 - analysis.trading_plan: _score_to_state
-- quant_analyzer_v2: _interpret_pe / _interpret_pctile / _interpret_chips (兜底复用)
+- quant_analyzer_v2: _v2_pe / _v2_pctile / _v2_chips (显式私有别名, P1-2; 兜底复用)
 
 向 v3 兼容:
 - v3 顶部 from analysis.report_md import write_markdown_report_v3 透传
@@ -39,7 +39,16 @@ if _ANALYSIS_DIR not in sys.path:
 
 # 兄弟模块 (§1 业务口径, 阈值/模板不动)
 # V2 同源复用 (只读引用, 不修改 v2)
-import quant_analyzer_v2 as v2  # noqa: E402
+import quant_analyzer_v2 as v2  # noqa: E402,F401
+
+# V2 私有函数的显式导入边界 (P1-2, 审计 §P1-2):
+# 渲染层直接调用这三个 helper。V2 改名/删除时会在模块导入期报错；参数签名不兼容
+# 则会在具体调用处暴露。只读引用, 不修改 V2 实现。
+from quant_analyzer_v2 import (  # noqa: E402
+    _interpret_chips as _v2_chips,
+    _interpret_pe as _v2_pe,
+    _interpret_pctile as _v2_pctile,
+)
 
 # Section Registry (P1 §10.1, 5 sections 渲染循环, 与 v3 line 108 一致)
 from sections import enabled_sections  # noqa: E402
@@ -1003,7 +1012,7 @@ def write_markdown_report_v3(r: dict) -> str:
     L.append("")
 
     # --- 估值贵不贵 (V2) ---
-    pe_talk = v2._interpret_pe(q.get("pe_ttm", 0))
+    pe_talk = _v2_pe(q.get("pe_ttm", 0))
     pb = q.get("pb", 0)
     L.append("## 💰 估值贵不贵")
     L.append(f"- **{pe_talk}**")
@@ -1053,7 +1062,7 @@ def write_markdown_report_v3(r: dict) -> str:
             "|------|------|---------|---------|------|",
             f"| PE(TTM) | {_fnum(vh.get('current_pe'))} | {_fnum(vh.get('pe_percentile_3y'),1)}% | "
             f"{_fnum(vh.get('pe_min'))} ~ {_fnum(vh.get('pe_max'))} | "
-            f"{v2._interpret_pctile(vh.get('pe_percentile_3y'))} |",
+            f"{_v2_pctile(vh.get('pe_percentile_3y'))} |",
             f"| PB(MRQ) | {_fnum(vh.get('current_pb'))} | {_fnum(vh.get('pb_percentile_3y'),1)}% | - | - |",
             f"| 区间 | {vh.get('data_start','—')} ~ {vh.get('data_end','—')} | 样本 {vh.get('n_days','—')} 日 | - | - |",
             "",
@@ -1063,7 +1072,7 @@ def write_markdown_report_v3(r: dict) -> str:
 
     # --- 筹码 (V2 人话 + 明细) ---
     cd = r.get("chip_data")
-    chips_talks = v2._interpret_chips(cd)
+    chips_talks = _v2_chips(cd)
     if chips_talks:
         L.append("## 🎰 主力和散户的筹码状态")
         for t in chips_talks:
