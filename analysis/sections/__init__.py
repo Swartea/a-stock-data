@@ -12,10 +12,11 @@ from ._base import Section
 # 注册表（按 sort_order 排序）
 SECTIONS: List[Section] = []
 
-# 延迟导入具体 section（避免循环）
-# 注意：5 个具体 section（irm/holders/dividend/board/dragon_market）将在
-# Task 1.2 / 2.1-2.4 中逐个实现，本函数在 Phase 2 完成后才会真正被调用。
-# 当前为空实现，确保 enabled_sections() 返回空列表，避免循环依赖。
+# 延迟注册 5 个 section（模块内 import，避免 fetcher/render 在包导入期加载）
+# 注册是"懒"的：import 本包时 SECTIONS 仍为空，首次调用 enabled_sections()
+# 才会执行 _register_sections()，之后按 sort_order 排序并常驻。
+# 5 个类：IRMSection / HoldersSection / DividendSection / BoardSection /
+# DragonMarketSection（irm / holders / dividend / board / dragon_market）
 def _register_sections():
     from .irm import IRMSection
     from .holders import HoldersSection
