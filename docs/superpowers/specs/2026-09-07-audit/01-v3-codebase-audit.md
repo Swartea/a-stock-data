@@ -492,7 +492,7 @@
 - **修复行为**（模块职责边界）：
   - `analysis/_checklist_text.py` **只负责中文文案本身**，保持纯文本：行类型常量（`KIND_BUY/KIND_SELL/KIND_STOP/KIND_WATCH`）、行标签（`LABEL_BUY_TRIGGER/LABEL_SELL_TRIGGER/LABEL_STOP_DISCIPLINE/LABEL_POSITION`）、旧 3 状态文案查表（`LEGACY_BUY_TEXT/LEGACY_SELL_TEXT/LEGACY_STOP_TEXT` + `legacy_branch/legacy_buy_text/legacy_sell_text/legacy_stop_text/legacy_position_text`）、5 状态机 × 5 项 GFM 模板（`CHECKLIST_5T`、`GFM_FALLBACK_STATE="neutral"`、`GFM_STATE_CLASS`、`gfm_state_class/gfm_items`）
   - `analysis/html_report_v3.py:1374` 起的 `_render_checklist` **职责收窄**为：状态选择（state → 哪套文案）、数据提取（`trading_plan`/`signals`/`three_levels`）、数值格式化（`money`/`_num`/`_esc`）、HTML 结构拼装与转义；代码注释显式标注该分工（`analysis/html_report_v3.py:1427-1428`）
-  - 兜底语义保持不变：旧 3 状态仅认 `bullish`/`mild_bull`/`neutral` 三键，其余落 `else`（看空）分支（`analysis/_checklist_text.py:62-65`）；5 状态 GFM 未命中时回落 `neutral` 模板，与原 `CHECKLIST_5T.get(state, CHECKLIST_5T["neutral"])` 等价（`analysis/_checklist_text.py:147-148`）
+  - 兜底语义保持不变：旧 3 状态仅认 `bullish`/`mild_bull`/`neutral` 三键，其余落 `else`（看空）分支（`analysis/_checklist_text.py:66`）；5 状态 GFM 未命中时回落 `neutral` 模板，与原 `CHECKLIST_5T.get(state, CHECKLIST_5T["neutral"])` 等价（`analysis/_checklist_text.py:147-148`）
 - **渲染契约未变更**：
   - 抽出的只是**字符串字面量**与查表，HTML 结构、转义位置、行顺序与 CSS class 映射均未动，报告输出应逐字一致
   - 转义职责仍全在渲染层：`_esc` 保留在 `html_report_v3`，文案层**不转义**（`tests/test_checklist_text.py` 覆盖第 4 项）；既有的 `position`/`period` 预转义后被行循环再 `_esc` 一次（双重转义）属**既有行为**，本条刻意保留并由 `test_legacy_escape_kept` 类用例锁住
