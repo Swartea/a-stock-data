@@ -358,7 +358,7 @@
 - **现象**：114 行内联函数，本质是新章节的 fetcher 雏形。
 - **修法**：等 P0-3 落实后，这 3 个函数迁到 `sections/fund_daily5/`、`sections/margin_hist/`、`sections/peers/`。
 
-### P2-2：V3 的 fetch_docx_subprocess 兜底（line 696-704）写过且不清理临时文件
+### P2-2：V3 DOCX 子进程兜底未保留失败输出，诊断信息丢失
 
 - **状态**：已修复（2026-10-02，commit `9240b13`）— 行为已变更，诊断信息不再丢失
 - **当前位置**：`analysis/reporting/artifact_writer.py:47-76`（`_subprocess_diagnostic` 有界诊断提取）+ `analysis/reporting/artifact_writer.py:183-203`（`subprocess.run` 捕获 + `docx_err` 合并）
@@ -370,6 +370,7 @@
   - 子进程 stdout/stderr 现被捕获并合并进 `docx_err`，`e1` 原 stack 得以保留
   - 新增 `_subprocess_diagnostic()`，从 `CalledProcessError` / `TimeoutExpired` 提取有界诊断（头部 = 异常类型 + returncode，stderr 优先），单条流上限 `_SUBPROCESS_STREAM_LIMIT=80`，避免无界输出
   - `check` / `timeout` 语义保持不变，完整命令行仍只落在 `docx_err`，诊断中不重复
+  - 原审计标题提及“临时文件未清理”，但当前 DOCX fallback 直接使用最终 MD/DOCX 路径，不创建临时文件；此次修复对应的是失败输出未保留这一实际问题
 - **保留的不确定性**：`_DOCX_ERR_LIMIT = 600` 仍是 `docx_err` 写入 `result_v3.json` 的硬上限；流内容较长时 `stderr` 片段按优先级截断，可能仍不足以完整还原子进程现场
 - **测试覆盖**：`tests/reporting/test_artifact_delivery_contract.py`
 - ~~原修法建议~~：subprocess.run 加 `capture_output=True, text=True`，e1 写进 log 方便排查。
