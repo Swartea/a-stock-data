@@ -250,6 +250,8 @@ def test_existing_sparse_meta_is_reused_without_normalizing(monkeypatch):
     assert meta["custom"] == "keep-me"
     assert meta["status"] == "ok, 0ms"
     assert meta["detail"] == "近5日主力资金"
+
+
 def test_fetch_supplements_timeout_sets_typed_observability(monkeypatch):
     calls = []
     release = fetching.threading.Event()
@@ -274,3 +276,297 @@ def test_fetch_supplements_timeout_sets_typed_observability(monkeypatch):
     assert meta["timed_out"] is True
     assert run_log["source_meta"]["两融历史"]["timed_out"] is False
     assert run_log["source_meta"]["同业对比"]["timed_out"] is False
+
+
+# --- known business-empty results must not spend a second request ---
+
+
+def test_fund_daily5_no_data_error_is_not_retried(monkeypatch):
+    calls = []
+    payload = {"error": "近5日主力资金无数据", "rows": []}
+
+    def fund_fetcher(code):
+        calls.append(code)
+        return payload
+
+    fetched, run_log, _recorder, clock = _run(
+        monkeypatch,
+        fund_fetcher=fund_fetcher,
+    )
+    meta = run_log["source_meta"]["资金面-5日主力"]
+
+    assert calls == ["600693"]
+    assert clock.sleeps == []
+    assert fetched["fund_daily5"] is payload
+    assert meta["ms"] == 0
+    assert meta["status"] == "error:近5日主力资金无数据, 0ms"
+    assert run_log["supplements"]["资金面-5日主力"] == meta["status"]
+
+
+def test_fund_daily5_transient_error_still_retries(monkeypatch):
+    calls = []
+    recovered = {"rows": [{"date": "2026-09-04"}]}
+
+    def fund_fetcher(code):
+        calls.append(code)
+        if len(calls) == 1:
+            return {"error": "HTTPSConnectionPool timeout", "rows": []}
+        return recovered
+
+    fetched, _run_log, _recorder, clock = _run(
+        monkeypatch,
+        fund_fetcher=fund_fetcher,
+    )
+
+    assert calls == ["600693", "600693"]
+    assert clock.sleeps == [1.5]
+    assert fetched["fund_daily5"] is recovered
+
+
+def test_peers_missing_concept_input_error_is_not_retried(monkeypatch):
+    calls = []
+    payload = {
+        "error": "无概念板块数据(概念归属缺失), 无法取成分股做同业对比",
+    }
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        return payload
+
+    fetched, run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+        blocks="not-a-list",
+    )
+    meta = run_log["source_meta"]["同业对比"]
+
+    assert calls == [("600693", "not-a-list")]
+    assert clock.sleeps == []
+    assert fetched["peers"] is payload
+    assert meta["status"] == (
+        "error:无概念板块数据(概念归属缺失), 无法取成分股做同业对比, 0ms"
+    )
+
+
+def test_peers_empty_concept_list_error_is_not_retried(monkeypatch):
+    calls = []
+    payload = {
+        "error": "概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比",
+    }
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        return payload
+
+    fetched, _run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+        blocks=[],
+    )
+
+    assert calls == [("600693", [])]
+    assert clock.sleeps == []
+    assert fetched["peers"] is payload
+
+
+def test_peers_not_in_top100_with_answered_concept_is_not_retried(monkeypatch):
+    calls = []
+    payload = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [
+            {
+                "concept": "白酒",
+                "code": "BK0896",
+                "total": 100,
+                "fetched": 100,
+                "rank": None,
+            }
+        ],
+        "rows": None,
+    }
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        return payload
+
+    fetched, _run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+        blocks=[{"name": "白酒", "code": "BK0896"}],
+    )
+
+    assert calls == [("600693", [{"name": "白酒", "code": "BK0896"}])]
+    assert clock.sleeps == []
+    assert fetched["peers"] is payload
+
+
+def test_peers_all_attempted_concepts_api_failure_still_retries(monkeypatch):
+    calls = []
+    first = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [
+            {"concept": "白酒", "code": "BK0896", "error": "502 Bad Gateway"},
+            {"concept": "食品", "code": "BK0437", "error": "read timeout"},
+        ],
+        "rows": None,
+    }
+    recovered = {"block_used": "白酒", "rank": 3, "rows": [{"code": "600693"}]}
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        if len(calls) == 1:
+            return first
+        return recovered
+
+    fetched, run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+    )
+
+    assert calls == [("600693", [{"name": "测试概念"}]), ("600693", [{"name": "测试概念"}])]
+    assert clock.sleeps == [1.5]
+    assert fetched["peers"] is recovered
+    assert run_log["source_meta"]["同业对比"]["status"] == "ok, 1500ms"
+
+
+def test_peers_mixed_attempts_count_as_answered_and_skip_retry(monkeypatch):
+    """One answered concept is enough: the missing self-stock is business-empty."""
+    calls = []
+    first = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [
+            {"concept": "白酒", "code": "BK0896", "error": "502 Bad Gateway"},
+            {"concept": "食品", "code": "BK0437", "total": 100, "fetched": 100,
+             "rank": None},
+        ],
+        "rows": None,
+    }
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        return first
+
+    fetched, _run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+    )
+
+    assert len(calls) == 1
+    assert clock.sleeps == []
+    assert fetched["peers"] is first
+
+
+def test_peers_ambiguous_payload_without_tried_keeps_current_retry(monkeypatch):
+    calls = []
+    first = {"error": "未知接口错误", "rows": []}
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        if len(calls) == 1:
+            return first
+        return {"error": "未知接口错误", "rows": []}
+
+    fetched, run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+    )
+    meta = run_log["source_meta"]["同业对比"]
+
+    assert len(calls) == 2
+    assert clock.sleeps == [1.5]
+    assert fetched["peers"] is first
+    assert meta["status"] == "error:未知接口错误, 1500ms"
+
+
+def test_peers_empty_tried_list_keeps_current_retry_behavior(monkeypatch):
+    calls = []
+    first = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [],
+        "rows": None,
+    }
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        return first
+
+    _fetched, _run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+    )
+
+    assert len(calls) == 2
+    assert clock.sleeps == [1.5]
+
+
+def test_peers_retried_error_keeps_first_business_payload(monkeypatch):
+    calls = []
+    first = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [{"concept": "白酒", "code": "BK0896", "error": "502 Bad Gateway"}],
+        "rows": None,
+    }
+    second = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [{"concept": "白酒", "code": "BK0896", "error": "503"}],
+        "rows": None,
+    }
+
+    def peers_fetcher(code, blocks):
+        calls.append((code, blocks))
+        return first if len(calls) == 1 else second
+
+    fetched, run_log, _recorder, clock = _run(
+        monkeypatch,
+        peers_fetcher=peers_fetcher,
+    )
+    meta = run_log["source_meta"]["同业对比"]
+
+    assert len(calls) == 2
+    assert clock.sleeps == [1.5]
+    assert fetched["peers"] is first
+    assert meta["status"] == (
+        "error:本票未进入所查概念的市值前100或接口失败, 1500ms"
+    )
+
+
+def test_margin_history_error_dict_stays_single_call_under_supplement_rules(monkeypatch):
+    calls = []
+    payload = {"error": "两融历史无数据", "rows": []}
+
+    def margin_fetcher(code):
+        calls.append(code)
+        return payload
+
+    fetched, run_log, _recorder, clock = _run(
+        monkeypatch,
+        margin_fetcher=margin_fetcher,
+    )
+    meta = run_log["source_meta"]["两融历史"]
+
+    assert calls == ["600693"]
+    assert clock.sleeps == []
+    assert fetched["margin_hist"] is payload
+    assert meta["status"] == "error:两融历史无数据, 0ms"
+
+
+def test_supplement_retryable_classification_matches_fetchers():
+    fund_empty = {"error": "近5日主力资金无数据", "rows": []}
+    peers_top100 = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [{"concept": "白酒", "code": "BK0896", "total": 100,
+                   "fetched": 100, "rank": None}],
+        "rows": None,
+    }
+    peers_api_fail = {
+        "error": "本票未进入所查概念的市值前100或接口失败",
+        "tried": [{"concept": "白酒", "code": "BK0896", "error": "502"}],
+        "rows": None,
+    }
+
+    assert fetching._supplement_retryable("fund_daily5", fund_empty) is False
+    assert fetching._supplement_retryable("peers", peers_top100) is False
+    assert fetching._supplement_retryable("peers", peers_api_fail) is True
+    assert fetching._supplement_retryable("margin_hist", fund_empty) is False
+    assert fetching._supplement_retryable("fund_daily5", {"rows": []}) is False
+    assert fetching._supplement_retryable("peers", None) is False

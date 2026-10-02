@@ -250,6 +250,51 @@ def _fetch_margin(
     return margin
 
 
+_FUND_DAILY5_EMPTY_ERROR = "近5日主力资金无数据"
+_PEERS_NO_BLOCKS_ERROR = "无概念板块数据(概念归属缺失), 无法取成分股做同业对比"
+_PEERS_NO_CONCEPTS_ERROR = "概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比"
+
+
+def _peers_generic_error_retryable(value: dict[str, Any]) -> bool:
+    """Decide whether the generic peers failure deserves another request.
+
+    ``fetch_concept_peers`` returns one fallback error when *no* queried concept
+    contained this stock, recording every attempt in ``tried``.  Retry only when
+    all attempts recorded an API exception, i.e. nothing usable came back from
+    any concept.  A missing/empty/odd ``tried`` shape is ambiguous and keeps the
+    historical retry behavior.
+    """
+    if "tried" not in value:
+        return True
+    tried = value.get("tried")
+    if not isinstance(tried, list) or not tried:
+        return True
+    return all(isinstance(item, dict) and "error" in item for item in tried)
+
+
+def _supplement_retryable(key: str, value: Any) -> bool:
+    """Return True when a returned supplement payload should be retried once.
+
+    Retries stay limited to returned ``{"error": ...}`` payloads that may still
+    succeed on a second request.  Known business-empty outcomes — no fund-flow
+    rows, missing/empty concept input, or peers answered by the top-100 query
+    without this stock — are stable answers, so repeating the call only burns
+    1.5 seconds.  ``margin_hist`` never retries, and raised exceptions are
+    handled before this helper is reached.
+    """
+    if key == "margin_hist":
+        return False
+    if not isinstance(value, dict) or "error" not in value:
+        return False
+
+    error = str(value["error"])
+    if key == "fund_daily5":
+        return _FUND_DAILY5_EMPTY_ERROR not in error
+    if error in (_PEERS_NO_BLOCKS_ERROR, _PEERS_NO_CONCEPTS_ERROR):
+        return False
+    return _peers_generic_error_retryable(value)
+
+
 def _fetch_supplements(
     recorder: SourceStatusRecorder,
     run_log: dict[str, Any],
@@ -264,10 +309,12 @@ def _fetch_supplements(
 ) -> None:
     """Populate the three legacy supplement fetches without changing semantics.
 
-    Fund-flow and peer error dictionaries retry once after 1.5 seconds, while
-    margin-history error dictionaries do not retry. Raised exceptions are not
-    retried. A second error dictionary intentionally leaves the first error
-    payload in place, matching the former inline pipeline loop.
+    Fund-flow and peer error dictionaries retry once after 1.5 seconds when
+    another request may still help, while margin-history error dictionaries do
+    not retry.  Known business-empty payloads skip the retry entirely; see
+    ``_supplement_retryable`` for the exact classification. Raised exceptions
+    are not retried. A second error dictionary intentionally leaves the first
+    error payload in place, matching the former inline pipeline loop.
     """
     run_log["supplements"] = {}
     for key, label, fetcher, args in (
@@ -285,7 +332,7 @@ def _fetch_supplements(
                 timeout=_SUPPLEMENT_TIMEOUT_SEC,
             )
             timed_out = False
-            if isinstance(value, dict) and "error" in value and key != "margin_hist":
+            if _supplement_retryable(key, value):
                 time.sleep(1.5)
                 retry_value = _call_with_timeout(
                     label,
