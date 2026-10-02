@@ -76,12 +76,25 @@ def _fmt(run, size=None, bold=None, color=None, mono=False, italic=None):
     return run
 
 
+# _ensure 的降级白名单：仅限 python-docx / lxml 文档化的"标签/命名空间不兼容"契约错误
+#   KeyError   —— qn() 命中 nsmap 未登记的前缀（如 "zz:spacing"），该标签无法表达
+#   ValueError —— qn() 收到非 "pfx:local" 形式的标签名（如 "spacing"），同样无法表达
+# 这两类只说明"按 OOXML 顺序插入"这条请求本身不可满足，退化成 append 是正确降级；
+# 其余异常（RuntimeError / AttributeError / LxmlError / TypeError 等）属于真实编程或运行时缺陷，
+# 必须向上抛，不能被 _ensure 吞掉（Task p2-3：不再 bare except Exception）。
+_INSERT_INCOMPATIBLE = (KeyError, ValueError)
+
+
 def _ensure(parent, tag, successors):
-    """按 OOXML 顺序插子元素（succ=必须排在后面的标签名列表）"""
+    """按 OOXML 顺序插子元素（succ=必须排在后面的标签名列表）
+
+    顺序合法时保持 insert_element_before 给出的位置；仅当标签/命名空间与
+    python-docx 契约不兼容（_INSERT_INCOMPATIBLE）才退化为 append。
+    """
     el = OxmlElement(tag)
     try:
         parent.insert_element_before(el, *successors)
-    except Exception:
+    except _INSERT_INCOMPATIBLE:
         parent.append(el)
     return el
 
