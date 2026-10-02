@@ -257,19 +257,35 @@
   - 同业对比 `error: "概念板块列表为空"` 是级联空（slist 挂），重试无意义
   - 但 `error: "Expecting value"`（网络/JSON 错）值得重试
 - **根因**：重试条件用 `isinstance(val, dict) and "error" in val`，没看错误类型。
-- **修法**（P1）：
-  ```python
-  if isinstance(val, dict) and "error" in val and key != "margin_hist":
-      err = val.get("error", "")
-      worth_retry = any(s in err for s in ("Expecting value", "timeout", "SSL",
-                                            "ConnectionError", "MaxRetry"))
-      if worth_retry:
-          time.sleep(1.5)
-          val2 = fn(*args)
-          if not (isinstance(val2, dict) and "error" in val2):
-              val = val2
-  ```
-- **影响面**：5日主力无谓重试 ~1.5s × 每次跑 = 跑两次浪费 3s
+- **修法**（P1，**已落地**）：重试判定抽成 `analysis/orchestration/fetching.py` 的
+  `_supplement_retryable(key, value)`，按 fetcher 的真实返回形状分类，不再靠关键词猜测：
+
+  | 场景 | 判定 | 依据 |
+  |---|---|---|
+  | `fund_daily5` = `近5日主力资金无数据` | 不重试 | `data_fetcher.fetch_fund_flow_daily` 业务空 |
+  | `peers` = 概念输入缺失 / 概念列表为空 | 不重试 | `fetch_concept_peers` 入口早退，无 `tried` |
+  | `peers` 通用错 + `tried` 至少一条有有效结果 | 不重试 | 接口答了，只是本票不在市值前 100 |
+  | `peers` 通用错 + 每条 `tried` 都记 `error` | 重试 1 次 | 全程 API 失败，值得再问一次 |
+  | `peers` 通用错 + `tried` 缺失/空/形状异常 | 重试 1 次 | 形状不明确，保持历史行为 |
+  | 其他错误（`Expecting value`/timeout/SSL 等） | 重试 1 次 | 网络/JSON 抖动 |
+  | `margin_hist` 任意错误 | 不重试 | 历史口径保持不变 |
+
+  `margin_hist` 不重试、抛异常不重试、重试仍报错时保留首个错误 payload、20s 超时与
+  status/兜底文案、调用顺序均未改动；fetcher 实现零改动。
+- **回归测试**（`tests/orchestration/test_supplements_fetching_contract.py`，全部无网络、
+  用假时钟断言 0 次 `sleep(1.5)`）：`test_fund_daily5_no_data_error_is_not_retried`、
+  `test_fund_daily5_transient_error_still_retries`、
+  `test_peers_missing_concept_input_error_is_not_retried`、
+  `test_peers_empty_concept_list_error_is_not_retried`、
+  `test_peers_not_in_top100_with_answered_concept_is_not_retried`、
+  `test_peers_mixed_attempts_count_as_answered_and_skip_retry`、
+  `test_peers_all_attempted_concepts_api_failure_still_retries`、
+  `test_peers_ambiguous_payload_without_tried_keeps_current_retry`、
+  `test_peers_empty_tried_list_keeps_current_retry_behavior`、
+  `test_peers_retried_error_keeps_first_business_payload`、
+  `test_margin_history_error_dict_stays_single_call_under_supplement_rules`、
+  `test_supplement_retryable_classification_matches_fetchers`。
+- **影响面**：5日主力 / 同业对比业务空场景各省 1.5s，跑两次省 3s
 
 ---
 
