@@ -1,7 +1,20 @@
+import json
+import re
+import sys
+import types
+from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 import analysis.pipeline as pipeline
+import analysis.sections as sections
 from analysis.orchestration import fetching
+
+
+SECTIONS_DIR = Path(sections.__file__).resolve().parent
+SHIPPED_REGISTRY = SECTIONS_DIR / "registry.yaml"
+EXPECTED_LABELS = ["irm", "holders", "dividend", "board", "dragon_market"]
 
 
 class FakeClock:
@@ -206,3 +219,205 @@ def test_empty_section_registry_keeps_count_zero_and_adds_no_section_results(mon
     assert "Section B" not in result
     assert "Section A" not in run_log["sources"]
     assert "Section B" not in run_log["sources"]
+
+
+# ---------------------------------------------------------------------------
+# registry.yaml contract (docs design §6.2: disabled_sections: [] = 全启用)
+#
+# No network and no report fixtures: these tests only exercise the shipped
+# config file, lazy registration, label filtering and the degraded paths.
+# ---------------------------------------------------------------------------
+
+
+def _reset_registry(monkeypatch):
+    """给每个用例一个干净的注册表，避免模块级 SECTIONS 互相污染。"""
+    monkeypatch.setattr(sections, "SECTIONS", [])
+
+
+def _labels():
+    return [section.label for section in sections.enabled_sections()]
+
+
+def _write_registry(path, disabled):
+    items = ", ".join(disabled)
+    path.write_text(
+        f"# test fixture\ndisabled_sections: [{items}]\n",
+        encoding="utf-8",
+    )
+
+
+def _install_stub_yaml(monkeypatch, safe_load):
+    """PyYAML 缺失时的最小替身，只覆盖已文档化的 disabled_sections schema。"""
+    stub = types.ModuleType("yaml")
+    stub.safe_load = safe_load
+    monkeypatch.setitem(sys.modules, "yaml", stub)
+
+
+def _ensure_yaml_importable(monkeypatch):
+    try:
+        import yaml  # noqa: F401
+    except ImportError:
+        def _safe_load(stream):
+            text = stream.read()
+            match = re.search(
+                r"^disabled_sections:\s*\[(.*?)\]\s*$", text, re.MULTILINE
+            )
+            if match is None:
+                return None
+            items = [i.strip().strip("'\"") for i in match.group(1).split(",")]
+            return {"disabled_sections": [i for i in items if i]}
+
+        _install_stub_yaml(monkeypatch, _safe_load)
+
+
+def test_shipped_registry_uses_documented_schema_with_no_sections_disabled():
+    assert SHIPPED_REGISTRY.is_file(), "analysis/sections/registry.yaml must be shipped"
+
+    text = SHIPPED_REGISTRY.read_text(encoding="utf-8")
+    match = re.search(
+        r"^disabled_sections:\s*\[(.*?)\]\s*$", text, re.MULTILINE
+    )
+    assert match is not None, "registry.yaml must declare a disabled_sections list"
+    assert match.group(1).strip() == "", "default config must disable nothing"
+
+    keys = re.findall(r"^([A-Za-z_][A-Za-z0-9_]*):", text, re.MULTILINE)
+    assert keys == ["disabled_sections"], "schema is disabled_sections only"
+
+
+def test_shipped_default_config_enables_all_five_sections(monkeypatch):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+
+    assert sections._REGISTRY_PATH == str(SHIPPED_REGISTRY)
+    assert _labels() == EXPECTED_LABELS
+
+
+def test_five_sections_register_lazily_in_sort_order(monkeypatch):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+
+    assert sections.SECTIONS == [], "registration must stay lazy until first use"
+    assert sections.enabled_sections() is not None
+    assert _labels() == EXPECTED_LABELS
+
+    sort_orders = [section.sort_order for section in sections.SECTIONS]
+    assert sort_orders == sorted(sort_orders)
+    assert sort_orders == [40, 50, 55, 60, 65]
+
+
+def test_registered_labels_match_every_section_meta_json():
+    shipped = {}
+    for meta_file in sorted(SECTIONS_DIR.glob("*/meta.json")):
+        meta = json.loads(meta_file.read_text(encoding="utf-8"))
+        shipped[meta["label"]] = meta["sort_order"]
+
+    assert sorted(shipped) == sorted(EXPECTED_LABELS)
+    assert sorted(shipped.values()) == [40, 50, 55, 60, 65]
+
+
+def test_disabled_label_is_filtered_out_and_order_is_preserved(monkeypatch, tmp_path):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+    registry = tmp_path / "registry.yaml"
+    _write_registry(registry, ["board", "dragon_market"])
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(registry))
+
+    assert _labels() == ["irm", "holders", "dividend"]
+    assert _labels() == ["irm", "holders", "dividend"], "filtering must be stable"
+
+
+def test_disabling_one_middle_section_keeps_the_other_four(monkeypatch, tmp_path):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+    registry = tmp_path / "registry.yaml"
+    _write_registry(registry, ["dividend"])
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(registry))
+
+    assert _labels() == ["irm", "holders", "board", "dragon_market"]
+
+
+def test_disabling_all_labels_empties_the_registry(monkeypatch, tmp_path):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+    registry = tmp_path / "registry.yaml"
+    _write_registry(registry, EXPECTED_LABELS)
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(registry))
+
+    assert _labels() == []
+
+
+def test_unknown_disabled_label_is_ignored(monkeypatch, tmp_path):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+    registry = tmp_path / "registry.yaml"
+    _write_registry(registry, ["not_a_section"])
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(registry))
+
+    assert _labels() == EXPECTED_LABELS
+
+
+def test_absent_registry_file_enables_all_five_sections(monkeypatch, tmp_path):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+    missing = tmp_path / "does-not-exist.yaml"
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(missing))
+
+    assert not missing.exists()
+    assert _labels() == EXPECTED_LABELS
+
+
+def test_missing_pyyaml_degrades_gracefully_to_all_sections(monkeypatch):
+    _reset_registry(monkeypatch)
+    # sys.modules["yaml"] = None makes `import yaml` raise ImportError.
+    monkeypatch.setitem(sys.modules, "yaml", None)
+
+    with pytest.raises(ImportError):
+        import yaml  # noqa: F401
+
+    assert _labels() == EXPECTED_LABELS
+
+
+def test_unreadable_registry_file_degrades_gracefully(monkeypatch, tmp_path):
+    _reset_registry(monkeypatch)
+    registry = tmp_path / "registry.yaml"
+    registry.write_text("disabled_sections: not-a-list\n", encoding="utf-8")
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(registry))
+
+    def _boom(_stream):
+        raise RuntimeError("unreadable registry")
+
+    _install_stub_yaml(monkeypatch, _boom)
+
+    assert _labels() == EXPECTED_LABELS
+
+
+def test_non_mapping_registry_payload_degrades_gracefully(monkeypatch, tmp_path):
+    """A payload that is not a mapping (no .get) must not propagate."""
+    _reset_registry(monkeypatch)
+    registry = tmp_path / "registry.yaml"
+    registry.write_text("- not\n- a\n- mapping\n", encoding="utf-8")
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(registry))
+
+    def _returns_list(_stream):
+        return ["board", "irm"]
+
+    _install_stub_yaml(monkeypatch, _returns_list)
+
+    assert _load_disabled_list() == []
+    assert _labels() == EXPECTED_LABELS
+
+
+def test_empty_registry_file_enables_all_five_sections(monkeypatch, tmp_path):
+    _reset_registry(monkeypatch)
+    _ensure_yaml_importable(monkeypatch)
+    registry = tmp_path / "registry.yaml"
+    registry.write_text("", encoding="utf-8")
+    monkeypatch.setattr(sections, "_REGISTRY_PATH", str(registry))
+
+    assert _load_disabled_list() == []
+    assert _labels() == EXPECTED_LABELS
+
+
+def _load_disabled_list():
+    return list(sections._load_disabled())
+

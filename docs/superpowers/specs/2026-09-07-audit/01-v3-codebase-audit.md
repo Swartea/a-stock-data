@@ -87,8 +87,39 @@
 
 ### P0-3：设计稿核心架构未实现（Section Registry 缺失）
 
-- **位置**：`analysis/`（缺整个 `sections/` 目录）
-- **现象**：设计稿 §2 拍板 Approach B（Section Registry），§4 列了 5 节（互动易 §10.1、股东户数 §4.3、分红 §4.4、打板 §8.1-8.3、全市场龙虎榜 §3.9），全部未实现。当前实现的"6 块新增"实际是 4 个 fetcher（公告/财务/研报/新闻）+ 3 个 supplement（5日主力/两融历史/同业），**与设计稿不一致**。
+- **状态**：已修复（2026-10-02，commits `722df09` / `aaa1eda` / `34113e7` / `fcfdefb` / `10d616b` / `8845d2d`）— 5 个 section 全部落地并注册，`sections/` 目录已建
+- **当前位置**：
+  - 注册表骨架：`analysis/sections/__init__.py`（`SECTIONS` / `enabled_sections()` / `_register_sections()`）、`analysis/sections/_base.py`（`Section` 抽象基类）
+  - 5 个 section（每节 6 件套 `__init__.py` / `fetcher.py` / `render.py` / `meta.py` / `meta.json` / `test_*.py`）：
+    `analysis/sections/irm/`（互动易 §10.1）、`analysis/sections/holders/`（股东户数 §4.3）、
+    `analysis/sections/dividend/`（分红 §4.4）、`analysis/sections/board/`（打板 §8.1-8.3）、
+    `analysis/sections/dragon_market/`（全市场龙虎榜 §3.9）
+  - 主流程接线：`analysis/pipeline.py:50`（`from sections import enabled_sections`）、`analysis/pipeline.py:247-248`（`sections = enabled_sections()` → `_fetch_sections(...)`）、`analysis/pipeline.py:292`（`**sections_data` 把 `section.label` 注入为 result 顶层 key）
+  - 执行与超时：`analysis/orchestration/fetching.py:317`（`_fetch_sections`，逐节 timeout，写 `run_log["sources"][label] = f"ok, {ms}ms"`）
+  - 说明：原记的 `analysis/quant_analyzer_v3.py:538-589` 行号已随主流程迁到 `analysis/pipeline.py` 而失效
+- **registry 配置**：`analysis/sections/registry.yaml` 为全局开关，单键 `disabled_sections: []`（空 = 全部启用；填 section label = 该节跳过 fetch + 跳过 render，报告不显示该 block）。由 `__init__.py` 的 `_load_disabled()` 读取，文件缺失或解析异常时回落 `[]`（全启用）；`yaml` 为延迟导入，venv 未装 pyyaml 时不炸
+- **修正后的懒注册注释**（`analysis/sections/__init__.py:15-19`）——原注释把注册说成无条件执行，已按实际语义改正：
+  ```python
+  # 延迟注册 5 个 section（模块内 import，避免 fetcher/render 在包导入期加载）
+  # 注册是"懒"的：import 本包时 SECTIONS 仍为空，首次调用 enabled_sections()
+  # 才会执行 _register_sections()，之后按 sort_order 排序并常驻。
+  ```
+  实际行为已核实：`import sections` 后 `SECTIONS == []`；`enabled_sections()` 首次调用才 `_register_sections()`，按 `sort_order` 排序后常驻（`__init__.py:52-57`）
+- **龙虎榜动态日期默认值**：`analysis/sections/dragon_market/fetcher.py:39-45` 的 `_today_ymd()` 在**调用时**执行 `datetime.now().strftime("%Y%m%d")`；`fetch_dragon_market(date: str | None = None, top_n: int = 20)`（`fetcher.py:48-62`）仅在 `date is None` 时才解析为当日，显式传入的 `YYYYMMDD` 原样透传给 `_raw_fetch()` 不做改写。即"当日"不写死在 import 期，跨日运行不会拿到过期日期
+- **测试覆盖**：
+  - `tests/sections/test_base.py`（`Section` 抽象契约）、`tests/sections/test_dragon_market_fetcher.py`
+  - `tests/orchestration/test_section_registry_contract.py`（注册表契约）、`tests/orchestration/test_section_fetching_contract.py`（接线/超时契约）、`tests/test_md_section_registry.py`（MD 渲染顺序）
+  - 各节自带 `analysis/sections/{irm,holders,dividend,board,dragon_market}/test_*.py`
+- **保留的不确定性 / 仍成立的风险**：
+  1. **灰度双路径未收敛**：`analysis/pipeline.py:246` 仍保留 4 个旧 fetcher 走老路径（公告/财务/研报/新闻），只有 5 个新节走注册表。spec §3.3 约定"下版本统一"，本次未做
+  2. **`run_log.sources` 23+ key 未实测**：原修法第 4 条的验收标准需要真实跑一次 V3 核对 key 数，本次仅核对了写入路径存在（`fetching.py` 逐节写 `sources[label]`），未做端到端计数验证
+  3. **各 section 端点仍受 P0-4 拖累**：`slist` / `fflow` 风控与无重试问题未修，board / dragon_market / irm 的实际成功率未在真实网络下验证
+  4. **结果 key 双轨**：新节用 `section.label`（irm/holders/dividend/board/dragon_market）作顶层 key，与旧 supplement 的 `fund_daily5` / `margin_hist` / `peers` 命名风格不一致（见 P2-1）
+- ~~原修法建议 1-3~~：已按 §3.1 落 `__init__.py` + `_base.py` + `registry.yaml`，5 个 section 模块已拆出，`enabled_sections()` 驱动的主流程已接线
+
+- **原审计记录**（保留备查）
+- **原位置**：`analysis/`（缺整个 `sections/` 目录）
+- **原现象**：设计稿 §2 拍板 Approach B（Section Registry），§4 列了 5 节（互动易 §10.1、股东户数 §4.3、分红 §4.4、打板 §8.1-8.3、全市场龙虎榜 §3.9），全部未实现。当前实现的"6 块新增"实际是 4 个 fetcher（公告/财务/研报/新闻）+ 3 个 supplement（5日主力/两融历史/同业），**与设计稿不一致**。
 - **根因**：
   - `quant_analyzer_v3.py:538-589` 把 4 个新 fetcher 与 3 个 supplement 都**内联在主流程**里（行号 538/540/541/544-561/565-589），无 `sections/` 子目录
   - `grep "sections\|registry\|meta.json" analysis/quant_analyzer_v3.py` → 0 命中
@@ -354,9 +385,17 @@
 
 ### P2-1：5 日主力 / 两融历史 / 同业对比 三个 supplement 全部 V3 内联（应抽到 `sections/`）
 
-- **位置**：`analysis/quant_analyzer_v3.py:260-373`（`_fetch_fund_flow_daily` / `_fetch_margin_history` / `_fetch_concept_peers`）
-- **现象**：114 行内联函数，本质是新章节的 fetcher 雏形。
-- **修法**：等 P0-3 落实后，这 3 个函数迁到 `sections/fund_daily5/`、`sections/margin_hist/`、`sections/peers/`。
+- **状态**：原症状（3 个函数内联在 V3 主流程）**已解决**，但**未迁到 `sections/`**——按设计稿迁到注册表是**独立的延后重构，不属于 P0-3 的完成范围**
+- **原位置**：`analysis/quant_analyzer_v3.py:260-373`（`_fetch_fund_flow_daily` / `_fetch_margin_history` / `_fetch_concept_peers`），114 行内联函数
+- **当前位置**（P2-A Phase 4 抽取，与 P0-3 的 section 化是两条不同路径）：`analysis/data_fetcher.py`
+  - `fetch_fund_flow_daily`（`data_fetcher.py:29`）+ 兼容别名 `_fetch_fund_flow_daily`（`:88`）
+  - `fetch_margin_history`（`:95`）+ 兼容别名 `_fetch_margin_history`（`:130`）
+  - `fetch_concept_peers`（`:137`）+ 兼容别名 `_fetch_concept_peers`（`:193`）
+  - 三个 `_` 前缀别名保留为薄转发，调用方 `analysis/pipeline.py:59-62` 仍按旧名 import，**不破坏既有调用契约**
+- **result key 未变**：`analysis/pipeline.py:226-227` / `:284-285` 仍以 `fund_daily5` / `margin_hist` / `peers` 三个 key 写入 result（`"margin_hist": fetched["margin_hist"]`、`"peers": fetched["peers"]`），报告模板与下游消费方无需改动
+- **未执行的部分（不得算作已完成）**：把这 3 个 legacy supplement 载荷迁入设计稿的 5 个 registry section（`sections/fund_daily5/`、`sections/margin_hist/`、`sections/peers/`）**没有做**。`analysis/sections/` 下目前只有 irm / holders / dividend / board / dragon_market 五个目录，不存在 fund_daily5 / margin_hist / peers。`analysis/pipeline.py:246` 的灰度注释也明确 4 个旧 fetcher 仍走老路径、待下版本统一
+- **延后重构的理由**：这 3 个 supplement 的数据契约（`fund_daily5` 近 5 日主力、`margin_hist` 两融历史、`peers` 概念口径同业）与 P0-3 落地的 5 个设计稿 section 不是同一批章节；迁移会改 result key 风格、牵动报告模板与 `verify_accept_600693.py` 验证脚本，属于独立的一次改动，应单独排期与单独验证
+- **仍成立的风险**：3 个函数仍是 supplement 语义（不进注册表、不受 `registry.yaml` 的 `disabled_sections` 开关控制），与 P0-3 的"全局开关 + 插件注册表"架构未统一；`fund_daily5` 依赖东财 fflow、`peers` 依赖 `slist`，两者仍受 P0-4 风控影响
 
 ### P2-2：V3 DOCX 子进程兜底未保留失败输出，诊断信息丢失
 
@@ -554,8 +593,8 @@
   fetched["news"] = _call_new("新闻舆情", "新闻", code6)
   ```
 - **现象**：只有 4 个 call，缺设计稿 §4.1-4.5 的 5 个新章节（irm/holders/dividend/board/dragon_market）。
-- **根因**：见 P0-3，整个 sections 目录没建。
-- **修法**：依赖 P0-3 解决。
+- **根因（已过时）**：原文写"见 P0-3，整个 sections 目录没建"——P0-3 已于 2026-10-02 修复，`analysis/sections/` 目录与 5 个 section 现已存在。
+- **现状**：`analysis/pipeline.py:246-248` 已按灰度策略（spec §3.3）接入 5 个新节（`enabled_sections()` → `_fetch_sections`），同时**刻意保留**这 4 个旧 fetcher 走老路径。下列 4 行位置随主流程迁到 `analysis/pipeline.py` 后已失效，`quant_analyzer_v3.py` 原行号仅作历史备查。
 
 ### 独立 5：`fetch_announcements.py:104` 用 `datetime.now().astimezone().isoformat()` 缺 timespec
 
@@ -625,7 +664,7 @@
 | 3 | **P0-4 失败源 4 处加 content-type 预检 + 备胎框架** | 1d | 4 块内容从空白到有数据 |
 | 4 | **P0-5 新闻退避压缩**（1 行改 sleep） | 0.5h | 单票 -15s |
 | 5 | **P1-1 V2 10 fetcher 改 ThreadPoolExecutor** | 1-1.5d | 单票 80s → 30-40s |
-| 6 | **P0-3 Section Registry 骨架** | 2-3d | 加第 6 节从 1d → 1h |
+| 6 | ~~**P0-3 Section Registry 骨架**~~ **已完成**（2026-10-02） | 2-3d → 0 | 骨架 + 5 节已落地；加第 6 节已从 1d → 1h。遗留：灰度双路径待统一（见 P0-3 风险 1） |
 | 7 | **P1-2 显式 import V2 私有函数** | 0.5h | 防止 V2 改动静默破坏 V3 |
 | 8 | **P1-4 修 `_source_time`** | 1h | 时点标注从退化到正确 |
 | 9 | **P1-5 迁 V1 到 _legacy/** | 0.5h | -571 行死代码 |
@@ -645,6 +684,7 @@
 - [ ] 4 个失败源至少有 1 个备胎兜底（不空白）
 - [ ] 单票 < 60s（V2 10 fetcher 并行 + 4 新 fetcher 并行）
 - [ ] 跑 600693 第二次后 `reports/600693_东百集团/2026-09-07/` 至少 3 份 run_log（不互覆盖）
-- [ ] `analysis/sections/` 目录存在（哪怕只有 `_base.py` + `__init__.py`）
+- [x] `analysis/sections/` 目录存在（`__init__.py` + `_base.py` + `registry.yaml` + 5 个 section 目录）— 2026-10-02 随 P0-3 落地
 - [ ] V1 移走或加 deprecation header
 - [ ] `analysis/quant_analyzer_v3.py` 内联函数数 < 100 行（抽 sections）
+  - 部分进展：3 个 supplement 已抽到 `analysis/data_fetcher.py`（P2-A Phase 4），主流程迁到 `analysis/pipeline.py`；P2-1 的 3 个 supplement 迁注册表为独立延后重构，未做

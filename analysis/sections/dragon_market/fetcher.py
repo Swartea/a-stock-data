@@ -6,13 +6,15 @@
 
 注意（端点验证 Part A.6 标记）：
 - `daily_dragon_tiger` 端点 v2 暂未实现（brief §关键差异），hasattr 兜底
-- 市场维度（非单票）：code 不影响，fetch() 用 datetime.now() 取当日
+- 市场维度（非单票）：code 不影响，默认在调用时用 datetime.now() 取当日
 - 数据结构（端点验证 Part A.6 标记）：`{"stocks": [...], "total_records": N}`
   每个 stock 至少含：code / name / net_buy（净买额，单位元）
 """
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from datetime import datetime
 
 import quant_analyzer_v2 as v2
 
@@ -34,11 +36,21 @@ def _raw_fetch(date: str) -> dict:
     return data
 
 
-def fetch_dragon_market(date: str = "20260904", top_n: int = 20) -> dict:
-    """拉当日全市场龙虎榜（Top N 净买额）
+def _today_ymd() -> str:
+    """调用时解析当日为 YYYYMMDD（与 sections.*.meta 的日期约定一致）
+
+    Returns:
+        str: 当日 YYYYMMDD
+    """
+    return datetime.now().strftime("%Y%m%d")
+
+
+def fetch_dragon_market(date: str | None = None, top_n: int = 20) -> dict:
+    """拉全市场龙虎榜（Top N 净买额）
 
     Args:
-        date: YYYYMMDD 交易日。默认 20260904（brief 示例）。
+        date: YYYYMMDD 交易日。默认 None —— 在调用时动态解析为当日
+            （YYYYMMDD）；显式传入时原样透传给 _raw_fetch，不做改写。
         top_n: 取 Top N 净买额个股，默认 20。
 
     Returns:
@@ -46,6 +58,8 @@ def fetch_dragon_market(date: str = "20260904", top_n: int = 20) -> dict:
         或 {"error": str} 兜底
     """
     try:
+        if date is None:
+            date = _today_ymd()
         data = _raw_fetch(date)
         # 排序 + 取 Top N（brief §关键差异）
         if isinstance(data, dict) and "stocks" in data and isinstance(data["stocks"], list):
