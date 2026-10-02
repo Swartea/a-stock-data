@@ -22,6 +22,7 @@
 
 import json
 import re
+import time
 from datetime import datetime, timedelta
 
 import requests
@@ -41,8 +42,54 @@ POSITIVE_KW = ("中标", "回购", "增持", "业绩预增", "重大合同", "�
 # 沪市指数白名单（000xxx 与深市个股同段，需白名单区分；仅巨潮 orgId 硬编码 fallback 用）
 _SH_INDEX = {"000300", "000905", "000016", "000688", "000852", "000010"}
 
-# 巨潮 股票→orgId 映射（模块级缓存，首次调用拉取一次，全程复用）
+# 巨潮 股票→orgId 映射（模块级缓存，TTL 24h；用 monotonic 时钟，不受系统时间调整影响）
+CNINFO_ORGID_TTL_SECONDS = 24 * 60 * 60
 _CNINFO_ORGID_MAP = {}
+_CNINFO_ORGID_FETCHED_AT = None      # time.monotonic() 基准的最近一次成功拉取时刻
+
+
+def _parse_orgid_payload(payload) -> dict:
+    """巨潮 szse_stock.json → {code: orgId}；只接受非空、结构合法的映射表。
+
+    字段缺失/类型不对/条目不完整时返回 {}，调用方据此判定本次刷新无效。
+    """
+    if not isinstance(payload, dict):
+        return {}
+    out = {}
+    for s in payload.get("stockList") or []:
+        if not isinstance(s, dict):
+            continue
+        code, org = s.get("code"), s.get("orgId")
+        if isinstance(code, str) and isinstance(org, str) and code and org:
+            out[code] = org
+    return out
+
+
+def _refresh_cninfo_orgid_map() -> bool:
+    """TTL 到期或缓存为空时刷新映射表。
+
+    先拉进临时字典并校验，只有拿到非空映射才原子替换缓存与时间戳；
+    任何失败（网络/解析/空表）都保留既有映射继续复用。返回是否刷新成功。
+    """
+    global _CNINFO_ORGID_MAP, _CNINFO_ORGID_FETCHED_AT
+    try:
+        r = requests.get(CNINFO_ORGID_URL, headers={"User-Agent": UA}, timeout=20)
+        r.raise_for_status()
+        new_map = _parse_orgid_payload(r.json())
+    except Exception:
+        return False     # 拉取失败 → 保留旧缓存（下一次调用再试）
+    if not new_map:
+        return False     # 无效响应（空表/结构异常）→ 不用空表覆盖旧缓存
+    _CNINFO_ORGID_MAP = new_map
+    _CNINFO_ORGID_FETCHED_AT = time.monotonic()
+    return True
+
+
+def _cninfo_orgid_cache_expired() -> bool:
+    """缓存是否需要刷新：无缓存、尚未成功拉取过，或已超过 24h TTL。"""
+    if not _CNINFO_ORGID_MAP or _CNINFO_ORGID_FETCHED_AT is None:
+        return True
+    return (time.monotonic() - _CNINFO_ORGID_FETCHED_AT) >= CNINFO_ORGID_TTL_SECONDS
 
 
 # ---------------------------------------------------------------------------
@@ -184,14 +231,8 @@ def _cninfo_orgid(code: str) -> str:
     返回 totalAnnouncement=0、查不到公告（SKILL.md #19）。优先动态查官方映射表，
     查不到再回退硬编码规则。"""
     global _CNINFO_ORGID_MAP
-    if not _CNINFO_ORGID_MAP:
-        try:
-            r = requests.get(CNINFO_ORGID_URL, headers={"User-Agent": UA}, timeout=20)
-            r.raise_for_status()
-            _CNINFO_ORGID_MAP = {s["code"]: s["orgId"]
-                                 for s in r.json().get("stockList", [])}
-        except Exception:
-            pass    # 映射表拉取失败 → 走下方硬编码 fallback（仅部分老股票适用）
+    if _cninfo_orgid_cache_expired():
+        _refresh_cninfo_orgid_map()   # 失败则继续用旧映射，无旧映射则走硬编码 fallback
     org = _CNINFO_ORGID_MAP.get(code)
     if org:
         return org
