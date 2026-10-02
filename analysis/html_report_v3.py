@@ -256,26 +256,49 @@ def _render_missing_module(module_name, error_msg, score_weight,
 # 数据来源 + 时点标注
 # ------------------------------------------------------------
 
+# 时点字段优先级 (P1-4): 同名 key 取第一个非空值, 截断到 16 字符 (到分钟)。
+_TIME_KEYS = ("as_of", "at", "fetched_at", "ts", "date", "data_end", "time")
+
+
+def _blob_ts(blob):
+    """从 dict 型元数据块取时点字符串; 非 dict / 无时点字段返回 None。"""
+    if not isinstance(blob, dict):
+        return None
+    for k in _TIME_KEYS:
+        v = blob.get(k)
+        if v:
+            return str(v)[:16]
+    return None
+
+
 def _source_time(run_log, key_hints, default):
-    """从 run_log.sources 模糊取时点:
-    先精确匹配 sources[key_hints...], 再按关键字子串扫一遍;
-    run_log 没有时点就回退 report_date。"""
-    if isinstance(run_log, dict):
-        srcs = run_log.get("sources")
-        if isinstance(srcs, dict):
-            for hint in key_hints:
-                if hint in srcs and isinstance(srcs[hint], dict):
-                    for k in ("as_of", "at", "fetched_at", "ts", "date", "data_end", "time"):
-                        v = srcs[hint].get(k)
-                        if v:
-                            return str(v)[:16]
-            # 关键字子串扫描 (V3 分析器内部命名未定)
-            for name, blob in srcs.items():
-                if any(h in name for h in key_hints) and isinstance(blob, dict):
-                    for k in ("as_of", "at", "fetched_at", "ts", "date", "data_end", "time"):
-                        v = blob.get(k)
-                        if v:
-                            return str(v)[:16]
+    """从 run_log 取时点 (P1-4 修正): 精确匹配 key_hints, 再按关键字子串扫一遍。
+
+    数据源优先级:
+      1. `run_log["source_meta"]` — 当前契约。V3 主流程把元数据 (dict, 含 at/fetched_at)
+         写在这里, `run_log["sources"]` 同名项只是状态字符串 ("ok, 1772ms")。
+      2. `run_log["sources"]` — 仅当值本身是 dict 的老 run_log 兼容兜底;
+         字符串状态值不是时点元数据, 一律忽略。
+
+    两条路径都没有可用时点时返回调用方传入的 `default` (通常为 report_date)。
+    """
+    if not isinstance(run_log, dict):
+        return default
+    for container_key in ("source_meta", "sources"):
+        container = run_log.get(container_key)
+        if not isinstance(container, dict):
+            continue
+        # 精确匹配
+        for hint in key_hints:
+            t = _blob_ts(container.get(hint))
+            if t:
+                return t
+        # 关键字子串扫描 (V3 分析器内部命名未定)
+        for name, blob in container.items():
+            if any(h in str(name) for h in key_hints):
+                t = _blob_ts(blob)
+                if t:
+                    return t
     return default
 
 
