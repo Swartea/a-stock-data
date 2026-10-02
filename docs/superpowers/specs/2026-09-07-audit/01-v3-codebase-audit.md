@@ -479,11 +479,32 @@
 - **测试覆盖**：`tests/test_md_layout.py`
 - ~~原修法建议~~：peg=None 时显示 "PEG 无一致预期，无法计算"，而不是"消失"。
 
-### P2-8：`html_report_v3.py:540-622` 的 `_render_checklist` 内嵌买卖文案过长（80+ 行），不易维护
+### P2-8：`_render_checklist` 内嵌买卖文案过长（80+ 行），不易维护
 
-- **位置**：`analysis/html_report_v3.py:541-622`
-- **现象**：所有看多/看空/震荡的买/卖/止损/仓位文案都写死在一个函数里。
-- **修法**：抽到 `analysis/_checklist_text.py` 或 `references/checklist-playbook.md`，按三态 12 字段填模板。
+- **状态**：已修复（2026-10-02）— 硬编码中文文案已抽出为独立纯文案模块，渲染输出不变
+- **原审计引用**：`analysis/html_report_v3.py:541-622`（**行号已失效**，见下方"当前位置"）
+  - 原记录为 `540-622` / `541-622` 两个版本，二者均指向旧的 `_render_checklist` 位置；函数其后经多次改动已下移
+- **当前位置**：
+  - 渲染层：`analysis/html_report_v3.py:1374`（`def _render_checklist(result, state)` 起，至 `analysis/html_report_v3.py:1521` 前的 `_risk_items` 之前，即 `:1374-1520`）
+  - 调用点：`analysis/html_report_v3.py:2348`（`html.append(_render_checklist(result, state_key))`）
+  - 文案层（新增）：`analysis/_checklist_text.py`（共 174 行，纯文案 + 查表，不含 HTML 结构与转义）
+  - 导入点：`analysis/html_report_v3.py:43-48`，双路径容错 `try: from analysis import _checklist_text as _ctxt / except: import _checklist_text as _ctxt`，作为 `analysis` 子包导入或 `analysis` 目录直接在 `sys.path` 均可
+- **修复行为**（模块职责边界）：
+  - `analysis/_checklist_text.py` **只负责中文文案本身**，保持纯文本：行类型常量（`KIND_BUY/KIND_SELL/KIND_STOP/KIND_WATCH`）、行标签（`LABEL_BUY_TRIGGER/LABEL_SELL_TRIGGER/LABEL_STOP_DISCIPLINE/LABEL_POSITION`）、旧 3 状态文案查表（`LEGACY_BUY_TEXT/LEGACY_SELL_TEXT/LEGACY_STOP_TEXT` + `legacy_branch/legacy_buy_text/legacy_sell_text/legacy_stop_text/legacy_position_text`）、5 状态机 × 5 项 GFM 模板（`CHECKLIST_5T`、`GFM_FALLBACK_STATE="neutral"`、`GFM_STATE_CLASS`、`gfm_state_class/gfm_items`）
+  - `analysis/html_report_v3.py:1374` 起的 `_render_checklist` **职责收窄**为：状态选择（state → 哪套文案）、数据提取（`trading_plan`/`signals`/`three_levels`）、数值格式化（`money`/`_num`/`_esc`）、HTML 结构拼装与转义；代码注释显式标注该分工（`analysis/html_report_v3.py:1427-1428`）
+  - 兜底语义保持不变：旧 3 状态仅认 `bullish`/`mild_bull`/`neutral` 三键，其余落 `else`（看空）分支（`analysis/_checklist_text.py:62-65`）；5 状态 GFM 未命中时回落 `neutral` 模板，与原 `CHECKLIST_5T.get(state, CHECKLIST_5T["neutral"])` 等价（`analysis/_checklist_text.py:147-148`）
+- **渲染契约未变更**：
+  - 抽出的只是**字符串字面量**与查表，HTML 结构、转义位置、行顺序与 CSS class 映射均未动，报告输出应逐字一致
+  - 转义职责仍全在渲染层：`_esc` 保留在 `html_report_v3`，文案层**不转义**（`tests/test_checklist_text.py` 覆盖第 4 项）；既有的 `position`/`period` 预转义后被行循环再 `_esc` 一次（双重转义）属**既有行为**，本条刻意保留并由 `test_legacy_escape_kept` 类用例锁住
+  - **文案契约**：`_checklist_text` 中的字符串是对用户可见的原文，改文案必须同步改测试（模块 docstring 已明写）
+- **测试覆盖**：`tests/test_checklist_text.py`（P2-8 专项，28 个 `test_` 用例，不联网、不读当日报告 fixture）
+  1. 旧 3 状态 buy/sell/stop/position 文案与分支映射
+  2. 5 状态机 × 5 项 GFM 模板的标签、顺序与占位符替换
+  3. 动态占位符（支撑/压力/止损价、止损幅度、仓位、周期）落到正确位置
+  4. HTML 转义分层：渲染层 `_esc` 保留、文案层不转义
+  5. 状态兜底：未知 state → 旧 3 状态走 bear 分支 + GFM 走 neutral 模板
+  - 相关既有渲染器契约测试仍指向 `html_report_v3._render_checklist`：`tests/test_three_levels.py:388`、`tests/test_multi_state_trading_plan.py:180`、`tests/test_html_escape_audit.py:102`、`tests/test_scoring_breakdown.py:244`
+- ~~原修法建议~~：抽到 `analysis/_checklist_text.py` 或 `references/checklist-playbook.md`，按三态 12 字段填模板。（已采纳前者；`references/checklist-playbook.md` 未创建——本条是可执行代码契约而非阅读参考，落到独立模块更便于测试锁字面量）
 
 ---
 
