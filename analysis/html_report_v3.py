@@ -40,6 +40,13 @@ except Exception:  # noqa: BLE001
         notes_summary,
     )
 
+# 操作检查清单买卖文案表 (P2-8): 硬编码中文文案抽到独立模块, 本文件只留结构与转义。
+# 双路径容错 import: 作为 analysis 子包导入 / analysis 目录直接在 sys.path 均可。
+try:
+    from analysis import _checklist_text as _ctxt
+except Exception:  # noqa: BLE001
+    import _checklist_text as _ctxt
+
 # Phase 1: Section Registry (irm §10.1) — 容错 import, 缺则降级
 # (Task 1.4 灰度: 5 新节走新注册表, 旧 6 块仍保留; spec §3.3)
 try:
@@ -1417,37 +1424,48 @@ def _render_checklist(result, state):
     if template_used:
         rows.append(('watch', '操作口诀（5 状态机）', _esc(template_used)))
 
-    if state in ("bullish", "mild_bull"):
-        rows.append(('buy', '买入触发', '回踩 %s 分批进场（每档最多 1/2 仓），不追高、不满仓一把梭'
-                     % money(sup_low if sup_low is not None else q.get("price"),
-                             "支撑区")))
+    # 旧 3 状态 buy/sell/stop/position 行 — 文案见 _checklist_text (P2-8);
+    # 此处仍负责状态选择、数据取值、数值格式化与 _esc。
+    legacy = _ctxt.legacy_branch(state)
+    pos_row = (_ctxt.KIND_WATCH, _ctxt.LABEL_POSITION,
+               _ctxt.legacy_position_text(_esc(pos) if pos else "数据源暂缺",
+                                          _esc(per) if per else "数据源暂缺"))
+    if legacy == "bull":
+        rows.append((_ctxt.KIND_BUY, _ctxt.LABEL_BUY_TRIGGER,
+                     _ctxt.legacy_buy_text(
+                         state, money(sup_low if sup_low is not None else q.get("price"),
+                                      "支撑区"))))
         if pres is not None:
-            rows.append(('sell', '卖出触发', '冲高至 %s 减 1/3~1/2 仓锁利，余仓分批看更高位'
-                         % money(pres, "第一压力")))
-        rows.append(('stop', '止损纪律', '收盘跌破 %s（约 -%s%%）无条件离场，不补仓、不摊薄'
-                     % (money(sl, "止损位"),
-                        _num(sl_pct, 1) if _num(sl_pct, 1) else "?  —数据源暂缺")))
-        rows.append(('watch', '仓位建议', '%s · 持仓周期 %s'
-                     % (_esc(pos) if pos else "数据源暂缺", _esc(per) if per else "数据源暂缺")))
-    elif state == "neutral":
-        rows.append(('watch', '买入触发', '观望为主：放量站稳 %s 上方再小仓试探，否则不动'
-                     % money(sup_high if sup_high is not None else q.get("price"), "支撑上沿")))
+            rows.append((_ctxt.KIND_SELL, _ctxt.LABEL_SELL_TRIGGER,
+                         _ctxt.legacy_sell_text(state, money(pres, "第一压力"))))
+        rows.append((_ctxt.KIND_STOP, _ctxt.LABEL_STOP_DISCIPLINE,
+                     _ctxt.legacy_stop_text(
+                         state, money(sl, "止损位"),
+                         _num(sl_pct, 1) if _num(sl_pct, 1) else "?  —数据源暂缺")))
+        rows.append(pos_row)
+    elif legacy == "neutral":
+        rows.append((_ctxt.KIND_WATCH, _ctxt.LABEL_BUY_TRIGGER,
+                     _ctxt.legacy_buy_text(
+                         state, money(sup_high if sup_high is not None else q.get("price"),
+                                      "支撑上沿"))))
         if pres is not None:
-            rows.append(('sell', '卖出触发', '已有持仓：反弹至 %s 附近先减仓，落袋为安'
-                         % money(pres, "压力位")))
-        rows.append(('stop', '止损纪律', '持股底线 %s（-约 %s%%），破位必走，不留恋'
-                     % (money(sl, "止损位"),
-                        (_num(sl_pct, 1) if _num(sl_pct, 1) else "—"))))
-        rows.append(('watch', '仓位建议', '%s · 持仓周期 %s'
-                     % (_esc(pos) if pos else "数据源暂缺", _esc(per) if per else "数据源暂缺")))
+            rows.append((_ctxt.KIND_SELL, _ctxt.LABEL_SELL_TRIGGER,
+                         _ctxt.legacy_sell_text(state, money(pres, "压力位"))))
+        rows.append((_ctxt.KIND_STOP, _ctxt.LABEL_STOP_DISCIPLINE,
+                     _ctxt.legacy_stop_text(
+                         state, money(sl, "止损位"),
+                         _num(sl_pct, 1) if _num(sl_pct, 1) else "—")))
+        rows.append(pos_row)
     else:
-        rows.append(('watch', '买入触发', '空头结构，不建议新开仓；等底部放量企稳再评估'))
-        rows.append(('sell', '卖出触发', '已有持仓：逢反弹至 %s 附近减仓/离场'
-                     % money(sup_low if sup_low is not None else q.get("price"), "前期支撑")))
-        rows.append(('stop', '止损纪律', '跌破 %s 清仓回避，不抄底、不接飞刀'
-                     % money(sl, "止损位")))
-        rows.append(('watch', '仓位建议', '%s · 持仓周期 %s'
-                     % (_esc(pos) if pos else "数据源暂缺", _esc(per) if per else "数据源暂缺")))
+        rows.append((_ctxt.KIND_WATCH, _ctxt.LABEL_BUY_TRIGGER,
+                     _ctxt.legacy_buy_text(state, "")))
+        rows.append((_ctxt.KIND_SELL, _ctxt.LABEL_SELL_TRIGGER,
+                     _ctxt.legacy_sell_text(
+                         state, money(sup_low if sup_low is not None else q.get("price"),
+                                      "前期支撑"))))
+        rows.append((_ctxt.KIND_STOP, _ctxt.LABEL_STOP_DISCIPLINE,
+                     _ctxt.legacy_stop_text(state, money(sl, "止损位"), "")))
+        rows.append(pos_row)
 
     # signals 附加条目
     signals = result.get("signals")
@@ -1488,47 +1506,9 @@ def _render_checklist(result, state):
     pos_s = (_esc(pos) if pos else "数据源暂缺")
     per_s = (_esc(per) if per else "数据源暂缺")
     sl_pct_s = (_num(sl_pct, 1) if _num(sl_pct, 1) else "—")
-    CHECKLIST_5T = {
-        "bullish": [
-            ("状态确认", "评分 ≥65 + 趋势确认 + 量能配合, 5 状态机判定为多头"),
-            ("买点触发", "回调至 %s 区间分批建仓 (各 1/2 仓); 放量突破 %s 可加仓" % (e_lo_s, tp1_s)),
-            ("卖点触发", "达 %s 卖 1/2 锁利 → 达更高位再减半 → 趋势走弱清剩余" % tp1_s),
-            ("止损纪律", "收盘跌破 %s (现价下 -%s%%) 即离场, 不补仓摊平" % (st_s, sl_pct_s)),
-            ("仓位管理", "%s · 周期 %s" % (pos_s, per_s)),
-        ],
-        "mild_bull": [
-            ("状态确认", "评分 55-64 + 趋势偏多, 5 状态机判定为轻多 (震荡偏多)"),
-            ("买点触发", "回调至 %s 附近小仓低吸 (1/3 仓); 突破 %s 站稳再加 1/3" % (e_lo_s, tp1_s)),
-            ("卖点触发", "达 %s 减 1/3 锁利; 达更高位再减 1/3; 余仓看第三压力" % tp1_s),
-            ("止损纪律", "收盘跌破 %s (现价下 -%s%%) 即减半; 破支撑下沿全走" % (st_s, sl_pct_s)),
-            ("仓位管理", "%s · 周期 %s (轻多, 严控仓位)" % (pos_s, per_s)),
-        ],
-        "neutral": [
-            ("状态确认", "评分 45-54 + 多空信号混杂, 5 状态机判定为中性 (区间震荡)"),
-            ("买点触发", "仅在 %s 支撑区低吸, 上轨 %s 附近不过量追高" % (e_lo_s, tp1_s)),
-            ("卖点触发", "反弹至 %s 一带减仓; 跌破 %s 转空离场; 放量站稳 %s 再看多" % (tp1_s, st_s, tp1_s)),
-            ("止损纪律", "%s 为区间底沿, 收盘破位即走, 不猜底" % st_s),
-            ("仓位管理", "%s · 以低吸高抛为主, 周期 %s" % (pos_s, per_s)),
-        ],
-        "mild_bear": [
-            ("状态确认", "评分 35-44 + 趋势偏空, 5 状态机判定为轻空 (震荡偏空)"),
-            ("买点触发", "严控 — 仅在 %s 附近且出现放量反转 K 线小仓 (1/4 仓) 抢短; 否则不动" % e_lo_s),
-            ("卖点触发", "已有持仓反弹至 %s 一带分批减仓; 跌破 %s 清仓; 不抢反弹" % (tp1_s, st_s)),
-            ("止损纪律", "%s 上方不留幻想仓, 反弹即减, 跌穿即走" % st_s),
-            ("仓位管理", "%s · 周期 %s (轻空, 逢反减)" % (pos_s, per_s)),
-        ],
-        "bearish": [
-            ("状态确认", "评分 <35 + 趋势空头, 5 状态机判定为空头 (下跌趋势)"),
-            ("买点触发", "❌ 不买入 / 不补仓 / 不抄底; 空仓者观望等底部放量企稳信号"),
-            ("卖点触发", "反弹至压力位 %s 一带分批减仓; 持仓者跌破 %s 清仓; 不抢反弹" % (tp1_s, st_s)),
-            ("止损纪律", "反弹减仓/清仓纪律优先, 止损 %s 上方不留幻想仓" % st_s),
-            ("仓位管理", "清仓回避 / 极轻仓短线者当日进出"),
-        ],
-    }
-    items5 = CHECKLIST_5T.get(state, CHECKLIST_5T["neutral"])
+    items5 = _ctxt.gfm_items(state, e_lo_s, tp1_s, st_s, pos_s, per_s, sl_pct_s)
     # 状态决定边框色: bullish=up, mild_bull=up, neutral=accent, mild_bear=risk, bearish=risk
-    state_cls = {"bullish": "task-bull", "mild_bull": "task-bull",
-                 "neutral": "", "mild_bear": "task-stop", "bearish": "task-stop"}.get(state, "")
+    state_cls = _ctxt.gfm_state_class(state)
     h.append('<ul class="task-list" style="margin-top:12px">')
     for label, txt in items5:
         h.append('<li class="task-list-item %s"><span class="cb">☐</span>'
