@@ -30,7 +30,7 @@ import os
 import re as _re
 import sys
 from datetime import date, datetime
-from typing import Optional
+from typing import Any, Optional
 
 # 兄弟目录加 sys.path (与 v3 line 69-71 同步, 让 quant_analyzer_v2 裸 import 可解析)
 _ANALYSIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -62,6 +62,52 @@ from analysis.utils import (  # noqa: E402  # sys.path 兄弟目录引导
     _num_or_none,
     _short_iso,
 )
+
+
+# ============================================================
+# PEG 可用性判定 (P2-7, 2026-10-02)
+# ============================================================
+# PEG = PE(TTM) ÷ 机构一致预期净利增速 (公式见 quant_analyzer_v2, 本文件不改公式)。
+# 缺一致预期 EPS/增速时上游给出 None; 增速为 0 会给出 inf/None。
+# 契约: 不可用时必须给出用户可读的 unavailable 说明, 禁止把 None/NaN/inf 当数值渲染。
+_PEG_FORMULA_HINT = "PEG = PE(TTM) ÷ 机构一致预期净利增速"
+
+
+def _peg_state(peg: Any) -> tuple:
+    """判定 PEG 是否可用。
+
+    返回 (ok, value, reason):
+    - ok=True  -> (True, float(peg), None), 调用方照常走 4 档措辞
+    - ok=False -> (False, None, 用户可读原因), 调用方渲染 unavailable 说明
+
+    不可用覆盖: 缺失/None、NaN、±inf、非数值、以及 <=0 (增速为 0 或负, 上游不会产出有效 PEG)。
+    """
+    if peg is None:
+        return False, None, f"缺少机构一致预期 EPS/增速数据, 无法计算 {_PEG_FORMULA_HINT}"
+    if isinstance(peg, bool) or not isinstance(peg, (int, float)):
+        return False, None, f"一致预期数据格式异常 (PEG={peg!r}), 已跳过 PEG 估值判断"
+    try:
+        value = float(peg)
+    except (TypeError, ValueError):
+        return False, None, f"一致预期数据格式异常 (PEG={peg!r}), 已跳过 PEG 估值判断"
+    if value != value:  # NaN
+        return False, None, f"一致预期增速数据异常 (NaN), 无法计算 {_PEG_FORMULA_HINT}"
+    if value in (float("inf"), float("-inf")):
+        return False, None, f"一致预期增速为 0 或缺失, {_PEG_FORMULA_HINT} 无界, PEG 不可用"
+    if value <= 0:
+        return False, None, f"一致预期增速非正 (PEG={value:g}), {_PEG_FORMULA_HINT} 不成立, PEG 不可用"
+    return True, value, None
+
+
+def _peg_tier_label(peg_val: float) -> str:
+    """PEG 4 档阈值 (Task 5.5): <1 便宜 / 1-1.5 合理 / 1.5-3 偏贵 / >=3 极贵。"""
+    if peg_val < 1:
+        return "便宜"
+    if peg_val < 1.5:
+        return "合理"
+    if peg_val < 3:
+        return "偏贵"
+    return "极贵"
 
 
 def _next_report_window(latest_date: Optional[str]) -> str:
@@ -418,21 +464,14 @@ def write_markdown_report_v3(r: dict) -> str:
     vh = r.get("valuation_hist") or {}
     pe_pct = vh.get("pe_percentile_3y")
     val = r.get("valuation") or {}
-    peg_val = val.get("peg")
+    peg_ok, peg_val, peg_reason = _peg_state(val.get("peg"))
     change_sign = "+" if change_pct >= 0 else ""
     # PEG 4 档阈值 (Task 5.5): <1 便宜 / 1-1.5 合理 / 1.5-3 偏贵 / >=3 极贵
-    if peg_val is not None and peg_val != float("inf"):
-        if peg_val < 1:
-            peg_label = "便宜"
-        elif peg_val < 1.5:
-            peg_label = "合理"
-        elif peg_val < 3:
-            peg_label = "偏贵"
-        else:
-            peg_label = "极贵"
-        peg_str = f"{peg_val:.2f} ({peg_label})"
+    if peg_ok:
+        peg_str = f"{peg_val:.2f} ({_peg_tier_label(peg_val)})"
     else:
-        peg_str = "—"
+        # P2-7: 不可用时不再静默留白, 单元格给显式标记 + 表后给完整说明
+        peg_str = "不可用"
     L += [
         "| 💰 现价 | 📊 涨跌 | 🏭 流通市值 | 📈 PE(TTM) | 📉 PB | 📊 PE 分位(3年) | 🎯 PEG |",
         "|----------|---------|-------------|-------------|------|------------------|------|",
@@ -441,6 +480,9 @@ def write_markdown_report_v3(r: dict) -> str:
         f"| {(pe_pct if pe_pct is not None else 0):.1f}% | {peg_str} |",
         "",
     ]
+    if not peg_ok:
+        L.append(f"> ℹ️ **PEG 不可用**: {peg_reason}。估值请改看 PE(TTM) 与 PE 分位(3年) 交叉验证。")
+        L.append("")
     # ================= 痛 7 (报告质量债 2.0 批次 C, 2026-09-14): 评分构成 简版 =================
     # 位置: 30 秒决策卡 7 列大表后, 三价位前 (简版唯一暴露位置, 一行汇总 + 占比)
     L += _scoring_breakdown_md_compact(r.get("scoring_breakdown"))
@@ -1010,10 +1052,13 @@ def write_markdown_report_v3(r: dict) -> str:
     if pb and pb > 0:
         pb_talk = "PB 极高" if pb > 10 else ("PB 偏高" if pb > 5 else ("PB 正常" if pb >= 2 else "PB 极低"))
         L.append(f"- **PB {pb:.2f}** — {pb_talk}")
-    if v.get("peg") and v["peg"] != float("inf"):
-        peg = v["peg"]
+    _peg_ok, _peg_v, _peg_reason = _peg_state(v.get("peg"))
+    if _peg_ok:
         # D-3 修法 (Task 5.5): 4 档阈值, 对齐 report-design-principles.md:73-77
-        L.append(f"- **PEG {peg}** — {_format_peg_talk(peg)}")
+        L.append(f"- **PEG {_peg_v:.2f}** — {_format_peg_talk(_peg_v)}")
+    else:
+        # P2-7: 不静默省略, 显式说明为何没有 PEG
+        L.append(f"- **PEG 不可用** — {_peg_reason}")
     if v.get("digest_years") and v["digest_years"] > 0:
         d = v["digest_years"]
         d_talk = "2 年内消化完 (便宜)" if d < 2 else ("2~4 年 (合理)" if d < 4 else "4 年以上 (太贵)")
@@ -1037,7 +1082,9 @@ def write_markdown_report_v3(r: dict) -> str:
             f"| 次年 EPS 预期 | {_fnum(v.get('eps_next'),3)} | 2027 年赚多少 |",
             f"| 预期增速 | {v.get('cagr_pct','—')}% | {'≥30% 是高增长' if (v.get('cagr_pct') or 0) >= 30 else '<30% 是普通增长'} |",
             f"| 前向 PE | {v.get('pe_fwd','—')} | 用明年预期利润算 |",
-            f"| PEG | {v.get('peg','—')} | 越低越便宜 |",
+            # 有效 PEG 保持原有渲染不变; 不可用时给出原因, 不打印裸 None/NaN/inf
+            f"| PEG | {v['peg']} | 越低越便宜 |" if _peg_ok
+            else f"| PEG | 不可用 | {_peg_reason} |",
             "",
         ]
         L.append(_src_foot("估值一致预期", metas.get("估值一致预期")))
