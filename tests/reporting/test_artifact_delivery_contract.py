@@ -183,11 +183,13 @@ def test_emit_docx_subprocess_fallback_is_still_counted_as_complete(
     docx_module.md_to_docx = fail_import_path
     monkeypatch.setitem(sys.modules, "md_to_docx", docx_module)
 
-    def fake_run(cmd, check, timeout):
+    def fake_run(cmd, check, timeout, capture_output, text):
         assert check is True
         assert timeout == 180
+        assert capture_output is True
+        assert text is True
         Path(cmd[-1]).write_bytes(b"docx subprocess")
-        return SimpleNamespace(returncode=0)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     result = _result()
@@ -202,6 +204,95 @@ def test_emit_docx_subprocess_fallback_is_still_counted_as_complete(
     run_log_disk = json.loads(Path(files["run_log"]).read_text(encoding="utf-8"))
     assert "docx" in run_log_disk["artifacts"]["optional_ok"]
     assert run_log_disk["artifacts"]["deliverable_status"] == "complete"
+    # P2-2: 成功路径不写无意义诊断
+    assert run_log_disk["artifacts"]["docx_subprocess_diag"] == ""
+
+
+def test_emit_docx_subprocess_failure_records_bounded_stderr_diagnostic(
+    writer,
+    monkeypatch,
+    tmp_path,
+):
+    """P2-2: 导入路径错误 + CalledProcessError stderr 同时进 status/run_log,
+    且输出被截断, 必需产物不受影响 (partial 而非 failed)。"""
+    _prepare_base(writer, monkeypatch, tmp_path)
+    _install_optional_success(monkeypatch)
+
+    docx_module = ModuleType("md_to_docx")
+
+    def fail_import_path(_md_path, _docx_path):
+        raise RuntimeError("docx primary boom")
+
+    docx_module.md_to_docx = fail_import_path
+    monkeypatch.setitem(sys.modules, "md_to_docx", docx_module)
+
+    noisy_stderr = "Traceback (most recent call last):\n" + ("docx stack line\n" * 400)
+
+    def failing_run(_cmd, **_kwargs):
+        raise subprocess.CalledProcessError(
+            returncode=1,
+            cmd=["python", "md_to_docx.py"],
+            output="converted partial",
+            stderr=noisy_stderr,
+        )
+
+    monkeypatch.setattr(subprocess, "run", failing_run)
+    result = _result()
+
+    files = writer._emit("600693", "东百集团", result)
+
+    status = files["status"]
+    # 主错误仍在, 诊断紧随其后
+    assert status["docx"].startswith("error:docx primary boom | subprocess: ")
+    assert "CalledProcessError" in status["docx"]
+    assert "stderr=" in status["docx"]
+    # 有界: 状态不超 120 字符, 噪声未被完整写入
+    assert len(status["docx"]) <= 120
+    assert "..." in status["docx"]
+    assert status["docx_err"].startswith("docx primary boom | subprocess: ")
+    assert len(status["docx_err"]) <= 600
+    assert "docx stack line" in status["docx_err"]
+    assert status["docx_err"].count("docx stack line") < 400
+
+    # 必需产物仍全活, DOCX 为允许降级 → partial
+    assert status["md"] == "ok"
+    assert status["json"] == "ok"
+    assert status["log"] == "ok"
+    assert status["deliverable"] == "partial"
+    assert status["required_failed"] == []
+    assert status["optional_failed"] == ["docx"]
+    assert result["deliverable_status"] == "partial"
+
+    run_log_disk = json.loads(Path(files["run_log"]).read_text(encoding="utf-8"))
+    artifacts = run_log_disk["artifacts"]
+    assert artifacts["docx_subprocess_diag"].startswith("CalledProcessError rc=1")
+    assert "stderr=" in artifacts["docx_subprocess_diag"]
+    assert len(artifacts["docx_subprocess_diag"]) <= 200
+    assert "..." in artifacts["docx_subprocess_diag"]
+    assert artifacts["docx_subprocess_diag"].count("docx stack line") < 400
+    assert artifacts["deliverable_status"] == "partial"
+    assert artifacts["optional_failed"] == ["docx"]
+
+
+def test_subprocess_diagnostic_helper_bounds_output_and_tolerates_missing_streams():
+    """P2-2 单元契约: 无 stdout/stderr 的普通异常仍返回有界诊断。"""
+    plain = RuntimeError("subprocess boom")
+    diag = artifact_writer._subprocess_diagnostic(plain)
+    assert diag == "RuntimeError: subprocess boom"
+
+    huge = "x" * 5000
+    err = subprocess.CalledProcessError(1, ["cmd"], output=huge, stderr=huge)
+    diag = artifact_writer._subprocess_diagnostic(err)
+    assert len(diag) <= 200
+    assert diag.endswith("...")
+    assert diag.count("stdout=") == 1
+    assert diag.count("stderr=") == 1
+
+    # 极长主错误 + 诊断时, 主错误仍保留最小可读长度
+    status = artifact_writer._docx_failure_status("E" * 400, "CalledProcessError: 1")
+    assert status.startswith("error:EEE")
+    assert "CalledProcessError: 1" in status
+    assert len(status) <= 120
 
 
 def test_emit_optional_failures_degrade_to_partial_without_failing_required_artifacts(
