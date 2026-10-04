@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import ast
 import json
 import os
 import sys
@@ -117,6 +118,20 @@ def pipeline_source(analysis_dir: Path) -> str:
     p = analysis_dir / "pipeline.py"
     if not p.exists():
         pytest.skip(f"pipeline.py 不存在: {p}")
+    return p.read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="session")
+def result_builder_source(analysis_dir: Path) -> str:
+    """orchestration/result_builder.py 全文 (Phase 1H: build/finalize 阶段宿主)
+
+    规范整改: analyze_single_v3 的 result 组装 / 北向口径 / 评分构成 / guard 收尾 /
+    控制台摘要 已从 pipeline.py 抽到 analysis/orchestration/result_builder.py。
+    测这些阶段的源码契约应读 result_builder_source, 测编排接线读 pipeline_source。
+    """
+    p = analysis_dir / "orchestration" / "result_builder.py"
+    if not p.exists():
+        pytest.skip(f"result_builder.py 不存在: {p}")
     return p.read_text(encoding="utf-8")
 
 
@@ -361,3 +376,116 @@ def _inject_analysis_path() -> None:
         sys.path.insert(0, str(ANALYSIS_DIR))
     if str(WORKDIR) not in sys.path:
         sys.path.insert(0, str(WORKDIR))
+
+
+# ============================================================
+# live gate 第一步 (选择层): live 用例只认"显式选择", 不认 -m 覆盖 addopts
+# ============================================================
+# 事故背景: pyproject addopts 里的 `-m "not live"` 只是**默认值**, 命令行任意 -m
+# 都会把它完全覆盖 (后写的 -m 生效)。于是
+#     DA_A_RUN_LIVE=1 pytest -m "not slow"
+# 会把 live 用例**重新选回来** (它没打 slow 标记, 匹配 "not slow"), 用例自己的
+# env 门禁又因 DA_A_RUN_LIVE=1 放行 → 真打 qt.gtimg.cn / 同花顺。
+# 也就是说"记得传 -m 'not live'"从来不是门禁, 只是一个可被覆盖的默认值。
+#
+# 这里把第一步下沉到 collection 层: 打了 live 标记的用例, 只有当**生效的 -m
+# 表达式正向点名** live / integration 时才留在 items 里, 其余一律 deselect。
+#   pytest                                  → 生效表达式 = addopts 的 "not live" → 排除
+#   pytest -m "not slow"                    → 没点名            → 排除 (上一个洞)
+#   pytest -m "not (live or integration)"   → 否定              → 排除 (不做子串误判)
+#   pytest -m "unit or slow"                → 点名别的标记      → 排除
+#   pytest -m "live or unit"                → or 的 unit 分支   → 排除 (这次修掉的洞)
+#   pytest -m "not live or integration"     → 否定 + or         → 排除 (这次修掉的洞)
+#   pytest -m integration / -m live / -m "live and integration" / -m "live or integration"
+#                                          → 整个表达式就是显式 opt-in → 放行到第二步
+# 生效表达式取 config.option.markexpr: pytest 已把 ini addopts 与命令行 -m 合并成
+# 同一个选项, 命令行后写者覆盖 ini 默认, 拿到的就是真正生效的那份。
+#
+# 判定口径是 fail-closed 的"整表达式 opt-in": 只有整个生效表达式由 live/integration
+# 这些 opt-in 名字合取或析取组成, 才算显式点名; 只要掺进别的标记或任何否定, 一律排除。
+# 理由: or 是"任一分支匹配即选中", 一个非 opt-in 分支就足以让 live 用例被选中而
+# 与显式 opt-in 无关; not 是排除信号, 复合否定必须一票否决。门禁宁可过严 ——
+# 合法出口 (-m live / -m integration) 始终可用, 误杀只是少跑一个显式集成验收,
+# 而误放是真实 DNS/行情请求。
+#
+# 只看 live 标记, 不改其它用例的选取语义 —— 例如不打网络的 LibreOffice
+# integration 用例 (tests/reporting/test_artifact_delivery_contract.py) 照常收集执行。
+# 第二步 (跑不跑, DA_A_RUN_LIVE 精确等于 "1") 仍归用例自己的 skipif 管, 口径见
+# tests/test_peg_formula.py。
+_LIVE_MARK = "live"
+_LIVE_ALLOW_MARKS = frozenset({"live", "integration"})
+
+# 子树判定三值。只有 _OPT_IN 才放行; 另两值都当"没点名" (fail closed)。
+_OPT_IN = "opt_in"      # 明确正向点名 live / integration
+_OPT_DENY = "deny"      # 出现否定 (not) —— 排除信号, 一票否决
+_OPT_BLOCK = "block"    # 点名的是别的标记 / 认不出的写法 —— 视为没点名
+
+
+def _classify_markexpr_node(node: ast.AST) -> str:
+    """把生效 -m 表达式的子树归到三值之一, 认不出来一律 _OPT_BLOCK。
+
+    and / or 一律取**严格交集**: 每个分支都必须是明确的 opt-in, 整棵子树才算 opt-in。
+    不能用 any() —— 那正是这两个逃逸的根因:
+
+      -m "live or unit"              any() 看到 live 就放行; 但 or 的 unit 分支同样
+                                     能独立选中打了 live 的用例, 选取与"显式点名 live"
+                                     无关。门禁无法证明这条 live 是被显式 opt-in 选中
+                                     的, 只能判 block (fail closed)。
+      -m "not live or integration"   any() 看到 integration 就放行; 可左边明确写着
+                                     "not live" 这个排除信号。否定必须一票否决,
+                                     不能被同一表达式里 live/integration 的字样洗白。
+
+    not 一律判 _OPT_DENY (不论被否的是 live 还是别的标记): 出现否定就说明调用方在做
+    排除式筛选, 把它当 opt-in 只会误放。复合否定 (not (live or integration) /
+    integration and not live) 因此统一被拒。
+    """
+    if isinstance(node, ast.Name):
+        return _OPT_IN if node.id in _LIVE_ALLOW_MARKS else _OPT_BLOCK
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return _OPT_DENY
+    if isinstance(node, ast.BoolOp):  # and / or
+        parts = [_classify_markexpr_node(value) for value in node.values]
+        if any(part == _OPT_DENY for part in parts):
+            return _OPT_DENY
+        return _OPT_IN if all(part == _OPT_IN for part in parts) else _OPT_BLOCK
+    return _OPT_BLOCK  # 常量/比较/属性等 pytest 标记表达式里不该出现的写法
+
+
+def _markexpr_allows_live(markexpr: str) -> bool:
+    """生效的 -m 表达式是否整体就是显式 opt-in; 其余 (缺省/空/无法解析/含非 opt-in
+    分支/含否定) 一律当"没点名"。
+
+    分类本身也包在 try 里: 门禁必须 fail closed, 不能因为解析/递归异常把 live 放出去。
+    """
+    if not markexpr or not markexpr.strip():
+        return False
+    try:
+        tree = ast.parse(markexpr, mode="eval")
+        return _classify_markexpr_node(tree.body) == _OPT_IN
+    except Exception:  # SyntaxError / RecursionError / 其它解析异常 —— 一律当没点名
+        return False
+
+
+def _is_live_item(item) -> bool:
+    """item 自己或所属 class/module 是否打了 live 标记。"""
+    return any(mark.name == _LIVE_MARK for mark in item.iter_markers())
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_modifyitems(items, config) -> None:
+    """live 用例的选择层门禁: 没被显式点名就 deselect, 零网络。
+
+    trylast: 排在 pytest 自己的 deselect_by_mark 之后, 只处理它漏下来的用例
+    (即 -m 覆盖掉 addopts 后仍被选中的 live 用例), 不与它抢同一批判断。
+    放行的用例不碰, 交给第二步 env 门禁决定跑不跑 (env 没开时是 SKIPPED, 不是
+    DESELECTED —— 显式集成验收需要看到这个 skip)。
+    """
+    if _markexpr_allows_live(getattr(config.option, "markexpr", "")):
+        return
+    keep: list = []
+    drop: list = []
+    for item in items:
+        (drop if _is_live_item(item) else keep).append(item)
+    if drop:
+        config.hook.pytest_deselected(items=drop)
+        items[:] = keep

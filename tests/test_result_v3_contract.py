@@ -6,6 +6,10 @@ fund_daily5/margin_hist）导致 7 字段全 None。本测试锁住 18 原有源
 section registry 字段（Phase 1: irm）的非空契约。
 
 灰度策略: spec §3.3 — "先保留 4 旧 fetcher 走老路径，5 新节走新注册表；下版本统一"
+
+基线来源: 优先读 tests/fixtures/golden/ 下的版本化 result_v3 fixture
+（出处与归一化口径见 tests/fixtures/golden/README.md），CI 矩阵里 reports/ 为空
+时也能真正跑到本契约；没有 golden 时才回落到"当日跑批产物"。
 """
 import json
 import os
@@ -17,10 +21,16 @@ from pathlib import Path
 import pytest
 
 WORKDIR = str(Path(os.environ.get("DA_A_DATA_DIR", str(Path(__file__).resolve().parents[1]))).resolve())
+sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures" / "golden"))
+
+from golden_fixtures import load_golden_result  # noqa: E402
 
 
 def _latest_result_v3(code: str = "600693", name: str = "东百集团") -> dict:
-    """返回今日最新的 result_v3-{HHMM}.json dict; 缺失则 pytest.skip"""
+    """返回 result_v3 dict: golden fixture 优先, 否则当日最新产物; 都无则 skip"""
+    golden = load_golden_result(code)
+    if golden is not None:
+        return golden
     today = datetime.now().strftime("%Y-%m-%d")
     day_dir = f"{WORKDIR}/reports/{code}_{name}/{today}"
     if not os.path.exists(day_dir):

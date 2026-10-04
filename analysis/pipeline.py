@@ -24,6 +24,9 @@ V3 编排层 (P2-A Phase 5 Task 5.2, 2026-09-13)
 - analysis.three_levels: compute_three_levels
 - analysis.data_fetcher: _fetch_fund_flow_daily / _fetch_margin_history / _fetch_concept_peers
 - analysis.fetcher_dispatcher: call_fetcher
+- analysis.orchestration.result_builder: build_trade_levels / build_signals /
+                                         assemble_result / enrich_result / finalize_run
+- analysis.orchestration.v2_stage: run_v2_stage (V2 全链路重试 + fatal 中止)
 - analysis.reporting.artifact_writer: _emit / _dump_run_log
 - quant_analyzer_v2 (根模块): analyze_single, _make_trading_plan, _make_signal_list, fetch_margin_trading
 
@@ -68,6 +71,7 @@ from analysis.orchestration.fetching import (  # noqa: E402  # sys.path 兄弟�
     _fetch_sections,
     _fetch_supplements,
     _retry_call,  # noqa: E402,F401  # v3 透传契约
+    fetch_v3_blocks,
 )
 from analysis.orchestration.helpers import (  # noqa: E402  # sys.path 兄弟目录引导
     _finalize_run_log_timing,
@@ -83,10 +87,20 @@ from analysis.orchestration.legacy_bridge import (  # noqa: E402  # sys.path 兄
     _patch_v2_timers,
     _restore_v2,
 )
+from analysis.orchestration.result_builder import (  # noqa: E402  # sys.path 兄弟目录引导
+    assemble_result,
+    build_signals,
+    build_trade_levels,
+    enrich_result,
+    finalize_run,
+)
 from analysis.orchestration.source_status import (  # noqa: E402  # sys.path 兄弟目录引导
     SourceStatusRecorder,
     _record_sw_tls_failure,
     _record_v2_source_statuses,
+)
+from analysis.orchestration.v2_stage import (  # noqa: E402  # sys.path 兄弟目录引导
+    run_v2_stage,
 )
 from analysis.reporting.artifact_writer import (  # noqa: E402  # sys.path 兄弟目录引导
     _dump_run_log,
@@ -149,26 +163,29 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     run_log = _initialize_run_log(started)
 
     # ---- 1. V2 全链路 (10 数据类, 计时包装) ----
-    saved = _patch_v2_timers(v2, _src_meta, _fmt_time)
-    base_result = {}
-    fatal = None
-    try:
-        for attempt in range(1, 4):                      # 网络重试时间盒 3 次
-            _src_meta.clear()
-            base_result = v2.analyze_single(code, name, output_md=False)
-            if "error" not in base_result:
-                break
-            fatal = base_result["error"]
-            print(f"[v3] 第 {attempt} 次尝试失败: {fatal}, 3 秒后重试…")
-            time.sleep(3)
-        if "error" in base_result:
-            run_log["fatal"] = f"V2 行情链路失败(腾讯为终点, 禁止陈旧价兜底): {fatal}"
-            _finalize_run_log_timing(run_log, started, datetime.now, time.time)
-            _dump_run_log(code, name, run_log)
-            print(f"\n[✗] 分析中止: {run_log['fatal']}")
-            return {"error": run_log["fatal"], "run_log": run_log}
-    finally:
-        _restore_v2(v2, saved)
+    # Phase 1J: 本段已抽到 analysis.orchestration.v2_stage.run_v2_stage
+    # 3 次重试时间盒 / fatal 中止收尾 / finally 恢复 V2 计时器的顺序与文案逐字不变;
+    # 所有注入口由本模块显式传入 (含 v2 模块对象本身, 以便测试在 pipeline.v2 上打桩)。
+    v2_stage = run_v2_stage(
+        code,
+        name,
+        run_log,
+        started,
+        _src_meta,
+        v2,
+        patch_timers=_patch_v2_timers,
+        restore_v2=_restore_v2,
+        finalize_timing=_finalize_run_log_timing,
+        dump_run_log=_dump_run_log,
+        sleep=time.sleep,
+        time_fn=time.time,
+        now_fn=datetime.now,
+        analyze_single=v2.analyze_single,
+        fmt_time=_fmt_time,
+    )
+    if v2_stage.abort is not None:
+        return v2_stage.abort
+    base_result = v2_stage.base_result
 
     # ---- 1.5 申万 SSL 失败处理 (P0-C 规范整改, 2026-09-11, §5 'TLS 证书校验') ----
     # 历史: 本机 CA 证书链过旧 → swsresearch.com HTTPS 握手失败 (SSL EOF);
@@ -193,24 +210,19 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     vh = base_result.get("valuation_hist") or {}
 
     # ---- 2. 三价位 (V2 同源模型: 腾讯实时价 + baostock 筹码K线, 债4) ----
-    plan = v2._make_trading_plan(q, v, chip_data, score_total)
-    # ---- 2.1 多空状态机注入 (债 1 修法, Task 5.1 + 批次 E 痛 3 PE 旁路) ----
-    # 在 trading_plan 上加 state + template_used + state_after_pe_bypass + bypass_applied 字段,
-    # 渲染层 (MD/HTML) 直接读 plan["template_used"] 即可, 不再各自写硬编码模板。
-    # 批次 E 痛 3: PE 分位 > 85% 时, 把 bullish/mild_bull 强切到 mild_bear/neutral
-    #            (防"PE 高估时给中性偏多"自相矛盾, 典型例子: 杰瑞 53 分 + PE 87.8%)
-    pe_pctile = vh.get("pe_percentile_3y")
-    inject_state_to_plan(plan, score_total, pe_pctile) if plan else None
-    good_signals, bad_signals = v2._make_signal_list(score, score["factors"])
-
-    # ---- 2.2 三价位表 (债 2 修法, Task 5.2 + P0-A 规范整改, 2026-09-11): 支撑下沿/压力上沿 ----
+    # 2.1 多空状态机注入 (债 1 修法, Task 5.1 + 批次 E 痛 3 PE 旁路)
+    # 2.2 三价位表 (债 2 修法, Task 5.2 + P0-A 规范整改): 支撑下沿/压力上沿
+    # Phase 1H: 本段已抽到 analysis.orchestration.result_builder.build_trade_levels
     # 候选价从 chip_data['kline'] (~250 日 baostock 前复权 K 线) 自算 MA/布林/前高/前低;
     # 筹码峰直接读 chip_data['peak_price'] (v2 chip_distribution 平铺, line 572)。
-    # stop_loss **复用** trading_plan.stop_loss（V2 同源，**不重算**），
-    # 严守 Task 5.1 锁定的 trading_plan 字段（entry_low/entry_high/tp1/tp2/tp3/stop_loss/stop_loss_pct）。
-    # 命名: 支撑 = "支撑下沿" (4 候选最小, 过滤>1.05×价), 压力 = "压力上沿" (3 候选最大, 过滤<0.95×价)。
-    # 规则文档: analysis/references/three-levels-rules.md (§6 规范"区间极值/跨价"另命名要求)
-    three_levels = compute_three_levels(q, chip_data, plan)
+    # stop_loss **复用** trading_plan.stop_loss（V2 同源，**不重算**）。
+    # 规则文档: analysis/references/three-levels-rules.md
+    plan, three_levels = build_trade_levels(
+        q, v, chip_data, score_total, vh, v2._make_trading_plan,
+        compute_levels=compute_three_levels,   # 契约测试在 pipeline 上打桩的注入口
+        inject_state=inject_state_to_plan,
+    )
+    good_signals, bad_signals = build_signals(score, v2._make_signal_list)
 
     # ---- 3. 逐类状态判定 (V2 的 10 类) ----
     _record_v2_source_statuses(
@@ -222,127 +234,72 @@ def analyze_single_v3(code: str, name: str = "") -> dict:
     )
 
     # ---- 4. V3 追加数据块: 4 新 fetcher + 两融 (逐个记录耗时/状态/实际源) ----
-    fetched = {"announcements": None, "finance": None, "news": None,
-               "research": None, "margin": None,
-               "fund_daily5": None, "margin_hist": None, "peers": None}
-
-    print("\n[V3+] 追加数据块: 公告 / 财务 / 研报 / 新闻 / Section Registry / 两融 / 5日资金 / 同业…")
-    fetched["announcements"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "公告", "公告", code6,
-    )
-    fetched["finance"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "财务摘要", "财务", code6,
-    )
-    fetched["research"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "研报观点", "研报", code6, 200,
-    )  # days=200: 小票近90日常无覆盖(真实)
-    fetched["news"] = _call_new(
-        _src_meta, run_log, _NEW_IMPORTS, _SRC_DESC, status_of,
-        "新闻舆情", "新闻", code6,
-    )
-    # Section Registry: 5 新节走新路径（灰度老路径仍保留 4 旧 fetcher；spec §3.3）
-    sections = enabled_sections()
-    sections_data = _fetch_sections(run_log, sections, code6, base_result)
-
-    margin = _fetch_margin(
-        run_log,
-        _SRC_DESC,
-        _fmt_time,
-        v2.fetch_margin_trading,
+    # Phase 1I: 本段已抽到 analysis.orchestration.fetching.fetch_v3_blocks
+    # 顺序/文案/8 键形状与原内联实现逐字一致; 所有注入口由本模块显式传入。
+    fetched_blocks = fetch_v3_blocks(
         code6,
-    )
-    fetched["margin"] = margin
-
-    # 附加: 近5日主力 + 两融方向历史 + 同业(概念口径) — 失败不致命, 记入 supplements
-    # 灰度保留：spec §3.3（"先保留 4 旧 fetcher 走老路径，5 新节走新注册表；下版本统一"）
-    _fetch_supplements(
+        base_result,
+        run_log,
         _src_meta,
-        run_log,
-        fetched,
+        _NEW_IMPORTS,
         _SRC_DESC,
+        status_of,
         _fmt_time,
-        code6,
-        base_result.get("blocks", []),
-        _fetch_fund_flow_daily,
-        _fetch_margin_history,
-        _fetch_concept_peers,
+        call_new=_call_new,
+        enabled_sections=enabled_sections,
+        fetch_sections=_fetch_sections,
+        fetch_margin=_fetch_margin,
+        fetch_supplements=_fetch_supplements,
+        fund_flow_fetcher=_fetch_fund_flow_daily,
+        margin_history_fetcher=_fetch_margin_history,
+        peers_fetcher=_fetch_concept_peers,
+        margin_fetcher=v2.fetch_margin_trading,
     )
+    fetched = fetched_blocks.fetched
+    margin = fetched_blocks.margin
+    sections_data = fetched_blocks.sections_data
 
     # ---- 5. 组装 result_v3 (契约) ----
-    result = {
-        "code": code6, "name": base_result.get("name") or name,
-        "quote": q, "valuation": v, "blocks": base_result.get("blocks", []),
-        "fund": base_result.get("fund", {}), "valuation_hist": base_result.get("valuation_hist", {}),
-        "lockup": base_result.get("lockup", {}), "dragon": base_result.get("dragon", {}),
-        "macro": base_result.get("macro", {}), "chip_data": chip_data,
-        "sw_data": base_result.get("sw_data", {}),
-        "announcements": fetched["announcements"], "finance": fetched["finance"],
-        "news": fetched["news"], "research": fetched["research"],
-        "margin": margin, "peers": fetched["peers"],
-        "fund_daily5": fetched["fund_daily5"], "margin_hist": fetched["margin_hist"],
-        "score": score, "advice": base_result["advice"], "emoji": base_result["emoji"],
-        "detail": base_result["detail"], "trading_plan": plan,
-        "three_levels": three_levels,  # 债 2 修法 (Task 5.2): 4 候选取最近者, 与 trading_plan 同源 K 线
-        "signals": {"good": good_signals, "bad": bad_signals},
-        "run_log": run_log,
-        "report_date": datetime.now().strftime("%Y-%m-%d"),
-        **sections_data,  # Phase 1: 注入 section.label (irm) 作为 result 顶层 key
-    }
+    # Phase 1H: 组装 + 北向口径 + 评分构成已抽到 analysis.orchestration.result_builder
+    result = assemble_result(
+        base_result,
+        plan,
+        three_levels,
+        good_signals,
+        bad_signals,
+        fetched,
+        margin,
+        run_log,
+        sections_data,
+        name,
+        datetime.now,
+    )
 
     # ---- 5.5 北向资金口径分类 (债 3 修法, Task 5.3) ----
-    # 在 result 顶层加 macro.north_scope + macro.north_label,
-    # 渲染层 (MD/HTML/DOCX) 直接读 north_label 替代 hardcode, 杜绝"全市场当个股"误读。
-    # 严守 Task 5.1/5.2 锁定: 不覆盖 trading_plan / three_levels。
-    _north_data = (result.get("macro") or {}).get("hsgt") or {}
-    _scope, _label = _classify_north_scope(_north_data)
-    result["macro"]["north_scope"] = _scope      # "market" / "stock" / "mixed" / "unknown"
-    result["macro"]["north_label"] = _label      # 模板直接用的字符串 (含 scope 关键词)
-    print(f"[v3] 北向资金 scope={_scope} label='{_label}'")
+    # ---- 5.6 痛 7 修法 (报告质量债 2.0 批次 C): 5 维评分构成 ----
+    enrich_result(
+        result,
+        score,
+        classify_north_scope=_classify_north_scope,
+        build_scoring_breakdown=_build_scoring_breakdown,
+    )
 
-    # ---- 5.6 痛 7 修法 (报告质量债 2.0 批次 C, 2026-09-14): 5 维评分构成 ----
-    # 把 V2 10 维评分聚合成 5 维 (技术/资金/估值/情绪/风险), 让综合评分不再是黑盒。
-    # 报告层 (MD/HTML) 直接读 result["scoring_breakdown"], 缺字段时按"评分构成数据缺失"降级占位。
-    result["scoring_breakdown"] = _build_scoring_breakdown(score)
-    _bd = result["scoring_breakdown"]
-    print(f"[v3] 评分构成: 总分 {_bd['total']['score']}/{_bd['total']['max']} | "
-          f"技术 {_bd['tech']['score']}/{_bd['tech']['max']} | "
-          f"资金 {_bd['capital']['score']}/{_bd['capital']['max']} | "
-          f"估值 {_bd['valuation']['score']}/{_bd['valuation']['max']} | "
-          f"情绪 {_bd['sentiment']['score']}/{_bd['sentiment']['max']} | "
-          f"风险 {_bd['risk']['score']}/{_bd['risk']['max']}")
-
-    # ---- 6. run_log 收尾: guard + 时点 ----
-    fresh = _kline_freshness(chip_data)
-    _record_kline_freshness_guard(run_log, fresh)
-    print(f"\n[guard] {run_log['guard']['kline_freshness']}")
-
-    _finalize_run_log_timing(run_log, started, datetime.now, time.time)
-
-    # ---- 7. 输出: 五件套 (MD + result_v3.json + HTML + DOCX + run_log.json) ----
-    files = _emit(code6, result["name"], result)
-
-    # 控制台摘要
-    print("\n" + "=" * 72)
-    print(f"【V3】{result['name']} ({code6}) 综合 {score_total}分 "
-          f"{result['emoji']}{result['advice']}  耗时 {run_log['total_sec']}s")
-    # 三价位(同源) — 债 2 修法 (Task 5.2): 优先读 result['three_levels'] 4 候选取最近者;
-    # 兜底用 plan['entry_low'/'tp1'/'stop_loss']（V2 同源），保证控制台/HTML/MD 输出口径一致
-    tl3 = result.get("three_levels") or {}
-    if plan and (tl3.get("support") or tl3.get("resistance") or tl3.get("stop_loss")):
-        print(f"  三价位(同源): 支撑={(tl3.get('support') or plan['entry_low']):.2f} "
-              f"压力={(tl3.get('resistance') or plan['tp1']):.2f} "
-              f"止损={(tl3.get('stop_loss') or plan['stop_loss']):.2f} "
-              f"(4 候选支撑={list((tl3.get('support_candidates') or {}).keys())}, "
-              f"3 候选压力={list((tl3.get('resistance_candidates') or {}).keys())})")
-    for key in ("md", "json", "html", "docx", "run_log"):
-        p = files.get(key)
-        if p:
-            print(f"  {key.upper()}: {p}")
-    st = files.get("status", {})
-    print(f"  状态: html={st.get('html')}  docx={st.get('docx')}")
+    # ---- 6/7. guard + 时点收尾 + 产物落盘 + 控制台摘要 ----
+    finalize_run(
+        code6,
+        result,
+        plan,
+        chip_data,
+        run_log,
+        started,
+        score_total,
+        _emit,
+        datetime.now,
+        time.time,
+        kline_freshness=_kline_freshness,
+        record_guard=_record_kline_freshness_guard,
+        finalize_timing=_finalize_run_log_timing,
+    )
     return result
 
 

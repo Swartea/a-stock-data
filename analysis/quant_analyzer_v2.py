@@ -198,6 +198,41 @@ def fetch_tencent_quote(codes) -> dict:
     return results
 
 
+def compute_peg_metrics(pe_ttm, eps_cur, eps_next) -> dict:
+    """PEG / 增速 / PE消化 的**纯计算** (无网络、无 I/O、无全局状态)。
+
+    口径 (spec §8.2 第 4 条), PEG 公式改用 pe_ttm (TTM PE) 而非 pe_fwd (前向 PE),
+    对齐 ifind PEG(LYR) 数量级 (仍有方法学差异: V2 用次年预期增速, ifind 用 LYR 同比):
+
+        cagr_pct     = (eps_next / eps_cur - 1) * 100        # 百分数 (21 = 21%), 不是小数
+        peg          = pe_ttm / cagr_pct                      # cagr_pct <= 0 时为 None
+        digest_years = log(pe_ttm / 30) / log(1 + cagr/100)   # 仅当 pe_ttm > 30
+
+    返回**未取整**原值。取整与 None 化留在调用方 (fetch_full_valuation) 组装产物时做,
+    这样落盘产物的历史口径 (peg=round(peg,2) / cagr_pct=round(cagr,0)) 逐字不变。
+
+    单独抽出来的理由: 离线回归 (tests/test_peg_formula.py) 必须走**生产**算式。
+    如果公式只存在于抓取函数里, 离线测试就只能把算式抄一遍 —— 抄写版对生产实现的
+    任何改动都免疫, 生产公式改错了 fixture 用例照样全绿。
+    """
+    cagr_pct = ((eps_next / eps_cur - 1) * 100) if (eps_cur and eps_next and eps_cur > 0) else 0
+    peg = (pe_ttm / cagr_pct) if (pe_ttm and cagr_pct > 0) else None
+    # 注意：cagr_pct 是百分数（如 21 = 21%），不是小数 0.21
+    cagr_decimal = cagr_pct / 100  # digest_years 等公式用小数
+    digest_years = 0.0
+    if pe_ttm and cagr_pct > 0 and pe_ttm > 30:
+        try:
+            digest_years = math.log(pe_ttm / 30) / math.log(1 + cagr_decimal)
+        except (ValueError, ZeroDivisionError):
+            digest_years = float("inf")
+    return {
+        "cagr_pct": cagr_pct,
+        "peg": peg,
+        "cagr_decimal": cagr_decimal,
+        "digest_years": digest_years,
+    }
+
+
 def fetch_full_valuation(code: str) -> dict:
     """一站式估值：腾讯实时 + 同花顺一致预期 + PE消化 + PEG。"""
     code = normalize_code(code)
@@ -254,20 +289,12 @@ def fetch_full_valuation(code: str) -> dict:
         # 一致预期失败不算致命错误
         pass
 
-    # 估值计算
-    # PEG 公式改用 pe_ttm（TTM PE）而非 pe_fwd（前向 PE），对齐 ifind PEG(LYR) 口径
-    # PEG = pe_ttm / 增速% = 205 / 21 = 9.57（spec §8.2 第 4 条"8-12 区间"）
-    # 与 ifind 数量级一致（10x vs 10x），但仍有方法学差异（V2 用次年预期增速，ifind 用 LYR 同比增速）
-    cagr_pct = ((eps_next / eps_cur - 1) * 100) if (eps_cur and eps_next and eps_cur > 0) else 0
-    peg = (pe_ttm / cagr_pct) if (pe_ttm and cagr_pct > 0) else None
-    # 注意：cagr_pct 是百分数（如 21 = 21%），不是小数 0.21
-    cagr_decimal = cagr_pct / 100  # digest_years 等公式用小数
-    digest_years = 0.0
-    if pe_ttm and cagr_pct > 0 and pe_ttm > 30:
-        try:
-            digest_years = math.log(pe_ttm / 30) / math.log(1 + cagr_decimal)
-        except (ValueError, ZeroDivisionError):
-            digest_years = float("inf")
+    # 估值计算: 算式全部委托给纯函数 compute_peg_metrics (PEG 公式改用 pe_ttm / TTM PE)。
+    # 唯一实现在那里, 本函数只负责取数与组装 —— 见 compute_peg_metrics 的口径注释。
+    metrics = compute_peg_metrics(pe_ttm, eps_cur, eps_next)
+    cagr_pct = metrics["cagr_pct"]
+    peg = metrics["peg"]
+    digest_years = metrics["digest_years"]
 
     return {
         "name": name,

@@ -3,11 +3,16 @@
 Phase 1G keeps the existing retry and new-fetcher status semantics intact while
 making runtime state explicit.  The helpers here do not import ``pipeline`` or
 own a second source-status recorder.
+
+Phase 1I adds :func:`fetch_v3_blocks`, the *stage* that sequences those
+primitives.  The stage owns no callables of its own: every seam is passed in by
+``pipeline.analyze_single_v3`` so the end-to-end contract tests keep patching
+them on ``pipeline`` (same rule Phase 1H applied to ``result_builder``).
 """
 
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 _NEW_FETCH_TIMEOUT_SEC = 20.0
 _MARGIN_TIMEOUT_SEC = 20.0
@@ -358,3 +363,142 @@ def _fetch_sections(
             )
 
     return sections_data
+
+
+# ============================================================
+# Stage: fetch (Phase 1I)
+# ============================================================
+
+
+class V3FetchedBlocks(NamedTuple):
+    """Return shape of :func:`fetch_v3_blocks`.
+
+    ``fetched`` keeps the exact 8-key initialization the pipeline used inline
+    (``margin`` is filled in by this stage, the 4 ``_call_new`` slots and the 3
+    supplement slots are filled by their own primitives), ``margin`` is the
+    separate two-financing value the result contract references, and
+    ``sections_data`` is the Section Registry payload.
+    """
+
+    fetched: dict[str, Any]
+    margin: Any
+    sections_data: dict[str, Any]
+
+
+def fetch_v3_blocks(
+    code: str,
+    base_result: dict[str, Any],
+    run_log: dict[str, Any],
+    recorder: SourceStatusRecorder,
+    new_imports: dict[str, dict[str, Any]],
+    src_desc: dict[str, str],
+    status_of: Callable[[Any], str | None],
+    fmt_time: Callable[[float], str],
+    call_new: Callable[..., Any],
+    enabled_sections: Callable[[], Any],
+    fetch_sections: Callable[..., dict[str, Any]],
+    fetch_margin: Callable[..., Any],
+    fetch_supplements: Callable[..., None],
+    fund_flow_fetcher: Callable[..., Any],
+    margin_history_fetcher: Callable[..., Any],
+    peers_fetcher: Callable[..., Any],
+    margin_fetcher: Callable[[str], Any],
+) -> V3FetchedBlocks:
+    """Run the V3 supplementary data block in its historical order.
+
+    Order is load-bearing and unchanged from the previous inline implementation:
+    announcements, finance, research, news, Section Registry, two-financing,
+    then the three legacy supplements.  ``research`` keeps ``days=200`` because
+    small caps rarely carry 90 days of coverage.
+
+    Every seam is an explicit parameter — nothing is resolved from this module's
+    own globals — so ``pipeline.analyze_single_v3`` stays the single owner of
+    the injection points the end-to-end contract tests patch.
+
+    Returns ``(fetched, margin, sections_data)``.
+    """
+    fetched: dict[str, Any] = {
+        "announcements": None,
+        "finance": None,
+        "news": None,
+        "research": None,
+        "margin": None,
+        "fund_daily5": None,
+        "margin_hist": None,
+        "peers": None,
+    }
+
+    print(
+        "\n[V3+] 追加数据块: 公告 / 财务 / 研报 / 新闻 / "
+        "Section Registry / 两融 / 5日资金 / 同业…"
+    )
+    fetched["announcements"] = call_new(
+        recorder,
+        run_log,
+        new_imports,
+        src_desc,
+        status_of,
+        "公告",
+        "公告",
+        code,
+    )
+    fetched["finance"] = call_new(
+        recorder,
+        run_log,
+        new_imports,
+        src_desc,
+        status_of,
+        "财务摘要",
+        "财务",
+        code,
+    )
+    fetched["research"] = call_new(
+        recorder,
+        run_log,
+        new_imports,
+        src_desc,
+        status_of,
+        "研报观点",
+        "研报",
+        code,
+        200,
+    )  # days=200: 小票近90日常无覆盖(真实)
+    fetched["news"] = call_new(
+        recorder,
+        run_log,
+        new_imports,
+        src_desc,
+        status_of,
+        "新闻舆情",
+        "新闻",
+        code,
+    )
+    # Section Registry: 5 新节走新路径（灰度老路径仍保留 4 旧 fetcher；spec §3.3）
+    sections = enabled_sections()
+    sections_data = fetch_sections(run_log, sections, code, base_result)
+
+    margin = fetch_margin(
+        run_log,
+        src_desc,
+        fmt_time,
+        margin_fetcher,
+        code,
+    )
+    fetched["margin"] = margin
+
+    # 附加: 近5日主力 + 两融方向历史 + 同业(概念口径) — 失败不致命, 记入 supplements
+    # 灰度保留：spec §3.3（"先保留 4 旧 fetcher 走老路径，5 新节走新注册表；下版本统一"）
+    fetch_supplements(
+        recorder,
+        run_log,
+        fetched,
+        src_desc,
+        fmt_time,
+        code,
+        base_result.get("blocks", []),
+        fund_flow_fetcher,
+        margin_history_fetcher,
+        peers_fetcher,
+    )
+
+    return V3FetchedBlocks(fetched, margin, sections_data)

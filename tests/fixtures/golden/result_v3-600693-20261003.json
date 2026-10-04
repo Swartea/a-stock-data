@@ -1,0 +1,1281 @@
+{
+  "advice": "中性偏空",
+  "announcements": {
+    "announcements": [
+      {
+        "category": "股份质押、冻结",
+        "date": "2026-10-01",
+        "sentiment": "利空",
+        "title": "东百集团:东百集团关于控股股东部分股份质押公告",
+        "url": "https://data.eastmoney.com/notices/detail/600693/AN202609301830039964.html"
+      },
+      {
+        "category": "分配方案实施",
+        "date": "2026-09-19",
+        "sentiment": "中性",
+        "title": "东百集团:东百集团2026年半年度权益分派实施公告",
+        "url": "https://data.eastmoney.com/notices/detail/600693/AN202609181829616489.html"
+      },
+      {
+        "category": "调研活动",
+        "date": "2026-09-18",
+        "sentiment": "中性",
+        "title": "东百集团:投资者关系活动记录表(2026年半年度业绩说明会)",
+        "url": "https://data.eastmoney.com/notices/detail/600693/AN202609181829619676.html"
+      },
+      {
+        "category": "其他",
+        "date": "2026-09-10",
+        "sentiment": "中性",
+        "title": "东百集团:东百集团关于召开2026年半年度业绩说明会的公告",
+        "url": "https://data.eastmoney.com/notices/detail/600693/AN202609091829174331.html"
+      }
+    ],
+    "count": 4,
+    "fetched_at": "2026-10-03T16:17:46.793873+08:00",
+    "source": "eastmoney"
+  },
+  "blocks": [],
+  "board": {
+    "dt": [],
+    "limit_up_reasons": [],
+    "sentiment": {},
+    "yzt": [],
+    "zt": []
+  },
+  "chip_data": {
+    "avg_cost": 9.918377587567832,
+    "concentration_70": 0.09201490112252322,
+    "concentration_90": 0.12294811947708019,
+    "cost_70": [
+      9.161427213689269,
+      11.018259049918695
+    ],
+    "cost_90": [
+      8.95047295467804,
+      11.459888515253587
+    ],
+    "n_days": 180,
+    "peak_price": 9.317442543652174,
+    "price": 9.32,
+    "profit_ratio": 0.2800477991847786,
+    "total_turnover_pct": 1350.7,
+    "window_end": "2026-09-30",
+    "window_start": "2026-01-06"
+  },
+  "code": "600693",
+  "deliverable_status": "partial",
+  "detail": "减仓观望，已有持仓设紧止损",
+  "dividend": {
+    "rows": []
+  },
+  "dragon": {
+    "n_records": 1,
+    "records": [
+      {
+        "date": "2026-09-04",
+        "net_buy_wan": -9538.2,
+        "reason": "有价格涨跌幅限制的日价格振幅达到15%的前五只证券",
+        "turnover_pct": 21.66
+      }
+    ]
+  },
+  "dragon_market": {
+    "stocks": [],
+    "total_records": 0
+  },
+  "emoji": "🟡",
+  "finance": {
+    "fetched_at": "2026-10-03T16:17:49+08:00",
+    "latest": {
+      "debt_ratio": 68.64,
+      "eps": 0.0859,
+      "gross_margin": 57.13,
+      "profit_yi": 0.75,
+      "qoq_profit": -33.99,
+      "qoq_revenue": -13.12,
+      "report_date": "2026-06-30",
+      "revenue_yi": 9.44,
+      "roe": 2.08,
+      "yoy_profit": 4.44,
+      "yoy_revenue": 1.68
+    },
+    "reports": [
+      {
+        "debt_ratio": 68.64,
+        "eps": 0.0859,
+        "gross_margin": 57.13,
+        "profit_yi": 0.75,
+        "qoq_profit": -33.99,
+        "qoq_revenue": -13.12,
+        "report_date": "2026-06-30",
+        "revenue_yi": 9.44,
+        "roe": 2.08,
+        "yoy_profit": 4.44,
+        "yoy_revenue": 1.68
+      },
+      {
+        "debt_ratio": 68.85,
+        "eps": 0.0518,
+        "gross_margin": 57.16,
+        "profit_yi": 0.45,
+        "qoq_profit": null,
+        "qoq_revenue": 3.56,
+        "report_date": "2026-03-31",
+        "revenue_yi": 5.05,
+        "roe": 1.26,
+        "yoy_profit": 13.71,
+        "yoy_revenue": 2.79
+      },
+      {
+        "debt_ratio": 69.77,
+        "eps": 0.0526,
+        "gross_margin": 58.65,
+        "profit_yi": 0.46,
+        "qoq_profit": -356.41,
+        "qoq_revenue": 13.33,
+        "report_date": "2025-12-31",
+        "revenue_yi": 18.47,
+        "roe": 1.3,
+        "yoy_profit": 5.23,
+        "yoy_revenue": 1.71
+      },
+      {
+        "debt_ratio": 69.72,
+        "eps": 0.1012,
+        "gross_margin": 57.81,
+        "profit_yi": 0.88,
+        "qoq_profit": -48.41,
+        "qoq_revenue": -1.52,
+        "report_date": "2025-09-30",
+        "revenue_yi": 13.59,
+        "roe": 2.49,
+        "yoy_profit": 3.04,
+        "yoy_revenue": 2.34
+      },
+      {
+        "debt_ratio": 69.75,
+        "eps": 0.0823,
+        "gross_margin": 57.49,
+        "profit_yi": 0.72,
+        "qoq_profit": -19.26,
+        "qoq_revenue": -11.07,
+        "report_date": "2025-06-30",
+        "revenue_yi": 9.29,
+        "roe": 2.02,
+        "yoy_profit": null,
+        "yoy_revenue": null
+      },
+      {
+        "debt_ratio": 69.69,
+        "eps": 0.0455,
+        "gross_margin": 58.01,
+        "profit_yi": 0.4,
+        "qoq_profit": null,
+        "qoq_revenue": 0.75,
+        "report_date": "2025-03-31",
+        "revenue_yi": 4.91,
+        "roe": 1.12,
+        "yoy_profit": null,
+        "yoy_revenue": null
+      },
+      {
+        "debt_ratio": 70.48,
+        "eps": 0.05,
+        "gross_margin": 58.0,
+        "profit_yi": 0.43,
+        "qoq_profit": null,
+        "qoq_revenue": null,
+        "report_date": "2024-12-31",
+        "revenue_yi": 18.16,
+        "roe": 1.24,
+        "yoy_profit": null,
+        "yoy_revenue": null
+      },
+      {
+        "debt_ratio": 70.08,
+        "eps": 0.0982,
+        "gross_margin": 57.78,
+        "profit_yi": 0.85,
+        "qoq_profit": null,
+        "qoq_revenue": null,
+        "report_date": "2024-09-30",
+        "revenue_yi": 13.28,
+        "roe": 2.42,
+        "yoy_profit": null,
+        "yoy_revenue": null
+      }
+    ],
+    "source": "datacenter RPT_F10_FINANCE_MAINFINADATA"
+  },
+  "fund": {
+    "error": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/fflow/kline/get?secid=1.600693&klt=1&fields1=f1%2Cf2%2Cf3%2Cf7&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57 (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:2648)')))",
+    "klines": []
+  },
+  "fund_daily5": {
+    "error": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/fflow/daykline/get?secid=1.600693&klt=101&lmt=5&fields1=f1%2Cf2%2Cf3%2Cf7&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf12 (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:2648)')))",
+    "rows": []
+  },
+  "holders": {
+    "rows": []
+  },
+  "irm": {
+    "rows": []
+  },
+  "lockup": {
+    "as_of": "2026-10-03",
+    "max_ratio_pct": 0,
+    "n_upcoming": 0,
+    "upcoming": []
+  },
+  "macro": {
+    "hot_stocks": [
+      {
+        "change": 0,
+        "code": "002694",
+        "name": "*ST顾地",
+        "reason": "塑料管道+智慧管网+营收增长"
+      },
+      {
+        "change": 0,
+        "code": "000838",
+        "name": "*ST发展",
+        "reason": "重整保壳+履约保证金+危废处理+房地产"
+      },
+      {
+        "change": 0,
+        "code": "600131",
+        "name": "国网信通",
+        "reason": "电力人工智能+能源数字化+股份划转完成"
+      },
+      {
+        "change": 0,
+        "code": "001266",
+        "name": "宏英智能",
+        "reason": "液冷储能+智能电控+业绩增长"
+      },
+      {
+        "change": 0,
+        "code": "000911",
+        "name": "*ST广糖",
+        "reason": "重大资产重组+机制糖+国企背景"
+      },
+      {
+        "change": 0,
+        "code": "603919",
+        "name": "金徽酒",
+        "reason": "白酒+全国化扩张+产品升级"
+      },
+      {
+        "change": 0,
+        "code": "603185",
+        "name": "弘元绿能",
+        "reason": "硅料硅片+光伏一体化+TOPCon组件+高端装备"
+      },
+      {
+        "change": 0,
+        "code": "002041",
+        "name": "登海种业",
+        "reason": "玉米种业+转基因玉米+业绩增长"
+      },
+      {
+        "change": 0,
+        "code": "001318",
+        "name": "阳光乳业",
+        "reason": "乳业+低温乳品+冷链物流"
+      },
+      {
+        "change": 0,
+        "code": "002419",
+        "name": "天虹股份",
+        "reason": "资产出售+AI应用+零售调改"
+      },
+      {
+        "change": 0,
+        "code": "002856",
+        "name": "*ST美芝",
+        "reason": "庭外重组+建筑装饰"
+      },
+      {
+        "change": 0,
+        "code": "000011",
+        "name": "深物业A",
+        "reason": "房地产开发+物业管理+深圳国资"
+      },
+      {
+        "change": 0,
+        "code": "600663",
+        "name": "陆家嘴",
+        "reason": "房地产开发+商办物业+浦东国资"
+      },
+      {
+        "change": 0,
+        "code": "002188",
+        "name": "中天服务",
+        "reason": "物业管理+社区养老+股份回购"
+      },
+      {
+        "change": 0,
+        "code": "605287",
+        "name": "德才股份",
+        "reason": "AI漫剧+火山引擎合作+建筑装饰"
+      },
+      {
+        "change": 0,
+        "code": "603127",
+        "name": "昭衍新药",
+        "reason": "创新药CRO+实验猴+订单回暖"
+      },
+      {
+        "change": 0,
+        "code": "002755",
+        "name": "奥赛康",
+        "reason": "创新药+抗感染药+肿瘤管线"
+      },
+      {
+        "change": 0,
+        "code": "000504",
+        "name": "南华生物",
+        "reason": "细胞存储+生物医药+中报扭亏"
+      },
+      {
+        "change": 0,
+        "code": "300893",
+        "name": "松原安全",
+        "reason": "回购提议+汽车安全+汽车网络安全+项目量产"
+      },
+      {
+        "change": 0,
+        "code": "603906",
+        "name": "龙蟠科技",
+        "reason": "磷酸铁锂+固态电池材料+液冷+半年报扭亏"
+      },
+      {
+        "change": 0,
+        "code": "603200",
+        "name": "上海洗霸",
+        "reason": "固态电池+液冷服务器+水处理"
+      },
+      {
+        "change": 0,
+        "code": "002454",
+        "name": "松芝股份",
+        "reason": "储能热管理+汽车热管理+海外拓展"
+      },
+      {
+        "change": 0,
+        "code": "002226",
+        "name": "江南化工",
+        "reason": "风电+民爆重组+西藏民爆"
+      },
+      {
+        "change": 0,
+        "code": "000678",
+        "name": "襄阳轴承",
+        "reason": "机器人轴承+汽车轴承+湖北国资"
+      },
+      {
+        "change": 0,
+        "code": "002164",
+        "name": "宁波东力",
+        "reason": "具身智能+精密减速器+股东增持"
+      },
+      {
+        "change": 0,
+        "code": "605288",
+        "name": "凯迪股份",
+        "reason": "具身机器人送样+智能线性驱动+汽车零部件"
+      },
+      {
+        "change": 0,
+        "code": "600592",
+        "name": "龙溪股份",
+        "reason": "人形机器人+关节轴承+国企背景"
+      },
+      {
+        "change": 0,
+        "code": "688806",
+        "name": "泰诺麦博",
+        "reason": "合胞病毒预防+医保放量+全人源单抗"
+      },
+      {
+        "change": 0,
+        "code": "603590",
+        "name": "康辰药业",
+        "reason": "创新药+血凝酶+肿瘤管线+业绩增长"
+      },
+      {
+        "change": 0,
+        "code": "002962",
+        "name": "五方光电",
+        "reason": "TGV光学+微棱镜+AR/VR"
+      },
+      {
+        "change": 0,
+        "code": "603739",
+        "name": "蔚蓝生物",
+        "reason": "新兽药注册+动物保健+酶制剂"
+      },
+      {
+        "change": 0,
+        "code": "603538",
+        "name": "美诺华",
+        "reason": "JH389+医药CDMO+制剂一体化"
+      },
+      {
+        "change": 0,
+        "code": "605011",
+        "name": "杭州热电",
+        "reason": "热电联产+集中供热+综合能源"
+      },
+      {
+        "change": 0,
+        "code": "603928",
+        "name": "兴业股份",
+        "reason": "光刻胶树脂+合成树脂+业绩增长"
+      },
+      {
+        "change": 0,
+        "code": "000692",
+        "name": "惠天热电",
+        "reason": "供热+风电+供热工程"
+      },
+      {
+        "change": 0,
+        "code": "600081",
+        "name": "东风科技",
+        "reason": "汽车电子+一体化压铸+业绩预增"
+      },
+      {
+        "change": 0,
+        "code": "688185",
+        "name": "康希诺",
+        "reason": "mRNA肿瘤疫苗+病毒载体服务+成人疫苗"
+      },
+      {
+        "change": 0,
+        "code": "600072",
+        "name": "中船科技",
+        "reason": "风电主机+绿色燃料+中船系"
+      },
+      {
+        "change": 0,
+        "code": "002316",
+        "name": "亚联发展",
+        "reason": "诉讼进展+智慧电网+生物纤维素"
+      },
+      {
+        "change": 0,
+        "code": "000710",
+        "name": "贝瑞基因",
+        "reason": "AI医疗+基因检测+三代测序"
+      },
+      {
+        "change": 0,
+        "code": "603188",
+        "name": "亚邦股份",
+        "reason": "染料产业链+中间体涨价+业绩增长"
+      },
+      {
+        "change": 0,
+        "code": "603948",
+        "name": "建业股份",
+        "reason": "电子化学品+超纯氨+环保增塑剂"
+      },
+      {
+        "change": 0,
+        "code": "600059",
+        "name": "古越龙山",
+        "reason": "高端黄酒+全国化+年轻化"
+      },
+      {
+        "change": 0,
+        "code": "301190",
+        "name": "善水科技",
+        "reason": "染料中间体+氯代吡啶+业绩增长"
+      },
+      {
+        "change": 0,
+        "code": "002388",
+        "name": "新亚制程",
+        "reason": "固态电池+AI服务器电源+锂电材料"
+      },
+      {
+        "change": 0,
+        "code": "605577",
+        "name": "龙版传媒",
+        "reason": "AI漫剧+出版发行+黑龙江国资"
+      },
+      {
+        "change": 0,
+        "code": "601118",
+        "name": "海南橡胶",
+        "reason": "天然橡胶+全球龙头+全产业链"
+      },
+      {
+        "change": 0,
+        "code": "600356",
+        "name": "恒丰纸业",
+        "reason": "新型烟草+卷烟纸+业绩增长"
+      },
+      {
+        "change": 0,
+        "code": "002866",
+        "name": "传艺科技",
+        "reason": "固态电池+钠离子电池+AI PC键盘"
+      },
+      {
+        "change": 0,
+        "code": "001206",
+        "name": "依依股份",
+        "reason": "协议转让+宠物护理+海外产能"
+      },
+      {
+        "change": 0,
+        "code": "605388",
+        "name": "均瑶健康",
+        "reason": "益生菌+乳酸菌饮料+电商增长"
+      },
+      {
+        "change": 0,
+        "code": "605303",
+        "name": "园林股份",
+        "reason": "复牌+重大资产重组+存储芯片+园林工程"
+      },
+      {
+        "change": 0,
+        "code": "600825",
+        "name": "新华传媒",
+        "reason": "拟收购界面财联社+财经新媒体+上海国资"
+      },
+      {
+        "change": 0,
+        "code": "600241",
+        "name": "时代万恒",
+        "reason": "锂电池+镍氢电池+辽宁国资"
+      },
+      {
+        "change": 0,
+        "code": "002242",
+        "name": "九阳股份",
+        "reason": "厨房小家电+机器人投资+太空科技"
+      },
+      {
+        "change": 0,
+        "code": "002058",
+        "name": "紫竹高科",
+        "reason": "固态电池+铝塑膜+龙头客户"
+      }
+    ],
+    "hot_tags": [
+      [
+        "业绩增长",
+        7
+      ],
+      [
+        "固态电池",
+        4
+      ],
+      [
+        "重大资产重组",
+        2
+      ],
+      [
+        "国企背景",
+        2
+      ],
+      [
+        "建筑装饰",
+        2
+      ],
+      [
+        "房地产开发",
+        2
+      ],
+      [
+        "物业管理",
+        2
+      ],
+      [
+        "AI漫剧",
+        2
+      ]
+    ],
+    "hsgt": {
+      "data_points": 262,
+      "latest_hgt_yi": -9.28,
+      "latest_sgt_yi": 379.75,
+      "total_yi": 370.47
+    },
+    "industries": [
+      {
+        "change_pct": 6.06,
+        "down_count": 0,
+        "lead_stock": "芒果超媒",
+        "name": "视频媒体",
+        "up_count": 1
+      },
+      {
+        "change_pct": 5.23,
+        "down_count": 0,
+        "lead_stock": "锦波生物",
+        "name": "医美耗材",
+        "up_count": 3
+      },
+      {
+        "change_pct": 4.72,
+        "down_count": 2,
+        "lead_stock": "康辰药业",
+        "name": "其他生物制品",
+        "up_count": 36
+      },
+      {
+        "change_pct": 4.64,
+        "down_count": 0,
+        "lead_stock": "康希诺",
+        "name": "疫苗",
+        "up_count": 13
+      },
+      {
+        "change_pct": 4.53,
+        "down_count": 2,
+        "lead_stock": "康希诺",
+        "name": "生物制品",
+        "up_count": 55
+      },
+      {
+        "change_pct": 4.43,
+        "down_count": 0,
+        "lead_stock": "登海种业",
+        "name": "种子",
+        "up_count": 10
+      },
+      {
+        "change_pct": 4.25,
+        "down_count": 0,
+        "lead_stock": "*ST亚士",
+        "name": "涂料",
+        "up_count": 2
+      },
+      {
+        "change_pct": 4.22,
+        "down_count": 1,
+        "lead_stock": "昭衍新药",
+        "name": "医疗研发外包",
+        "up_count": 28
+      },
+      {
+        "change_pct": 4.08,
+        "down_count": 0,
+        "lead_stock": "贝瑞基因",
+        "name": "诊断服务",
+        "up_count": 5
+      },
+      {
+        "change_pct": 3.5,
+        "down_count": 0,
+        "lead_stock": "通威股份",
+        "name": "光伏主材",
+        "up_count": 2
+      }
+    ],
+    "north_label": "北向资金(全市场口径): 沪股通 -9.3 亿 / 深股通 +379.8 亿 ｜ 合计 +370.5 亿（⚠数据可疑：超单日合理区间，可能为累计或陈旧值）",
+    "north_scope": "market"
+  },
+  "margin": {
+    "date": "2026-09-30",
+    "rqye_yi": 0.0,
+    "rzche_yi": 0.16961089,
+    "rzmre_yi": 0.22164054,
+    "rzye_yi": 1.01091371
+  },
+  "margin_hist": {
+    "as_of": "2026-10-03",
+    "rows": [
+      {
+        "date": "2026-09-30",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.17,
+        "rzmr_yi": 0.222,
+        "rzye_chg_yi": 0.052,
+        "rzye_yi": 1.011
+      },
+      {
+        "date": "2026-09-29",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.185,
+        "rzmr_yi": 0.161,
+        "rzye_chg_yi": -0.025,
+        "rzye_yi": 0.959
+      },
+      {
+        "date": "2026-09-28",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.269,
+        "rzmr_yi": 0.201,
+        "rzye_chg_yi": -0.067,
+        "rzye_yi": 0.984
+      },
+      {
+        "date": "2026-09-24",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.397,
+        "rzmr_yi": 0.372,
+        "rzye_chg_yi": -0.024,
+        "rzye_yi": 1.051
+      },
+      {
+        "date": "2026-09-23",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.439,
+        "rzmr_yi": 0.237,
+        "rzye_chg_yi": -0.203,
+        "rzye_yi": 1.075
+      },
+      {
+        "date": "2026-09-22",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.465,
+        "rzmr_yi": 0.391,
+        "rzye_chg_yi": -0.07,
+        "rzye_yi": 1.278
+      },
+      {
+        "date": "2026-09-21",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.467,
+        "rzmr_yi": 0.382,
+        "rzye_chg_yi": -0.084,
+        "rzye_yi": 1.348
+      },
+      {
+        "date": "2026-09-18",
+        "rqye_yi": 0.0,
+        "rzch_yi": 0.459,
+        "rzmr_yi": 0.461,
+        "rzye_chg_yi": null,
+        "rzye_yi": 1.432
+      }
+    ]
+  },
+  "name": "东百集团",
+  "news": {
+    "_degraded": false,
+    "count": 20,
+    "fetched_at": "2026-10-03T08:17:59+00:00",
+    "negative": [],
+    "news": [
+      {
+        "date": "2026-09-30 09:19:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "688701 卓锦股份 0.16 -26.07 603163 圣晖集成 0.92 34.59 920427 华维设计 0.02 -26.05 688137 近岸蛋白 1.73 34.22 688072 拓荆科技 15.56 -25.36 688337 普源精电 3.27 34.20 600693",
+        "title": "两融余额四连降 杠杆资金大幅减仓47股",
+        "url": "http://stock.eastmoney.com/a/202609303887458866.html"
+      },
+      {
+        "date": "2026-09-29 17:01:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "福龙马 -2.09 5.67 -1512.97 -4.55 600895 张江高科 1.57 0.76 -1820.50 -5.59 600790 轻纺城 -1.35 3.78 -1843.76 -9.03 600094 大名城 4.03 1.61 -1870.99 -13.43 600693",
+        "title": "20.78亿主力资金净流入，物业管理概念涨2.34%",
+        "url": "http://stock.eastmoney.com/a/202609293886520247.html"
+      },
+      {
+        "date": "2026-09-24 09:07:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "楚天龙 22213.57 -17.17 -10.01 通信 002541 鸿路钢构 5848.12 -16.98 10.00 建筑装饰 920075 柏星龙 875.83 -16.76 -2.72 轻工制造 920193 吉和昌 1651.02 -16.01 2.58 基础化工 600693",
+        "title": "杠杆资金逆市增仓185股",
+        "url": "http://finance.eastmoney.com/a/202609243883221883.html"
+      },
+      {
+        "date": "2026-09-23 17:42:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "2.87 2.48 -1023.78 002127 南极电商 -4.26 2.80 -928.30 600828 茂业商业 -4.76 2.00 -893.89 600712 南宁百货 -2.44 5.41 -850.66 000058 深赛格 -2.72 1.01 -842.10 600693",
+        "title": "商贸零售行业资金流出榜：小商品城等7股净流出资金超3000万元",
+        "url": "http://finance.eastmoney.com/a/202609233882531478.html"
+      },
+      {
+        "date": "2026-09-24 17:05:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "昆船智能 20.03 14.10 11838.45 20.78 000905 厦门港务 9.98 5.63 7910.57 20.28 001317 三羊马 10.01 14.87 6234.01 7.86 600755 厦门国贸 3.79 2.53 4423.84 13.84 600693",
+        "title": "统一大市场概念涨0.27%，主力资金净流入65股",
+        "url": "http://stock.eastmoney.com/a/202609243883778798.html"
+      },
+      {
+        "date": "2026-09-24 17:05:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "002639 雪人集团 3.85 12.78 6157.85 5.19 600755 厦门国贸 3.79 2.53 4423.84 13.84 600660 福耀玻璃 -0.63 0.41 3576.34 8.19 300427 红相股份 2.38 12.08 3367.59 8.79 600693",
+        "title": "福建自贸区概念上涨0.53%，8股主力资金净流入超5000万元",
+        "url": "http://stock.eastmoney.com/a/202609243883775449.html"
+      },
+      {
+        "date": "2026-08-12 08:49:11",
+        "sentiment": "neutral",
+        "source": "界面新闻",
+        "summary": "2026年8月12日，东百集团(600693.SH)发布2026年中报。 公司营业总收入为9.44亿元。归母净利润为7473.37万元。经营活动现金净流入为3.14亿元。 公司最新资产负债率为68.64%。",
+        "title": "东百集团(600693.SH)：2026年中报净利润为7473.37万元",
+        "url": "http://finance.eastmoney.com/a/202608123838598096.html"
+      },
+      {
+        "date": "2026-08-12 09:50:10",
+        "sentiment": "neutral",
+        "source": "界面新闻",
+        "summary": "2026年8月12日，东百集团(600693.SH)发布2026年中报。 公司营业总收入为9.44亿元，较去年同报告期营业总收入增加1558.59万元，实现2年连续上涨，同比较去年同期上涨1.68%。",
+        "title": "东百集团(600693.SH)2026年中报净利润为7473.37万元、较去年同期上涨4.44%",
+        "url": "http://finance.eastmoney.com/a/202608123838885741.html"
+      },
+      {
+        "date": "2026-08-12 08:32:11",
+        "sentiment": "neutral",
+        "source": "界面新闻",
+        "summary": "2026年8月12日，东百集团(600693.SH)发布2026年半年度报告。截至2026年8月11日，共有5个机构投资者披露持有东百集团A股股份，合计持股量达4.32亿股，占东百集团总股本的49.69%。",
+        "title": "机构风向标 | 东百集团(600693)2026年二季度已披露前十大机构持股比例合计下跌1.65个百分点",
+        "url": "http://finance.eastmoney.com/a/202608123838539111.html"
+      },
+      {
+        "date": "2026-09-16 16:39:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "岭南控股 0.46 0.97 124.07 600185 珠免集团 1.07 1.53 210.90 000501 武商集团 0.00 0.83 225.63 600694 大商股份 -0.14 0.93 335.15 600017 日照港 -0.35 1.13 720.45 600693",
+        "title": "免税店概念下跌0.27%，6股主力资金净流出超千万元",
+        "url": "http://finance.eastmoney.com/a/202609163876084726.html"
+      },
+      {
+        "date": "2026-09-14 10:34:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "1252.85 -14.19 0.79 -1.56 603938 三孚股份 36445.74 -14.11 1.92 10.01 688581 安杰思 11368.12 -13.77 4.98 9.79 002946 新乳业 3540.38 -13.64 0.29 -1.50 600693",
+        "title": "【数据揭秘】融资客看好个股一览",
+        "url": "http://finance.eastmoney.com/a/202609143873227659.html"
+      },
+      {
+        "date": "2026-09-15 16:54:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "1.10 -14601.87 601888 中国中免 -1.28 0.65 -7992.60 000759 中百集团 -10.00 13.17 -6221.19 002251 步步高 -5.75 6.36 -4586.42 002640 跨境通 -4.71 5.83 -4150.03 600693",
+        "title": "商贸零售行业今日跌2.97%，主力资金净流出10.69亿元",
+        "url": "http://finance.eastmoney.com/a/202609153874891481.html"
+      },
+      {
+        "date": "2026-09-10 09:16:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "欧福蛋业 1243.52 22.87 -7.32 农林牧渔 301008 宏昌科技 25418.30 21.68 3.09 家用电器 600012 皖通高速 3240.57 20.31 -1.12 交通运输 603330 天洋新材 26209.47 19.65 1.08 基础化工 600693",
+        "title": "两融余额缩水29.00亿元 杠杆资金大幅加仓167股",
+        "url": "http://finance.eastmoney.com/a/202609103870153216.html"
+      },
+      {
+        "date": "2026-09-04 22:00:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "515.43 -4.52 48.41 603123 翠微股份 -332.27 10.04 4.87 600828 茂业商业 -606.86 -2.55 7.86 603286 日盈电子 -1813.51 -6.09 5.23 603353 和顺石油 -1916.37 -9.95 7.46 600693",
+        "title": "沪股通现身13只个股龙虎榜",
+        "url": "http://finance.eastmoney.com/a/202609043865708269.html"
+      },
+      {
+        "date": "2026-09-07 10:31:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "中毅达 14735.97 -29.71 2.43 -9.91 920748 路桥信息 526.81 -28.50 0.24 14.41 600657 信达地产 15672.26 -28.19 1.57 4.17 920370 新安洁 192.80 -28.16 0.24 1.00 600693",
+        "title": "【数据揭秘】融资客看好个股一览",
+        "url": "http://finance.eastmoney.com/a/202609073866450257.html"
+      },
+      {
+        "date": "2026-09-04 19:04:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "东百集团(600693)今日下跌1.00%，全天换手率21.66%，成交额20.60亿元，振幅19.72%。龙虎榜数据显示，沪股通净卖出2473.34万元，营业部席位合计净卖出7064.86万元。",
+        "title": "东百集团振幅19.72%，沪股通龙虎榜上净卖出2473.34万元",
+        "url": "http://finance.eastmoney.com/a/202609043865551064.html"
+      },
+      {
+        "date": "2026-09-07 09:40:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "600610 中毅达 14735.97 -29.71 -9.91 基础化工 920748 路桥信息 526.81 -28.50 14.41 计算机 600657 信达地产 15672.26 -28.19 4.17 房地产 920370 新安洁 192.80 -28.16 1.00 环保 600693",
+        "title": "两融余额缩水188.62亿元 杠杆资金大幅加仓193股",
+        "url": "http://finance.eastmoney.com/a/202609073866351310.html"
+      },
+      {
+        "date": "2026-09-03 16:03:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "10.02 44.50 49.40 11.02 300044 *ST赛为 10.29 6.26 5.53 6.00 8.46 688181 八亿时空 8.91 6.70 37.45 39.98 6.76 300870 欧陆通 9.49 6.75 201.50 213.01 5.71 600693",
+        "title": "今日53只股长线走稳 站上年线",
+        "url": "http://finance.eastmoney.com/a/202609033864046845.html"
+      },
+      {
+        "date": "2026-09-03 13:02:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "10.16 4.40 3.26 3.36 3.04 002300 太阳电缆 9.96 7.67 8.16 8.39 2.83 002969 嘉美包装 10.01 3.47 13.05 13.41 2.76 601318 中国平安 2.95 0.73 56.91 58.30 2.45 600693",
+        "title": "今日盘中突破年线个股",
+        "url": "http://finance.eastmoney.com/a/202609033863907861.html"
+      },
+      {
+        "date": "2026-09-04 17:04:00",
+        "sentiment": "neutral",
+        "source": "证券时报网",
+        "summary": "中国瑞林 71.66 23.47 9.32 300300 海峡创新 9.13 23.44 16.01 600722 金牛化工 17.20 22.26 -0.75 603395 红四方 27.06 22.16 -4.52 300642 透景生命 17.32 21.72 -5.51 600693",
+        "title": "64只A股筹码大换手（9月4日）",
+        "url": "http://finance.eastmoney.com/a/202609043865482014.html"
+      }
+    ],
+    "positive": [],
+    "source": "eastmoney_search_jsonp"
+  },
+  "peers": {
+    "error": "概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比"
+  },
+  "quote": {
+    "amplitude": 3.84,
+    "float_mcap": 81.07,
+    "high": 9.4,
+    "limit_down": 8.21,
+    "limit_up": 10.03,
+    "low": 9.05,
+    "name": "东百集团",
+    "open": 9.3,
+    "pb": 2.27,
+    "pe_ttm": 165.65,
+    "prev_close": 9.12,
+    "price": 9.32,
+    "turnover_rate": 3.96,
+    "turnover_wan": 31809.0,
+    "vol_ratio": 0.64,
+    "volume_shou": 344160.0
+  },
+  "report_date": "2026-10-03",
+  "research": {
+    "count": 1,
+    "fetched_at": "2026-10-03T16:17:49+08:00",
+    "rating_dist": {
+      "增持": 1
+    },
+    "reports": [
+      {
+        "date": "2026-05-27",
+        "org": "兴业证券",
+        "rating": "增持",
+        "target_price": null,
+        "title": "兴业证券：仓储物流放量支撑业绩稳增，轻资产拓展打开成长空间"
+      }
+    ],
+    "source": "ths"
+  },
+  "run_log": {
+    "fallback_chain": [
+      "申万分类: SSL 直连失败 (申万表加载失败) — 不再 verify=False 兜底 (§5); 修复: pip install -U certifi  (申万行业因子按 v2 默认中性计)",
+      "概念板块: fallback:接口返回0条(可能风控), 8904ms",
+      "当日资金流: error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 3432ms",
+      "申万分类: error:申万表加载失败, 0ms",
+      "K线时点: K线停在 2026-09-30, 最新交易日 2026-10-02 — 若为法定节假日/周末属正常, 否则需关注数据延迟 [WARN]"
+    ],
+    "fatal": null,
+    "finished_at": "2026-10-03T16:18:29+08:00",
+    "guard": {
+      "kline_freshness": "last_bar=2026-09-30 vs 最新交易日=2026-10-02 -> warn (K线停在 2026-09-30, 最新交易日 2026-10-02 — 若为法定节假日/周末属正常, 否则需关注数据延迟)",
+      "status": "N/A 单票流程不用池CSV"
+    },
+    "sections_count": 5,
+    "source_meta": {
+      "board": {
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "dividend": {
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "dragon_market": {
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "holders": {
+        "timed_out": false,
+        "timeout_sec": 35.0
+      },
+      "irm": {
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "两融历史": {
+        "at": "16:18:28",
+        "detail": "东财数据中心 RPTA_WEB_RZRQ_GGMX 历史",
+        "status": "ok",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "估值一致预期": {
+        "at": "16:17:04",
+        "detail": "同花顺一致预期 basic.10jqka.com.cn",
+        "status": "ok"
+      },
+      "估值历史分位": {
+        "at": "16:17:17",
+        "detail": "baostock 估值历史(近3年)",
+        "status": "ok"
+      },
+      "公告": {
+        "detail": "东财公告 / 巨潮 cninfo",
+        "status": "ok:eastmoney",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "同业对比": {
+        "at": "16:18:29",
+        "detail": "东财概念板块 clist f37(ROE)+f105(5日涨跌)",
+        "status": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "宏观底色": {
+        "at": "16:17:30",
+        "detail": "同花顺北向 + 东财行业 + 同花顺强势股",
+        "status": "ok"
+      },
+      "当日资金流": {
+        "at": "16:17:16",
+        "detail": "东财当日分钟资金流 fflow",
+        "status": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443)"
+      },
+      "新闻舆情": {
+        "detail": "新浪 sina_stock_news (退避 0.8+1.2×attempt)",
+        "status": "ok:eastmoney_search_jsonp",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "概念板块": {
+        "at": "16:17:13",
+        "detail": "东财概念板块 slist",
+        "status": "fallback:接口返回0条(可能风控)"
+      },
+      "申万分类": {
+        "at": "16:17:44",
+        "detail": "申万行业分类表 swsresearch",
+        "status": "error:申万表加载失败",
+        "tls_recommendation": "pip install -U certifi"
+      },
+      "研报观点": {
+        "detail": "东财研报 reportapi / 同花顺降级",
+        "status": "ok:ths",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "筹码K线": {
+        "at": "16:17:30",
+        "detail": "baostock 前复权日K(筹码计算用)",
+        "status": "ok"
+      },
+      "融资融券": {
+        "at": "16:18:06",
+        "detail": "东财数据中心 RPTA_WEB_RZRQ_GGMX",
+        "status": "ok:eastmoney-datacenter",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "行情": {
+        "at": "16:16:56",
+        "detail": "腾讯实时行情 qt.gtimg.cn",
+        "status": "ok"
+      },
+      "解禁日历": {
+        "at": "16:17:21",
+        "detail": "东财数据中心 RPT_LIFT_STAGE",
+        "status": "ok"
+      },
+      "财务摘要": {
+        "detail": "东财数据中心 RPT_F10_FINANCE_MAINFINADATA",
+        "status": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "资金面-5日主力": {
+        "at": "16:18:24",
+        "detail": "东财 push2his fflow daykline (5日主力 + 收盘价)",
+        "status": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceed",
+        "timed_out": false,
+        "timeout_sec": 20.0
+      },
+      "龙虎榜": {
+        "at": "16:17:24",
+        "detail": "东财数据中心 RPT_DAILYBILLBOARD_DETAILSNEW",
+        "status": "ok"
+      }
+    },
+    "sources": {
+      "board": "ok",
+      "dividend": "ok",
+      "dragon_market": "ok",
+      "holders": "ok",
+      "irm": "ok",
+      "估值一致预期": "ok",
+      "估值历史分位": "ok",
+      "公告": "ok:eastmoney",
+      "宏观底色": "ok",
+      "当日资金流": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443)",
+      "新闻舆情": "ok:eastmoney_search_jsonp",
+      "概念板块": "fallback:接口返回0条(可能风控)",
+      "申万分类": "error:申万表加载失败",
+      "研报观点": "ok:ths",
+      "筹码K线": "ok",
+      "融资融券": "ok:eastmoney-datacenter",
+      "行情": "ok",
+      "解禁日历": "ok",
+      "财务摘要": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA",
+      "龙虎榜": "ok"
+    },
+    "started_at": "2026-10-03T16:16:55+08:00",
+    "supplements": {
+      "两融历史": "ok",
+      "同业对比": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比",
+      "资金面-5日主力": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceed"
+    },
+    "tls_recommendations": [
+      {
+        "applies_to": [
+          "申万分类"
+        ],
+        "fix": "pip install -U certifi",
+        "host": "swsresearch.com"
+      }
+    ],
+    "total_sec": 94.7
+  },
+  "score": {
+    "capital": 7,
+    "change_pct": 2.19,
+    "chip": 6,
+    "dragon": 3,
+    "factors": [
+      "涨+2.2% +3",
+      "PE=165.7极高 -3",
+      "PB=2.27正常 +2",
+      "PE消化8.8年(慢) -2",
+      "PEG=7.73贵 -2",
+      "PE历史分位55.6%(中位) ±0",
+      "资金流数据不可用 0",
+      "换手4.0%活跃 +2",
+      "无热门概念 -1",
+      "北向资金(全市场)净流入370.5亿 +1",
+      "中盘股(81亿) -1",
+      "PE>166极高估 -3",
+      "获利盘28.0% ±0",
+      "90%集中度12.3%(极集中) +2",
+      "申万: 申万表加载失败 0",
+      "近30日上榜1次 +1",
+      "龙虎榜均净卖9538万 -3"
+    ],
+    "momentum": 6,
+    "risk": 4,
+    "sentiment": 4,
+    "sw_stability": 5,
+    "total": 50,
+    "trend": 9,
+    "valuation": 2,
+    "valuation_pctile": 4
+  },
+  "signals": {
+    "bad": [
+      "⚠️ PE=165.7极高",
+      "⚠️ PE消化8.8年(慢)",
+      "⚠️ PEG=7.73贵",
+      "⚠️ 无热门概念",
+      "⚠️ 中盘股(81亿)",
+      "⚠️ PE>166极高估",
+      "⚠️ 龙虎榜均净卖9538万"
+    ],
+    "good": [
+      "✅ 涨+2.2%",
+      "✅ PB=2.27正常",
+      "✅ 换手4.0%活跃",
+      "✅ 北向资金(全市场)净流入370.5亿",
+      "✅ 90%集中度12.3%(极集中)",
+      "✅ 近30日上榜1次"
+    ]
+  },
+  "sw_data": {
+    "error": "申万表加载失败"
+  },
+  "three_levels": {
+    "boll_lower": 8.31,
+    "boll_upper": 11.63,
+    "method": "支撑下沿(操作位, ma60/chip_peak/boll 三候选距现价 5-25% 范围最近者, 批次 E 痛 1 修法, 2026-09-14); 压力上沿(操作位, ma250_or_ma120/boll_upper 二候选距现价 5-25% 范围最近者); 参考位 = 60 日最低/最高 + 布林, 远端不筛选; 止损 = max(支撑×0.97, V2 计划止损) [批次 D 债 2 修法, 2026-09-14]; N=180 根K线",
+    "operational_band_pct": [
+      5.0,
+      25.0
+    ],
+    "resistance": 11.63,
+    "resistance_candidates": {
+      "boll_upper": 11.63,
+      "ma250_or_ma120": 9.56,
+      "recent_high": 12.15
+    },
+    "resistance_extreme": 12.15,
+    "resistance_extreme_label": "60日最高",
+    "resistance_op_key": "boll_upper",
+    "resistance_recent_pct": 24.79,
+    "stop_loss": 8.67,
+    "stop_loss_method": "trading_plan",
+    "support": 8.31,
+    "support_candidates": {
+      "boll_lower": 8.31,
+      "chip_peak": 9.32,
+      "ma60": 9.23,
+      "recent_low": 7.13
+    },
+    "support_extreme": 7.13,
+    "support_extreme_label": "60日最低",
+    "support_op_key": "boll_lower",
+    "support_recent_pct": -10.84
+  },
+  "trading_plan": {
+    "bypass_applied": false,
+    "entry_high": 9.32,
+    "entry_low": 9.04,
+    "period": "中线 3-6 个月",
+    "position": "不进场 / 已有持仓减仓",
+    "state": "neutral",
+    "state_after_pe_bypass": "neutral",
+    "stop_loss": 8.67,
+    "stop_loss_pct": 7.0,
+    "template_used": "【结论】综合评分 50 处于 45-55 区间，多空平衡、震荡格局 ｜ 【操作】区间操作 — 上沿 10.25 减仓、下沿 9.04 低吸、严格止损 8.67 ｜ 【风险】单边突破区间则按突破方向顺势操作，不预判方向",
+    "tp1": 10.25,
+    "tp2": 11.65,
+    "tp3": 13.98,
+    "valuation_pctile": 55.6
+  },
+  "valuation": {
+    "analyst_count": 1,
+    "cagr_pct": 21.0,
+    "code": "600693",
+    "digest_years": 8.8,
+    "eps_cur": 0.14,
+    "eps_next": 0.17,
+    "mcap_yi": 81.07,
+    "name": "东百集团",
+    "pb": 2.27,
+    "pe_fwd": 66.6,
+    "pe_ttm": 165.65,
+    "peg": 7.73,
+    "price": 9.32
+  },
+  "valuation_hist": {
+    "current_pb": 2.25,
+    "current_pe": 165.65,
+    "data_end": "2026-09-30",
+    "data_start": "2023-08-28",
+    "is_st_ratio": 0.0,
+    "n_days": 750,
+    "pb_percentile_3y": 78.0,
+    "pe_max": 696.45,
+    "pe_median": 158.31,
+    "pe_min": 58.39,
+    "pe_percentile_3y": 55.6
+  }
+}

@@ -57,6 +57,18 @@ addopts = [
     "-v",
     "--tb=short",
     "-ra",
+    # 默认不选 `live` 用例 (实时行情/网络)。这是 live gate 的第一步 (默认值):
+    #   普通 `pytest` → live 用例 deselected, 即使 DA_A_RUN_LIVE=1 也不碰网络
+    # 关键: 命令行任意 `-m` 会**完全覆盖**这里的 `-m "not live"` (后写的 -m 生效),
+    # 所以这行本身不是门禁, 只是可被覆盖的默认值。真正的第一步门禁在
+    # tests/conftest.py 的 `pytest_collection_modifyitems` —— live 用例只有被生效的
+    # -m 表达式**正向点名** (live / integration) 才留在 items 里, 其余一律 deselect。
+    # 因此 `DA_A_RUN_LIVE=1 pytest -m "not slow"` 不会把 live 用例选回来。
+    # 第二步 (跑不跑) 仍是用例自己的 skipif: DA_A_RUN_LIVE 精确等于 "1" 才放行。
+    # 只排除 `live` 而不是排除整个 `integration`: 仓库里另有一个 integration 用例
+    # (tests/reporting/test_artifact_delivery_contract.py 的 LibreOffice 转换) 不打网络,
+    # 它的选取/执行语义保持原样, 不被这道门禁误伤。
+    "-m", "not live",
 ]
 # 收集时忽略的目录
 norecursedirs = [
@@ -67,6 +79,7 @@ norecursedirs = [
 markers = [
     "slow: 慢测试 (端到端 + 网络)",
     "integration: 集成测试 (需真实数据源)",
+    "live: 实时行情/网络用例 (默认不选; 需 -m 显式点名 live/integration 且 DA_A_RUN_LIVE=1)",
     "unit: 单元测试 (mock + fixture)",
 ]
 filterwarnings = [
