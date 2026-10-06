@@ -1,0 +1,754 @@
+{
+  "projection": {
+    "blocks": [
+      {
+        "align": "CENTER",
+        "borders": [
+          [
+            "bottom",
+            "single",
+            "8",
+            "4",
+            "E7E5E4"
+          ]
+        ],
+        "kind": "p",
+        "runs": [
+          [
+            "000001 合成样本 · S0 语义基线",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            20.0,
+            "1C1917"
+          ]
+        ],
+        "style": "Heading 1",
+        "text": "000001 合成样本 · S0 语义基线"
+      },
+      {
+        "align": null,
+        "borders": [
+          [
+            "left",
+            "single",
+            "6",
+            "3",
+            "E7E5E4"
+          ]
+        ],
+        "kind": "p",
+        "runs": [
+          [
+            "合成数据, 仅用于 DOCX 渲染回归, 不代表任何真实标的。",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            9.5,
+            "57534E"
+          ]
+        ],
+        "style": "Normal",
+        "text": "合成数据, 仅用于 DOCX 渲染回归, 不代表任何真实标的。"
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "🎯 结论区",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "2563EB"
+          ]
+        ],
+        "style": "Heading 2",
+        "text": "🎯 结论区"
+      },
+      {
+        "align": null,
+        "borders": [
+          [
+            "left",
+            "single",
+            "18",
+            "4",
+            "DC2626"
+          ]
+        ],
+        "kind": "p",
+        "runs": [
+          [
+            "综合结论: ",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "1C1917"
+          ],
+          [
+            "看多",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "DC2626"
+          ],
+          [
+            ", 评分 78/100, 关注 3 个候选。",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "1C1917"
+          ]
+        ],
+        "style": "Normal",
+        "text": "综合结论: 看多, 评分 78/100, 关注 3 个候选。"
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "一、价位参考",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "2563EB"
+          ]
+        ],
+        "style": "Heading 2",
+        "text": "一、价位参考"
+      },
+      {
+        "borders": {
+          "bottom": [
+            "single",
+            "4",
+            "0",
+            "E7E5E4"
+          ],
+          "insideH": [
+            "single",
+            "4",
+            "0",
+            "E7E5E4"
+          ],
+          "insideV": [
+            "single",
+            "4",
+            "0",
+            "E7E5E4"
+          ],
+          "left": [
+            "single",
+            "4",
+            "0",
+            "E7E5E4"
+          ],
+          "right": [
+            "single",
+            "4",
+            "0",
+            "E7E5E4"
+          ],
+          "top": [
+            "single",
+            "4",
+            "0",
+            "E7E5E4"
+          ]
+        },
+        "cells": [
+          [
+            {
+              "fill": null,
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "价位",
+                      true,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.0,
+                      "1C1917"
+                    ]
+                  ]
+                }
+              ],
+              "text": "价位"
+            },
+            {
+              "fill": null,
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "数值",
+                      true,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.0,
+                      "1C1917"
+                    ]
+                  ]
+                }
+              ],
+              "text": "数值"
+            },
+            {
+              "fill": null,
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "说明",
+                      true,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.0,
+                      "1C1917"
+                    ]
+                  ]
+                }
+              ],
+              "text": "说明"
+            }
+          ],
+          [
+            {
+              "fill": "F5F5F4",
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "支撑",
+                      false,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.5,
+                      null
+                    ]
+                  ]
+                }
+              ],
+              "text": "支撑"
+            },
+            {
+              "fill": "F5F5F4",
+              "paragraphs": [
+                {
+                  "align": "RIGHT",
+                  "runs": [
+                    [
+                      "12.30",
+                      true,
+                      false,
+                      "Consolas",
+                      "Microsoft YaHei",
+                      11.0,
+                      null
+                    ]
+                  ]
+                }
+              ],
+              "text": "12.30"
+            },
+            {
+              "fill": "F5F5F4",
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "近 20 日低点",
+                      false,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.5,
+                      null
+                    ]
+                  ]
+                }
+              ],
+              "text": "近 20 日低点"
+            }
+          ],
+          [
+            {
+              "fill": null,
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "压力",
+                      false,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.5,
+                      null
+                    ]
+                  ]
+                }
+              ],
+              "text": "压力"
+            },
+            {
+              "fill": null,
+              "paragraphs": [
+                {
+                  "align": "RIGHT",
+                  "runs": [
+                    [
+                      "15.80",
+                      true,
+                      false,
+                      "Consolas",
+                      "Microsoft YaHei",
+                      11.0,
+                      null
+                    ]
+                  ]
+                }
+              ],
+              "text": "15.80"
+            },
+            {
+              "fill": null,
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "近 60 日高点",
+                      false,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.5,
+                      null
+                    ]
+                  ]
+                }
+              ],
+              "text": "近 60 日高点"
+            }
+          ],
+          [
+            {
+              "fill": "F5F5F4",
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "综合",
+                      true,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.5,
+                      "1C1917"
+                    ]
+                  ]
+                }
+              ],
+              "text": "综合"
+            },
+            {
+              "fill": "F5F5F4",
+              "paragraphs": [
+                {
+                  "align": "RIGHT",
+                  "runs": [
+                    [
+                      "14.05",
+                      true,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.5,
+                      "1C1917"
+                    ]
+                  ]
+                }
+              ],
+              "text": "14.05"
+            },
+            {
+              "fill": "F5F5F4",
+              "paragraphs": [
+                {
+                  "align": null,
+                  "runs": [
+                    [
+                      "中枢",
+                      true,
+                      false,
+                      "Microsoft YaHei",
+                      "Microsoft YaHei",
+                      10.5,
+                      "1C1917"
+                    ]
+                  ]
+                }
+              ],
+              "text": "中枢"
+            }
+          ]
+        ],
+        "header_repeat": true,
+        "kind": "tbl",
+        "ncols": 3,
+        "nrows": 4
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "",
+            false,
+            false,
+            null,
+            null,
+            2.0,
+            null
+          ]
+        ],
+        "style": "Normal",
+        "text": ""
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "二、风险警报",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "2563EB"
+          ]
+        ],
+        "style": "Heading 2",
+        "text": "二、风险警报"
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "🔴",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.5,
+            "DC2626"
+          ],
+          [
+            " 业绩预告下修, 需跟踪公告。",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.5,
+            "DC2626"
+          ]
+        ],
+        "style": "Normal",
+        "text": "🔴 业绩预告下修, 需跟踪公告。"
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "🟡",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.5,
+            "B45309"
+          ],
+          [
+            " 行业景气度回落, 关注毛利率。",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.5,
+            "B45309"
+          ]
+        ],
+        "style": "Normal",
+        "text": "🟡 行业景气度回落, 关注毛利率。"
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "🟢",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.5,
+            "15803D"
+          ],
+          [
+            " 大股东增持计划已披露。",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.5,
+            "15803D"
+          ]
+        ],
+        "style": "Normal",
+        "text": "🟢 大股东增持计划已披露。"
+      },
+      {
+        "align": null,
+        "borders": [
+          [
+            "left",
+            "single",
+            "10",
+            "3",
+            "B45309"
+          ]
+        ],
+        "kind": "p",
+        "runs": [
+          [
+            "⚠",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.0,
+            null
+          ],
+          [
+            " 风险提示: 合成样本不含真实公告, 阈值未经验证, 不得用于任何实盘判断。",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            10.0,
+            "B45309"
+          ]
+        ],
+        "style": "Normal",
+        "text": "⚠ 风险提示: 合成样本不含真实公告, 阈值未经验证, 不得用于任何实盘判断。"
+      },
+      {
+        "align": null,
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "三、情景推演",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "2563EB"
+          ]
+        ],
+        "style": "Heading 2",
+        "text": "三、情景推演"
+      },
+      {
+        "align": null,
+        "borders": [
+          [
+            "left",
+            "single",
+            "18",
+            "4",
+            "15803D"
+          ]
+        ],
+        "kind": "p",
+        "runs": [
+          [
+            "若业绩不及预期, 由 ",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "1C1917"
+          ],
+          [
+            "看多",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "15803D"
+          ],
+          [
+            " 转为 ",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "1C1917"
+          ],
+          [
+            "看空",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "15803D"
+          ],
+          [
+            "。",
+            true,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            14.0,
+            "1C1917"
+          ]
+        ],
+        "style": "Normal",
+        "text": "若业绩不及预期, 由 看多 转为 看空。"
+      },
+      {
+        "align": "CENTER",
+        "borders": [],
+        "kind": "p",
+        "runs": [
+          [
+            "────────────────────────────────────────",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            9.0,
+            "57534E"
+          ]
+        ],
+        "style": "Normal",
+        "text": "────────────────────────────────────────"
+      },
+      {
+        "align": null,
+        "borders": [
+          [
+            "left",
+            "single",
+            "6",
+            "3",
+            "E7E5E4"
+          ]
+        ],
+        "kind": "p",
+        "runs": [
+          [
+            "数据来源: 合成样本, 无外部数据源。",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            9.0,
+            "57534E"
+          ]
+        ],
+        "style": "Normal",
+        "text": "数据来源: 合成样本, 无外部数据源。"
+      },
+      {
+        "align": null,
+        "borders": [
+          [
+            "top",
+            "single",
+            "6",
+            "4",
+            "E7E5E4"
+          ]
+        ],
+        "kind": "p",
+        "runs": [
+          [
+            "⚠",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            9.0,
+            null
+          ],
+          [
+            " 免责声明: 本文件为 S0 回归基线合成样本, 仅供测试, 不构成投资建议。",
+            false,
+            false,
+            "Microsoft YaHei",
+            "Microsoft YaHei",
+            9.0,
+            "57534E"
+          ]
+        ],
+        "style": "Normal",
+        "text": "⚠ 免责声明: 本文件为 S0 回归基线合成样本, 仅供测试, 不构成投资建议。"
+      },
+      {
+        "footer": [
+          "数据来源: 腾讯实时行情 / 东方财富 / 同花顺 / baostock / 巨潮资讯 (公开数据)",
+          "免责声明: 本报告由多因子量化模型自动生成, 仅供研究参考, 不构成投资建议; 市场有风险, 投资须谨慎。",
+          "生成时间: <GEN_TIME> ｜ A股扛把子 · V3 决策报告 (微信优选版)"
+        ],
+        "kind": "sectPr"
+      }
+    ],
+    "schema": "p2e-s0-docx-semantic/1"
+  },
+  "schema": "p2e-s0-docx-semantic-baseline/1",
+  "sha256": "a568ae4d3ddc1cf5366dc803c107944fd9d8d4845e59cc7c1cd084b48b526f93"
+}
