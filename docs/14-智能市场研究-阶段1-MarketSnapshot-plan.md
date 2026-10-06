@@ -3,7 +3,7 @@
 > 上一线: `docs/11-智能市场研究系统-项目目标与路线图.md`（6b21a85，2026-10-04）确立新产品目标与 5 阶段主线
 > 触发: `docs/11:91`「每一阶段先定义用户可完成的研究任务，再拆分数据、接口和界面工作」；阶段 1 至今**无 plan**（docs/ 下只有 `docs/08-*` / `docs/09-*` / `docs/10-*` / `docs/11` 四条线）
 > 范围: 只立**阶段 1（Market Snapshot）**的研究任务、数据/接口/界面拆分与验收门槛
-> 状态: 🚧 S0（实测基线）**已实测并回填于 §五-S0 与 §八**；S1-S8 **未开工**，本文件**仍未实现任何代码 / 接口 / 界面**
+> 状态: 🚧 S0（实测基线）**已实测并回填于「§五之二 S0 实测基线」与 §八**；S1-S8 **未开工**，本文件**仍未实现任何代码 / 接口 / 界面**
 > 纪律: 全部开发与审查只安排 MiniMax; 不安排 Kimi
 > 前置: `docs/08-规范整改-P2D-报告渲染拆分-plan.md` 是**在途未完成**计划（工作区 `M` 状态、未提交），阶段 1 **不得假定**其已完成（见 §六 依赖声明）
 
@@ -144,7 +144,7 @@
 
 | # | 片 | 范围 | 计划新增/改动文件（**尚未创建**） | 硬约束 | 验收方向 |
 |---|---|---|---|---|---|
-| **S0** | **实测基线** | **不改源码、不实现功能**。实测并写死当前基线：全量 Pytest `passed`/`skipped` 数、Critical Ruff 现状、`reports/` 现有条目 sha256 清单、Python 矩阵可用性 | 只更新本文件（回填实测数字） | 跑测试前用**独立外层哨兵**阻断非 loopback 出口并报告计数（§六） | 基线数字是**实测值**，不是本文档的估计值；后续每片开工前与收官后各测一次，两次数字必须逐项相同 |
+| **S0** | **实测基线** | **不改源码、不实现功能**。实测并写死当前基线：全量 Pytest `passed`/`skipped` 数、Critical Ruff 现状、`reports/` 现有条目 sha256 清单、Python 矩阵可用性 | 只更新本文件（回填实测数字） | 跑测试前用**独立外层哨兵**阻断非 loopback 出口并报告计数（§六） | 基线数字是**实测值**，不是本文档的估计值；后续每片开工前与收官后各测一次，两次的**基线计数**（`passed`/`skipped`/`deselected`/哨兵计数）必须逐项相同（耗时按各自实测原值记录，不参与判定，口径见 5.2.1） |
 | **S1** | 快照契约 | 纯数据类：`MarketSnapshot`（快照容器）+ `MarketEvidence`（M3 唯一补丁）。零取数、零渲染 | `analysis/research/market_snapshot.py`、`tests/research/test_market_snapshot.py` | 字段只引用 §4.1 已有契约；frozen + `__post_init__` 校验，照抄 `quality.py:38-80` / `index_registry.py:43-58` 的写法 | 缺证据的数字**无法构造**（类型层面挡住）；单测全绿 |
 | **S2** | 指数身份接线 | 定义 A 股核心指数清单，接到 `IndexIdentity` + `IndexProviderSymbolAlias`；证明契约与市场无关（为港股/美股预留） | `analysis/research/market_index_universe.py`、`tests/research/test_market_index_universe.py` | 不新增 id 词法；不预置港股/美股**数据** | 清单里每个指数都有稳定 `index_id`；新增一个市场只加数据不改编契约 |
 | **S3** | 取数边界 | 指数日线取数的**可注入 transport** 边界，复用 `fetcher_contract` 4 状态。**不接任何 live 源** | `analysis/research/market_quote_source.py`、`tests/research/test_market_quote_source.py` | transport 可注入（照 `trading_calendar_szse_fetch.py:1-12`）；单测**零网络**；4 状态语义与 `fetcher_contract.py:19-22` 一字不差 | 契约测试**在哨兵计数 0 下全绿**；能构造 ok/empty/error/unsupported 四种返回 |
@@ -164,7 +164,7 @@
 ## 五之二、S0 实测基线（2026-10-07 实测回填）
 
 > 本节数字**全部为实测值**，非估计。复现方法、命令、环境见本节各处，可逐条重跑复核。
-> 后续每片开工前与收官后各测一次，**两次数字必须逐项相同**。
+> 后续每片开工前与收官后各测一次，**两次的基线计数（passed / skipped / deselected / 哨兵计数）必须逐项相同**；耗时按各自实测原值记录，不参与相同性判定（口径同 5.2.1）。
 
 ### 5.2.0 实测环境与基线 SHA
 
@@ -192,12 +192,19 @@
 /Users/swartea/Desktop/大A数据/venv/bin/python /tmp/s0_net_sentinel.py -p no:cacheprovider -q
 ```
 
-**实测结果（连跑两次，逐项相同）**：
+**实测结果（连跑两轮）**：
 
-| 次数 | passed | skipped | deselected | 耗时 | 哨兵拦截计数 | 返回码 |
+| 轮次 | passed | skipped | deselected | 耗时 | 哨兵拦截计数 | 返回码 |
 |---|---:|---:|---:|---:|---:|---:|
-| 第 1 次 | **987** | **11** | **2** | 22.15s | **0** | 0 |
-| 第 2 次 | **987** | **11** | **2** | 21.90s | **0** | 0 |
+| 第 1 轮 | **987** | **11** | **2** | 22.15s | **0** | 0 |
+| 第 2 轮 | **987** | **11** | **2** | 21.90s | **0** | 0 |
+
+> **「逐项相同」的准确口径**：两轮**基线计数**（`passed` / `skipped` / `deselected` / 哨兵拦截计数 / 返回码）**逐项相同**。
+> **耗时不相同**（22.15s vs 21.90s），耗时本就受机器负载影响，**不作为「相同/不一致」的判据**，故上表按实测原值各自保留。
+> 本文件另有两处沿用同一口径：§五之二开篇与 §十签字栏均只对**基线计数**要求「逐项相同」。
+
+> **轮次口径（本文件统一按两轮）**：本节可复核的运行记录为**两轮**，故 §5.2.1、§八 U1 与 §十签字栏**三处一律写「两轮 / 两次一致」**。
+> 父提交 `abad230` 的提交说明曾写「连跑三次一致」，但**本文件未留存第三轮的独立明细**，按「无明细即不计入」的口径不予采信，故统一为两轮。
 
 > `docs/10:284` 记录的 779 passed / 9 skipped 为**历史基线，已失效**，不得再沿用（本节数字为准）。
 
@@ -215,7 +222,14 @@
 | 5-7 | `tests/test_scoring_breakdown.py:286`（3 例） | 605162_新中港 报告目录不存在（且无 golden fixture） | **是** |
 | 8-10 | `tests/test_three_levels.py:47`（3 例） | 未提供历史 `result_v3` fixture（002353_杰瑞股份 / 600693_东百集团 / 605162_新中港） | **是** |
 
-⇒ **11 = 1（本机环境）+ 10（本 worktree `reports/` 无跑批产物）**。在装有这些报告目录的环境复测，`skipped` 会低于 11。
+⇒ 归因合计 = 1 + 3 + 3 + 3 = **10**，与实测 `skipped = 11` **差 1**，本文件**不为其余 1 条指定归因**，标 **UNVERIFIED**。
+（`1（本机环境）+ 9（本 worktree `reports/` 无跑批产物）= 10` 是上述逐条可归因的部分，**不可写成 11 = 1 + 10**。）
+在装有这些报告目录的环境复测，`skipped` 会低于 11。
+
+> **只读复核补充（本次更正，未运行测试）**：静态检索显示 `tests/test_three_levels.py` 内 `_load_historical_result`（`:44-49`）
+> 实际有 **4 处**调用点（`:585` / `:600` / `:615` / `:671`，各属一个独立 `def test_`，均无 parametrize），而非上表所写的 3 处；
+> 若这 4 条在本 worktree 全部 skip，则合计为 11。本文件**未运行测试核实**，故此说明只作为归因线索，
+> **上表数字与 `skipped = 11` 的实测值均维持原样**，差异归因仍为 UNVERIFIED，留待下次可运行时以 `-rs` 输出核对。
 
 ### 5.2.2 Critical Ruff 基线（U2 回填）
 
@@ -264,22 +278,39 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
 
 ### 5.2.5 live 门禁三层（O3）逐条实测确认
 
-三层**实测均生效**，非仅读代码推断：
+三层的**门禁生效（默认关闭）**均实测确认，非仅读代码推断；其中第 ③ 层「显式 opt-in 放行后」的用例执行结果**未实测**，单列于表下：
 
 | 层 | 机制 | 实测证据 |
 |---|---|---|
 | ① | `pyproject.toml:71` addopts `-m "not live"` | 默认收集即 **998 collected / 2 deselected**；`-m live` 可正向点名回 2 个 |
 | ② | 收集期 fail-closed（`tests/conftest.py:475` `pytest_collection_modifyitems`，`_LIVE_MARK` 定义于 `:415`） | `-m "not slow"` 实测**仍是 2 deselected**，未把 live 用例选回来（防「命令行 `-m` 覆盖 addopts」坑） |
-| ③ | 用例级 skipif 要求 `DA_A_RUN_LIVE` **精确等于 `"1"`** | 未设 env 时 `-m live` → **2 skipped**；`DA_A_RUN_LIVE=1` 时 `-m live` → **2 passed 且哨兵计数仍为 0**（用例自打桩，执行期零真实网络） |
+| ③ | 用例级 skipif 要求 `DA_A_RUN_LIVE` **精确等于 `"1"`** | 默认（未设 env）`-m live` → **2 skipped**。**放行后的执行结果 UNVERIFIED**：本次遵守 O1 纪律未设 `DA_A_RUN_LIVE=1`、未运行 live 用例，且两条 live 用例的隔离形态**并不相同**，见下方逐条区分 |
 
-被 deselect 的 2 个 live 用例：`tests/test_fund_flow_domain.py::test_fund_flow_daily_uses_push2his`、
-`tests/test_peg_formula.py::test_peg_600693_live_in_spec_range`。
+被 deselect 的 2 个 live 用例及其**逐条区分**（`DA_A_RUN_LIVE=1` 显式 opt-in 后各会发生什么）：
+
+| live 用例 | 是否自打桩 | 显式 opt-in 后的真实行为 | 依据 |
+|---|---|---|---|
+| `tests/test_fund_flow_domain.py::test_fund_flow_daily_uses_push2his` | **是**。用例体第一件事就 `monkeypatch` 掉 `data_fetcher.v2.em_get` 并喂 canned 响应；且本模块有 **autouse 级 `no_network_tripwire`**（`tests/test_fund_flow_domain.py:504`），封死 socket 建连与 DNS 解析，**不给 live 留豁免分支** | 走桩，**不访问真实 push2his** | 用例 skipif reason 与模块 docstring `:18-22`；tripwire 定义 `:504-555` |
+| `tests/test_peg_formula.py::test_peg_600693_live_in_spec_range` | **否**。用例体直接调 `v2.fetch_full_valuation("600693")`，**全仓检索该用例无任何桩** | **会访问真实 provider**：该函数经 `requests.get` 打 `https://qt.gtimg.cn/q=...`（`analysis/quant_analyzer_v2.py:240-242`），并取同花顺一致预期 | 用例 docstring `:673`「显式 integration 用例, 会打 qt.gtimg.cn + 同花顺」 |
+
+⚠️ **哨兵计数的适用范围（不得外推）**：5.2.1 的哨兵计数 0 覆盖的是**默认全量运行**——该运行里这两条 live 用例被
+①/② 层 **deselect**、在 ③ 层又被 **skip**，**从未执行**。它**不构成**「opt-in 放行后仍零外网」的证据。
+
+⚠️ **门禁没有全局网络守卫**：`no_network_tripwire` 是 `tests/test_fund_flow_domain.py` 的**模块级 autouse fixture**，
+作用域仅限该模块（pytest fixture 不跨模块生效）；`tests/conftest.py` 只有选择层门禁
+（`pytest_collection_modifyitems`，`:475`）与一个 session 级 `_inject_analysis_path`（`:372`），
+**不含任何全局 socket/DNS 守卫**。因此 peg 那条 live 用例一旦放行，仓内无第二道兜底。
+
+**修正记录**：本节早前版本写「`DA_A_RUN_LIVE=1` 时 `-m live` → 2 passed 且哨兵计数仍为 0（用例自打桩，执行期零真实网络）」。
+该表述把两条用例一并当作自打桩，与 peg 用例的实际代码形态（无桩、真联网）不符，故撤回；
+放行后的实测结果本次**未执行、不予补测**（遵守 O1），标 **UNVERIFIED**。
+按 O1「live 场景一律 stub / 打桩」，阶段 1 若需 live 覆盖，应在**注入 transport 的边界内**做（对照 S3），不得靠放行这两条真实联网用例。
 
 ### 5.2.6 离线纪律与产物洁净度实测
 
 | # | 纪律 | 实测结果 |
 |---|---|---|
-| O1 | 测试离线、无真实 DNS/socket/HTTP | ✅ 全量与两次 `-m live` 运行，哨兵计数**均 0** |
+| O1 | 测试离线、无真实 DNS/socket/HTTP | ✅ **默认全量运行**哨兵计数 **0**；默认 `-m live` 时 2 条 live 用例被 deselect/skip、**从未执行**，零外网。⚠️ **opt-in 放行后的零外网不成立**：peg 那条无桩、会真联网（见 5.2.5 ③），本次未运行、标 UNVERIFIED |
 | O2 | 独立外层哨兵 + 计数为 0 | ✅ 见 5.2.1 |
 | O5 | `reports/` 逐字节未变、**不产生新跑批产物** | ✅ 跑批前后 sha256 一致；跑测后 `git status` 仅新增本文件 |
 | — | 未改源码/测试/配置 | ✅ 本次唯一改动 = 本文件（`git status` 核对） |
@@ -370,15 +401,18 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
 
 ## 八、UNVERIFIED 标注
 
-本计划**未运行任何测试、未联网、未取任何 live 数据**。以下一律为 `UNVERIFIED`，**不作为已证事实**：
+本节开篇的**历史口径（2026-10-04 立项时）**：当时本计划**未运行任何测试、未联网、未取任何 live 数据**，以下一律为 `UNVERIFIED`，**不作为已证事实**。
 
-> **2026-10-07 更新**：S0 已实测，**U1 / U3 / U8 转为已核实**（数字见 §五之二）；
-> **U2 部分核实**（Critical Ruff 已在 py3.13.5 实测；Python 矩阵跨版本**仍未在本机复现**，见 5.2.4 局限）。
-> U4-U7 **不受 S0 影响**，维持 UNVERIFIED。
+> **当前状态（2026-10-07 更新）**：该历史口径**已被 S0 的离线实测部分取代**，须按项区分，不得整体沿用。
+> - **已于 2026-10-07 离线实测的项**：U1（全量 Pytest 计数）、U3（`reports/` sha256 清单）、U8（fixture 字节数）→ 已核实；U2 部分核实（Ruff 已实测，Python 矩阵跨版本仍未复现）。
+> - **本次实测全程离线**：S0 未设置 `DA_A_RUN_LIVE=1`、未运行任何 live 用例，哨兵计数 0 覆盖的是**默认全量运行**。
+> - **仍为 UNVERIFIED 的项**：U4-U7（维持原状）；**新增**：`DA_A_RUN_LIVE=1` 放行后两条 live 用例的实际执行结果 —— 其中
+>   `test_peg_600693_live_in_spec_range` **无桩、opt-in 后会真实访问 qt.gtimg.cn 与同花顺**，本次按 O1 未运行、不补测（详见 5.2.5 ③）；
+>   另 `skipped = 11` 的**逐条归因尚差 1 条**未落实（见 5.2.1 归因表下方说明）。
 
 | # | 未核实项 | 何时必须实测 | 当前状态 |
 |---|---|---|---|
-| **U1** | 当前全量 Pytest 的 `passed` / `skipped` 具体数字 | **S0** | ✅ **已实测**：987 passed / 11 skipped / 2 deselected（连跑两次一致）。`docs/10:284` 的 779/9 为失效历史值，不得沿用。见 5.2.1 |
+| **U1** | 当前全量 Pytest 的 `passed` / `skipped` 具体数字 | **S0** | ✅ **已实测**：987 passed / 11 skipped / 2 deselected（**两轮**基线计数一致，见 5.2.1；`skipped` 的逐条归因尚差 1 条未落实，见该节说明）。`docs/10:284` 的 779/9 为失效历史值，不得沿用 |
 | **U2** | Critical Ruff 与 Python 矩阵的当前实际状态 | **S0** | ⚠️ **部分实测**：Ruff = 4 errors（均在 `scripts/`，见 5.2.2）；**Python 矩阵未在本机复现**（py3.12 本机缺失，仅在 py3.13.5 实测，见 5.2.4） |
 | **U3** | `reports/` 现有条目的 sha256 清单 | **S0** | ✅ **已实测**：仅 `reports/.gitkeep` = `e3b0c442…b855`（空文件）。见 5.2.3 |
 | **U4** | 哪个 provider 能稳定提供指数日线、是否需要授权、真实失败率 | **S3**（需网络授权后单独做 live 探针；离线阶段一律 stub） | ❌ UNVERIFIED（S0 未联网，符合预期） |
@@ -405,8 +439,10 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
 - 拍板: 老板（**待批**）
 - 状态: 🚧 **S0（实测基线）已实测回填**（2026-10-07，见 §五之二）；**S1-S8 未开工**，
   本文件**仍未实现任何代码 / 测试 / 接口 / 界面**，未改动任何既有源码、测试、配置或其它既有文档
-- S0 实测: 987 passed / 11 skipped / 2 deselected（两次一致）、哨兵计数 0、Ruff 4 errors（既存，在 `scripts/`）、
-  `reports/` 仅 `.gitkeep`、live 门禁三层实测生效；**局限**：仅 py3.13.5 单版本实测，CI 矩阵 py3.10-3.12 未复现
+- S0 实测: 987 passed / 11 skipped / 2 deselected（**两轮**基线计数一致，耗时不同不参与判定）、哨兵计数 0（**默认全量运行**）、Ruff 4 errors（既存，在 `scripts/`）、
+  `reports/` 仅 `.gitkeep`、live 门禁三层在**默认关闭**下逐条实测生效；
+  **局限**：仅 py3.13.5 单版本实测，CI 矩阵 py3.10-3.12 未复现；`DA_A_RUN_LIVE=1` 放行后的 live 执行结果 **UNVERIFIED**
+  （peg 那条 live 用例无桩、会真实联网，本次按 O1 未运行）；`skipped = 11` 的逐条归因尚差 1 条未落实
 - 开工条件: 老板「开干」+ §九 五条歧义**至少就 1/2/3 条给出结论**，然后**从 S0（实测基线）开始** —— S0 不做，后续每片都失去对比基准
   （S0 已完成；下一片为 **S1 快照契约**）
 - 提交授权: **本任务已获授权做「小而聚焦的本地提交」**（不含 push / PR / merge）；其余各片提交仍逐片拍板
