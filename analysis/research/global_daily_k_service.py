@@ -228,8 +228,11 @@ def _validate_ok_row(row: Any, *, spec: GlobalIndexSpec) -> Date | None:
     source = row.get("source")
     if not isinstance(source, str) or not source:
         return None
+    raw_date = row.get("date")
+    if not isinstance(raw_date, str):
+        return None
     try:
-        parsed_date = _parse_strict_date(row.get("date"), field="row date")
+        parsed_date = _parse_strict_date(raw_date, field="row date")
     except (TypeError, ValueError):
         return None
     if row.get("volume") is not None:

@@ -194,7 +194,10 @@ def _parse_row(row: Any, *, code: str) -> tuple[Date, dict[str, float]]:
         raise ValueError("row must be a mapping")
     if row.get("code") != code:
         raise ValueError("provider symbol did not match request")
-    session = _parse_strict_date(row.get("date"), field="row date")
+    raw_date = row.get("date")
+    if not isinstance(raw_date, str):
+        raise ValueError("row date must be a string")
+    session = _parse_strict_date(raw_date, field="row date")
     values = {
         name: _coerce_finite_number(row.get(name), field=name)
         for name in ("open", "high", "low", "close")
@@ -326,6 +329,7 @@ def fetch_baostock_daily_k(
             )
         parsed[session] = values
 
+    ordered_sessions = sorted(parsed)
     records = [
         {
             "index_id": spec.identity.index_id,
@@ -339,7 +343,7 @@ def fetch_baostock_daily_k(
             "timezone": spec.timezone,
             "source": BAOSTOCK_SOURCE,
         }
-        for session in sorted(parsed)
+        for session in ordered_sessions
     ]
     if not records:
         return fetcher_contract.make_empty(
@@ -350,7 +354,7 @@ def fetch_baostock_daily_k(
     return fetcher_contract.make_ok(
         records,
         source=BAOSTOCK_SOURCE,
-        as_of=records[-1]["date"],
+        as_of=ordered_sessions[-1].isoformat(),
         scope=BAOSTOCK_SCOPE,
         units=dict(_UNITS),
     )
