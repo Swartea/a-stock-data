@@ -7,8 +7,11 @@
 `run_log` 三个键的 `> 0`，从不断言 docx。
 
 本模块锁「版式语义」而不是「容器字节」——理由与投影口径见
-`tests/fixtures/docx_semantic/README.md` 与
-`docs/08-规范整改-P2E-文档渲染拆分-plan.md` §7.1-7.2。
+`tests/fixtures/docx_semantic/README.md`。要点：`.docx` 是 zip 容器而非纯文本，
+逐字节相等不可复现（zip entry 头含落盘时间戳、`docProps/core.xml` 的 `modified`
+随落盘时刻变化、且 `python-docx`/`lxml` 一次版本升级就会改动 zip 内 XML 的序列化
+细节而版式语义一模一样）；逐字节相等会把依赖升级变成阻断性失败，这是**假回归**，
+长期只会诱导「更新基线以掩盖回归」，比没有门禁更危险。故本门禁锁版式语义。
 
 四道门:
 
