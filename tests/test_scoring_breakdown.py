@@ -7,6 +7,10 @@
   4. 3 只样本票 result_v3.json 端到端 (600693 / 002353 / 605162)
 
 历史: docs/09-报告质量债2.0-plan.md 批次 C, 痛 7
+
+golden fixture: 本模块的端到端用例优先读 tests/fixtures/golden/ 下的版本化
+fixture (确定性, CI 可跑), 没有 golden 的票 (605162) 才回落到 reports/ 下
+"最新跑批产物"。出处与归一化口径见 tests/fixtures/golden/README.md。
 """
 import json
 import os
@@ -19,10 +23,17 @@ import pytest
 WORKDIR = Path(os.environ.get("DA_A_DATA_DIR", str(Path(__file__).resolve().parents[1]))).resolve()
 sys.path.insert(0, str(WORKDIR))
 sys.path.insert(0, str(WORKDIR / "analysis"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures" / "golden"))
+
+from golden_fixtures import golden_path, load_golden_result  # noqa: E402
 
 _SAMPLE_RESULT_PATH = WORKDIR / "reports/600693_东百集团/2026-09-13/result_v3-0914.json"
 
 def _load_sample_result():
+    """600693 结构基线: golden fixture 优先, 回落历史 reports/ 产物。"""
+    golden = load_golden_result("600693")
+    if golden is not None:
+        return golden
     if not _SAMPLE_RESULT_PATH.exists():
         pytest.skip(f"未提供历史 result_v3 fixture: {_SAMPLE_RESULT_PATH}")
     return json.loads(_SAMPLE_RESULT_PATH.read_text(encoding="utf-8"))
@@ -262,10 +273,17 @@ SAMPLE_TICKERS = [
 
 
 def _latest_result_v3_for(code_name: str) -> str:
-    """取 code_name 下最新 result_v3.json 路径, 缺失则 pytest.skip。"""
+    """取该票 result_v3 来源路径: golden fixture 优先, 否则 reports/ 下最新一份。
+
+    golden 优先的原因: reports/ 下是本地产物且受 .gitignore 排除, CI 矩阵里
+    永远不存在 → 端到端用例会整体 skip, result_v3 契约等于零覆盖。
+    """
+    golden = golden_path(code_name.split("_", 1)[0])
+    if golden is not None and golden.exists():
+        return str(golden)
     base = WORKDIR / f"reports/{code_name}"
     if not base.exists():
-        pytest.skip(f"{code_name} 报告目录不存在")
+        pytest.skip(f"{code_name} 报告目录不存在 (且无 golden fixture)")
     days = sorted([d for d in os.listdir(str(base)) if re.match(r"\d{4}-\d{2}-\d{2}", d)])
     if not days:
         pytest.skip(f"{code_name} 无日期目录")

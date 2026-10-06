@@ -5,7 +5,7 @@
 - 增速/环比解释 (YOY/QOQ 业务口径)
 - 财务/股票日志/龙虎榜解读 (人话)
 
-向后兼容: v3 顶层 `from analysis.utils import *` 全部重导出, 老 import 路径仍工作。
+向后兼容: v3 顶层用显式具名 import 逐个引入本模块的下划线兼容名并在显式 __all__ 中透传, 且 v3 的 __all__ 不重导出本模块的非下划线公开名; 老 import 路径仍工作。
 
 §1 '不修改业务口径' — 所有函数体照搬 v3, 仅搬位置。
 """
@@ -44,7 +44,7 @@ def json_default(obj: Any) -> Any:
             return obj.isoformat()
         except (TypeError, ValueError):
             pass
-    if isinstance(obj, set):
+    if isinstance(obj, (set, frozenset)):
         try:
             return sorted(obj)
         except TypeError:

@@ -1,0 +1,77 @@
+{
+  "advice": "（未记录：002353 该次跑批的 advice 未在仓库留存，见 fixtures/golden/README.md）",
+  "announcements": null,
+  "blocks": [],
+  "board": {},
+  "chip_data": {},
+  "code": "002353",
+  "detail": "002353 golden fixture (curated, 见 tests/fixtures/golden/README.md)",
+  "dividend": {},
+  "dragon": {},
+  "dragon_market": {},
+  "emoji": "（未记录）",
+  "finance": null,
+  "fund": {},
+  "fund_daily5": {},
+  "holders": {},
+  "irm": {},
+  "lockup": {},
+  "macro": {},
+  "margin": null,
+  "margin_hist": {},
+  "name": "杰瑞股份",
+  "news": null,
+  "peers": {},
+  "quote": {
+    "name": "杰瑞股份",
+    "price": 118.94
+  },
+  "report_date": "2026-09-12",
+  "research": null,
+  "run_log": {
+    "fallback_chain": [],
+    "finished_at": "2026-09-12T17:58:00+08:00",
+    "guard": {
+      "status": "N/A curated fixture"
+    },
+    "sections_count": 0,
+    "sources": {},
+    "started_at": "2026-09-12T17:58:00+08:00",
+    "tls_recommendations": [],
+    "total_sec": 0
+  },
+  "score": {
+    "capital": 6,
+    "chip": 1,
+    "dragon": 6,
+    "factors": [],
+    "momentum": 3,
+    "risk": 8,
+    "sentiment": 2,
+    "sw_stability": 3,
+    "total": 53,
+    "trend": 8,
+    "valuation": 10,
+    "valuation_pctile": 6
+  },
+  "signals": {
+    "bad": [],
+    "good": []
+  },
+  "sw_data": {},
+  "three_levels": {
+    "stop_loss": 110.61,
+    "stop_loss_method": "trading_plan",
+    "support": 108.37,
+    "support_extreme": 104.87,
+    "support_op_key": "boll_lower"
+  },
+  "valuation": {
+    "code": "002353",
+    "name": "杰瑞股份",
+    "price": 118.94
+  },
+  "valuation_hist": {
+    "pe_percentile_3y": 87.8
+  }
+}

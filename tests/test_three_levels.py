@@ -372,17 +372,23 @@ def test_v3_result_has_three_levels_for_600693(mock_result_v3):
 # ============================================================
 # 10. 渲染器 source code 自检: 3 渲染器都含"三价位(同源)"
 # ============================================================
-def test_md_renderer_contains_three_levels_same_source(pipeline_source):
-    """V3 MD 渲染器 write_markdown_report_v3 含 '三价位(同源)' 字样 + 4/3 候选
+def test_md_renderer_contains_three_levels_same_source(
+    pipeline_source, result_builder_source
+):
+    """V3 控制台摘要含 '三价位(同源)' 字样 + 4/3 候选
 
     P1.5 整改: 用 conftest.quant_analyzer_v3_source fixture 取代 open 个人路径
     P2-A Phase 5 (2026-09-13): 编排层抽离后改读 pipeline_source ('三价位(同源)' 字样在 _emit 打印行)
+    Phase 1H (2026-10-03): 控制台摘要随 build/finalize 阶段抽到
+    analysis/orchestration/result_builder.py, 故摘要字样改读 result_builder_source;
+    pipeline.py 仍保留 compute_three_levels 的注入口 (契约测试在 pipeline 上打桩)。
     """
-    src = pipeline_source
-    assert "三价位(同源)" in src, "pipeline.py _emit 必须含'三价位(同源)'字样（债 2 修法）"
-    assert "support_candidates" in src, "pipeline.py 必须输出 4 支撑候选调试行"
-    assert "resistance_candidates" in src, "pipeline.py 必须输出 3 压力候选调试行"
-    assert "compute_three_levels" in src, "pipeline.py 必须 import 并调用 compute_three_levels"
+    src = result_builder_source
+    assert "三价位(同源)" in src, "result_builder 控制台摘要必须含'三价位(同源)'字样（债 2 修法）"
+    assert "support_candidates" in src, "result_builder 必须输出 4 支撑候选调试行"
+    assert "resistance_candidates" in src, "result_builder 必须输出 3 压力候选调试行"
+    assert "compute_three_levels" in pipeline_source, \
+        "pipeline.py 必须 import 并把 compute_three_levels 作为注入口传给 result_builder"
 
 
 def test_html_renderer_contains_three_levels_same_source(html_report_v3_source):
