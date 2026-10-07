@@ -3,7 +3,11 @@
 > 上一线: `docs/11-智能市场研究系统-项目目标与路线图.md`（6b21a85，2026-10-04）确立新产品目标与 5 阶段主线
 > 触发: `docs/11:91`「每一阶段先定义用户可完成的研究任务，再拆分数据、接口和界面工作」；阶段 1 至今**无 plan**（docs/ 下只有 `docs/08-*` / `docs/09-*` / `docs/10-*` / `docs/11` 四条线）
 > 范围: 只立**阶段 1（Market Snapshot）**的研究任务、数据/接口/界面拆分与验收门槛
-> 状态: 🚧 S0（实测基线）**已实测并回填于「§五之二 S0 实测基线」与 §八**；S1-S8 **未开工**，本文件**仍未实现任何代码 / 接口 / 界面**
+> 状态: 🚧 S0（实测基线）**已实测并回填于「§五之二 S0 实测基线」与 §八**；**S1 已实现并经 PR #4 合并进入 `main`**；
+> **S2 已实现、当前在 PR #5 中，仍处 open / 未合并（该 PR head = `270b88d1`）**；
+> **当前工作分支只包含 S3 的「A 股核心指数清单」子步**（`analysis/research/market_index_universe.py` + `tests/research/test_market_index_universe.py`）；
+> **S3 的可注入 quote transport 尚未开工**（`analysis/research/market_quote_source.py` 与其单测**未创建**），
+> S4-S8 仍无代码，**阶段 1（Market Snapshot）尚未完成**。PR #2 与本线分离，本分支**未导入**其任何实现
 > 纪律: 全部开发与审查只安排 MiniMax; 不安排 Kimi
 > 前置: `docs/08-规范整改-P2D-报告渲染拆分-plan.md` 是**在途未完成**计划（工作区 `M` 状态、未提交），阶段 1 **不得假定**其已完成（见 §六 依赖声明）
 
@@ -143,12 +147,12 @@
 
 > **验收方向一律不以「接了几个源 / 几个端点 / 多少行」计**（`docs/11:92`）。下表「验收方向」列写的是用户可核对的事实。
 
-| # | 片 | 范围 | 计划新增/改动文件（**尚未创建**） | 硬约束 | 验收方向 |
+| # | 片 | 范围 | 计划新增/改动文件（**逐片实际状态见各行**） | 硬约束 | 验收方向 |
 |---|---|---|---|---|---|
 | **S0** | **实测基线** | **不改源码、不实现功能**。实测并写死当前基线：全量 Pytest `passed`/`skipped` 数、Critical Ruff 现状、`reports/` 现有条目 sha256 清单、Python 矩阵可用性 | 只更新本文件（回填实测数字） | 跑测试前用**独立外层哨兵**阻断非 loopback 出口并报告计数（§六） | 基线数字是**实测值**，不是本文档的估计值；后续每片开工前与收官后各测一次，两次的**基线计数**（`passed`/`skipped`/`deselected`/哨兵计数）必须逐项相同（耗时按各自实测原值记录，不参与判定，口径见 5.2.1） |
 | **S1** | 快照容器契约 | 纯数据类：`MarketSnapshot`（只记录快照身份、覆盖市场、指数身份与已知 provider 符号）。零取数、零渲染、无行情数字 | `analysis/research/market_snapshot.py`、`tests/research/test_market_snapshot.py` | 复用 `IndexIdentity` + `IndexProviderSymbolAlias`；frozen + `__post_init__` 校验 | 容器不暴露数字、时间或质量字段；单测全绿 |
 | **S2** | 市场证据契约 | 纯数据类：`MarketEvidence`，为单个指数观测显式关联证据身份、指标和值、provider、时间、质量、PIT 与来源状态。零取数、零聚合、零渲染 | `analysis/research/market_evidence.py`、`tests/research/test_market_evidence.py` | 复用 `IndexIdentity`、`ProviderSpec`、`TimeMetadata`、`QualityMetadata`、`PITStatus` 与 `fetcher_contract` 状态；`data_as_of` 与 `fetched_at` 分开，缺失不填 0 | 有值必须关联既有指数身份和来源；无值保留显式状态及质量，不伪装成数字 |
-| **S3** | 指数清单接线 + 取数边界 | ① **指数清单（本片前置输入）**：定义 **A 股核心指数清单**，接到 `IndexIdentity` + `IndexProviderSymbolAlias`，证明身份契约**与市场无关**（为港股/美股预留）；② **取数边界**：指数日线取数的**可注入 transport** 边界，复用 `fetcher_contract` 4 状态。**不接任何 live 源**。落法见下「S3 前置输入」 | `analysis/research/market_index_universe.py`、`tests/research/test_market_index_universe.py`、`analysis/research/market_quote_source.py`、`tests/research/test_market_quote_source.py`（**均尚未创建**） | 清单是 transport 的**显式入参**，无清单构造不出取数调用；不新增 id 词法（`index_registry.py:44-54` 校验已足够）；不预置港股/美股**数据**；transport 可注入（照 `trading_calendar_szse_fetch.py:1-12`）；单测**零网络**；4 状态语义与 `fetcher_contract.py:19-22` 一字不差 | 清单里每个指数都有稳定 `index_id`，且新增一个市场**只加数据、不改编契约**；取数边界**只能在给定清单上运行**；契约测试**在哨兵计数 0 下全绿**；能构造 ok/empty/error/unsupported 四种返回 |
+| **S3** | 指数清单接线 + 取数边界 | ① **指数清单（本片前置输入）**：定义 **A 股核心指数清单**，接到 `IndexIdentity` + `IndexProviderSymbolAlias`，证明身份契约**与市场无关**（为港股/美股预留）；② **取数边界**：指数日线取数的**可注入 transport** 边界，复用 `fetcher_contract` 4 状态。**不接任何 live 源**。落法见下「S3 前置输入」 | `analysis/research/market_index_universe.py` ✅**已在当前 S3 分支创建**、`tests/research/test_market_index_universe.py` ✅**已在当前 S3 分支创建**（以上仅「指数清单」子步）；`analysis/research/market_quote_source.py`、`tests/research/test_market_quote_source.py` **仍未创建**（可注入 quote transport 尚未开工） | 清单是 transport 的**显式入参**，无清单构造不出取数调用；不新增 id 词法（`index_registry.py:44-54` 校验已足够）；不预置港股/美股**数据**；transport 可注入（照 `trading_calendar_szse_fetch.py:1-12`）；单测**零网络**；4 状态语义与 `fetcher_contract.py:19-22` 一字不差 | 清单里每个指数都有稳定 `index_id`，且新增一个市场**只加数据、不改编契约**；取数边界**只能在给定清单上运行**；契约测试**在哨兵计数 0 下全绿**；能构造 ok/empty/error/unsupported 四种返回 |
 | **S4** | 市场状态与时间 | 组合 `TradingCalendar` + `TimeMetadata` + `MaxAgePolicy` + `QualityMetadata`，产出「可确认状态」 | `analysis/research/market_state.py`、`tests/research/test_market_state.py` | 不按周末/节假日/系统时钟推断交易日（`trading_calendar.py:1-11`）；`data_as_of` 与 `fetched_at` 分字段不混用 | 无日历证据时状态为 `UNKNOWN` 而非 `CLOSED`；策略由调用方传入 |
 | **S5** | 缺失/延迟/不可用 | 三态**分别**表达；禁止 0 值 / 上一日值静默顶替 | `analysis/research/market_availability.py`、`tests/research/test_market_availability.py` | 三态不可合并；降级路径必须留 `degraded` / `quality_flags` | 构造「某指数今天没数据」时，产物里是显式缺失，**不是** 0 |
 | **S6** | 离线快照产物 | 用**离线 fixture**（M6）端到端产出一份 market snapshot JSON，沿用 golden 目录与出处登记 | `tests/fixtures/golden/market_snapshot-*.json`、`tests/fixtures/golden/README.md`（**追加**，不覆盖既有两份） | 不联网、不用合成行情冒充实盘；归一化口径写进 README；缺键不补 | fixture 能在哨兵计数 0 下重复生成出**同一 sha256**（跨进程自证，方法沿用 P2D §7.1） |
@@ -167,7 +171,7 @@
 
 | 项 | 落法 | 依据 |
 |---|---|---|
-| **清单落点** | `analysis/research/market_index_universe.py` + 单测 `tests/research/test_market_index_universe.py`（**尚未创建**），与 S3 同片交付 | §五 S3 行「计划新增/改动文件」 |
+| **清单落点** | `analysis/research/market_index_universe.py` + 单测 `tests/research/test_market_index_universe.py`（**已在当前 S3 分支创建**，仅指数清单子步；同片的 transport 子步**仍未创建**），与 S3 同片交付 | §五 S3 行「计划新增/改动文件」 |
 | **身份来源** | 清单里每个指数 = 一条 `IndexIdentity`（`index_registry.py:32`），`index_id` 必须过 `index_registry.py:44-54` 校验 | §4.2 硬规定 1「不新建第二套身份」 |
 | **provider 符号** | 每个指数的已知别名走 `IndexProviderSymbolAlias`（`index_symbols.py:19`），**按 provider 分条**、不合并成一个串 | §3.1-A 表 |
 | **市场无关性** | 清单只声明「哪个市场有哪些指数」，**不声明**任何行情数据；加入港股/美股时**只加数据、契约零改动** | §2.1「港股/美股只做契约可容纳」+ §九-1 |
@@ -455,13 +459,15 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
 
 - 立项: Mavis 2026-10-04（补 `docs/11:91` 要求的阶段 1 专属 plan；此前只有 `docs/11` 路线图，无阶段 plan）
 - 拍板: 老板（**待批**）
-- 状态: 🚧 **S0（实测基线）已实测回填**（2026-10-07，见 §五之二）；**S1-S8 未开工**，
-  本文件**仍未实现任何代码 / 测试 / 接口 / 界面**，未改动任何既有源码、测试、配置或其它既有文档
+- 状态: 🚧 **S0（实测基线）已实测回填**（2026-10-07，见 §五之二）；**S1 已实现并经 PR #4 合并进入 `main`**；
+  **S2 已实现、当前在 PR #5 中，仍 open / 未合并（该 PR head = `270b88d1`）**；
+  **当前分支只包含 S3 的「A 股核心指数清单」子步**（模块 + 其直接单测已创建），**S3 的可注入 quote transport 尚未开工**；
+  **S4-S8 仍无代码，阶段 1（Market Snapshot）尚未完成**。PR #2 与本线分离，本分支未导入其任何实现
 - S0 实测: 987 passed / 11 skipped / 2 deselected（**两轮**基线计数一致，耗时不同不参与判定）、哨兵计数 0（**默认全量运行**）、Ruff 4 errors（既存，在 `scripts/`）、
   `reports/` 仅 `.gitkeep`、live 门禁三层在**默认关闭**下逐条实测生效；
   **局限**：仅 py3.13.5 单版本实测，CI 矩阵 py3.10-3.12 未复现；`DA_A_RUN_LIVE=1` 放行后的 live 执行结果 **UNVERIFIED**
   （peg 那条 live 用例无桩、会真实联网，本次按 O1 未运行）；`skipped = 11` 的逐条归因尚差 1 条未落实
 - 开工条件: 老板「开干」+ §九 五条歧义**至少就 1/2/3 条给出结论**，然后**从 S0（实测基线）开始** —— S0 不做，后续每片都失去对比基准
-  （S0 已完成；下一片为 **S1 快照契约**）
+  （S0 已完成；S1 已合并、S2 在 PR #5 未合并；当前进行中为 **S3 的指数清单子步**，其后为 **S3 的可注入 quote transport**）
 - 提交授权: **本任务已获授权做「小而聚焦的本地提交」**（不含 push / PR / merge）；其余各片提交仍逐片拍板
 - 审查安排: 全部由 MiniMax 独立只读验收; **不安排 Kimi**
