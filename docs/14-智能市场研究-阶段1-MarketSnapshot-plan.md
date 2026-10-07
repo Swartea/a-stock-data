@@ -137,7 +137,8 @@
 
 ## 五、数据 / 接口 / 界面工作拆分（S0-S8）
 
-排序原则：**先量基线 → 快照与证据纯契约（零取数）→ 取数边界 → 状态与时间 → 诚实性 → 离线产物 → 界面 → 收官**。
+排序原则：**先量基线 → 快照与证据纯契约（零取数）→ 指数清单接线 + 取数边界 → 状态与时间 → 诚实性 → 离线产物 → 界面 → 收官**。
+其中**指数清单接线**排在取数边界同一片（S3）内、且**必须先于 transport 就位**：取数要有明确的指数对象可取，S4/S5/S6 才不会挂在「没有清单」的空处（见下「S3 前置输入」）。
 沿用 `docs/10:290-296` 的渐进式验收形态：**新模块先建独立测试，再切换调用，切换时保持输入/返回值/文案/阈值不变**。
 
 > **验收方向一律不以「接了几个源 / 几个端点 / 多少行」计**（`docs/11:92`）。下表「验收方向」列写的是用户可核对的事实。
@@ -147,7 +148,7 @@
 | **S0** | **实测基线** | **不改源码、不实现功能**。实测并写死当前基线：全量 Pytest `passed`/`skipped` 数、Critical Ruff 现状、`reports/` 现有条目 sha256 清单、Python 矩阵可用性 | 只更新本文件（回填实测数字） | 跑测试前用**独立外层哨兵**阻断非 loopback 出口并报告计数（§六） | 基线数字是**实测值**，不是本文档的估计值；后续每片开工前与收官后各测一次，两次的**基线计数**（`passed`/`skipped`/`deselected`/哨兵计数）必须逐项相同（耗时按各自实测原值记录，不参与判定，口径见 5.2.1） |
 | **S1** | 快照容器契约 | 纯数据类：`MarketSnapshot`（只记录快照身份、覆盖市场、指数身份与已知 provider 符号）。零取数、零渲染、无行情数字 | `analysis/research/market_snapshot.py`、`tests/research/test_market_snapshot.py` | 复用 `IndexIdentity` + `IndexProviderSymbolAlias`；frozen + `__post_init__` 校验 | 容器不暴露数字、时间或质量字段；单测全绿 |
 | **S2** | 市场证据契约 | 纯数据类：`MarketEvidence`，为单个指数观测显式关联证据身份、指标和值、provider、时间、质量、PIT 与来源状态。零取数、零聚合、零渲染 | `analysis/research/market_evidence.py`、`tests/research/test_market_evidence.py` | 复用 `IndexIdentity`、`ProviderSpec`、`TimeMetadata`、`QualityMetadata`、`PITStatus` 与 `fetcher_contract` 状态；`data_as_of` 与 `fetched_at` 分开，缺失不填 0 | 有值必须关联既有指数身份和来源；无值保留显式状态及质量，不伪装成数字 |
-| **S3** | 取数边界 | 指数日线取数的**可注入 transport** 边界，复用 `fetcher_contract` 4 状态。**不接任何 live 源** | `analysis/research/market_quote_source.py`、`tests/research/test_market_quote_source.py` | transport 可注入（照 `trading_calendar_szse_fetch.py:1-12`）；单测**零网络**；4 状态语义与 `fetcher_contract.py:19-22` 一字不差 | 契约测试**在哨兵计数 0 下全绿**；能构造 ok/empty/error/unsupported 四种返回 |
+| **S3** | 指数清单接线 + 取数边界 | ① **指数清单（本片前置输入）**：定义 **A 股核心指数清单**，接到 `IndexIdentity` + `IndexProviderSymbolAlias`，证明身份契约**与市场无关**（为港股/美股预留）；② **取数边界**：指数日线取数的**可注入 transport** 边界，复用 `fetcher_contract` 4 状态。**不接任何 live 源**。落法见下「S3 前置输入」 | `analysis/research/market_index_universe.py`、`tests/research/test_market_index_universe.py`、`analysis/research/market_quote_source.py`、`tests/research/test_market_quote_source.py`（**均尚未创建**） | 清单是 transport 的**显式入参**，无清单构造不出取数调用；不新增 id 词法（`index_registry.py:44-54` 校验已足够）；不预置港股/美股**数据**；transport 可注入（照 `trading_calendar_szse_fetch.py:1-12`）；单测**零网络**；4 状态语义与 `fetcher_contract.py:19-22` 一字不差 | 清单里每个指数都有稳定 `index_id`，且新增一个市场**只加数据、不改编契约**；取数边界**只能在给定清单上运行**；契约测试**在哨兵计数 0 下全绿**；能构造 ok/empty/error/unsupported 四种返回 |
 | **S4** | 市场状态与时间 | 组合 `TradingCalendar` + `TimeMetadata` + `MaxAgePolicy` + `QualityMetadata`，产出「可确认状态」 | `analysis/research/market_state.py`、`tests/research/test_market_state.py` | 不按周末/节假日/系统时钟推断交易日（`trading_calendar.py:1-11`）；`data_as_of` 与 `fetched_at` 分字段不混用 | 无日历证据时状态为 `UNKNOWN` 而非 `CLOSED`；策略由调用方传入 |
 | **S5** | 缺失/延迟/不可用 | 三态**分别**表达；禁止 0 值 / 上一日值静默顶替 | `analysis/research/market_availability.py`、`tests/research/test_market_availability.py` | 三态不可合并；降级路径必须留 `degraded` / `quality_flags` | 构造「某指数今天没数据」时，产物里是显式缺失，**不是** 0 |
 | **S6** | 离线快照产物 | 用**离线 fixture**（M6）端到端产出一份 market snapshot JSON，沿用 golden 目录与出处登记 | `tests/fixtures/golden/market_snapshot-*.json`、`tests/fixtures/golden/README.md`（**追加**，不覆盖既有两份） | 不联网、不用合成行情冒充实盘；归一化口径写进 README；缺键不补 | fixture 能在哨兵计数 0 下重复生成出**同一 sha256**（跨进程自证，方法沿用 P2D §7.1） |
@@ -158,6 +159,23 @@
 > ③ 接线；④ 跑 S0 那张门禁表。**禁止新旧两套实现并存**。
 > **版本控制纪律**：默认**不执行** `git add` / `commit` / `push` / `merge` / `reset` / `clean` / `stash`；
 > 每片是**可审查、可回滚的 checkpoint**，提交与否由老板逐片授权。
+
+### S3 前置输入：A 股核心指数清单
+
+边界修正后 **S2 只剩「市场证据契约」**，「定义指数清单」这项职责已不在 S1/S2 任何一片内。
+为免 S4/S5/S6 依赖一份**尚不存在的清单**，本计划把它落回 **S3 内**，作为 transport 的**显式前置输入**（不新增切片号、不重编后续片）：
+
+| 项 | 落法 | 依据 |
+|---|---|---|
+| **清单落点** | `analysis/research/market_index_universe.py` + 单测 `tests/research/test_market_index_universe.py`（**尚未创建**），与 S3 同片交付 | §五 S3 行「计划新增/改动文件」 |
+| **身份来源** | 清单里每个指数 = 一条 `IndexIdentity`（`index_registry.py:32`），`index_id` 必须过 `index_registry.py:44-54` 校验 | §4.2 硬规定 1「不新建第二套身份」 |
+| **provider 符号** | 每个指数的已知别名走 `IndexProviderSymbolAlias`（`index_symbols.py:19`），**按 provider 分条**、不合并成一个串 | §3.1-A 表 |
+| **市场无关性** | 清单只声明「哪个市场有哪些指数」，**不声明**任何行情数据；加入港股/美股时**只加数据、契约零改动** | §2.1「港股/美股只做契约可容纳」+ §九-1 |
+| **验收标准** | ① 每个指数都有**稳定 `index_id`**；② 除 `IndexIdentity` / `IndexProviderSymbolAlias` 外**一个 id 词法都不新增**；③ 清单能参数化到另一市场而**不改契约**；④ 单测**零网络**、哨兵计数 0 | §3.1-A「可注入传输层范式」+ §6.2 O2 |
+| **下游消费方** | S4（状态/时间）、S5（缺失/延迟/不可用）、S6（离线产物）**一律只读这份清单**，**禁止各自硬编码指数** | 本节前置约束 |
+
+> **口径提醒**：这份清单是「阶段 1 只交 A 股核心指数、港美只做契约可容纳」（§2.1）的**代码形态**；
+> 它**不含**任何 provider 选型结论 —— 哪个 provider 能稳定提供指数日线仍是 U4，**离线阶段一律 stub**。
 
 ---
 
@@ -425,7 +443,7 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
 
 ## 九、需要老板拍板的歧义点（本计划已各取一种解释，请复核）
 
-1. **港股/美股是否随阶段 1 交付？** 本计划取**否** —— 阶段 1 只交 A 股核心指数，港美只保证**契约可容纳**（§2.1）。依据 `docs/11:36`「逐步纳入」+ `docs/11:19` 不以数量推进。若老板要阶段 1 就含港美，S2 范围要重划并先回答 §2.2 五问。
+1. **港股/美股是否随阶段 1 交付？** 本计划取**否** —— 阶段 1 只交 A 股核心指数，港美只保证**契约可容纳**（§2.1）。依据 `docs/11:36`「逐步纳入」+ `docs/11:19` 不以数量推进。若老板要阶段 1 就含港美，**§五 的阶段 1 切片范围要重划**并先回答 §2.2 五问（注意：**不是**改「S2」—— S2 现为市场证据契约片，港美扩展落点见 S3 指数清单与「S3 前置输入」的市场无关性验收）。
 2. **「日 K 概览」是否出图？** 本计划取**不出图**（数值摘要），图表归阶段 2（§一 口径歧义）。若要出图，S7 提前且必然撞上 §6.3 的 P2-D 依赖。
 3. **阶段 1 界面的技术形态？** 仓库**零** Web 层（M4），本计划未定形态，只要求「最小可读视图」。建议老板在拍板时一并定形态，否则 S7 无法开工。
 4. **`analysis/sections/registry.yaml` 缺失归谁？** 实测该文件不存在且未被跟踪，5 个 Section 现全量启用（§3.1-C）。阶段 1 若要灰度开关，需老板指定归属。
