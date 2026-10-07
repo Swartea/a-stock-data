@@ -90,6 +90,7 @@ def test_unknown_data_time_quality_and_pit_status_are_preserved():
     assert evidence.quality.freshness is FreshnessStatus.UNKNOWN
     assert evidence.quality.completeness is CompletenessStatus.UNKNOWN
     assert evidence.pit_status is PITStatus.UNKNOWN
+    assert evidence.status == STATUS_OK
 
 
 @pytest.mark.parametrize("value", [0, 0.0, Decimal("0"), "flat", True])
@@ -160,6 +161,22 @@ def test_error_and_unsupported_require_unknown_completeness(status, completeness
             status=status,
             quality=QualityMetadata(completeness=completeness),
         )
+
+
+@pytest.mark.parametrize(
+    "completeness",
+    [
+        CompletenessStatus.COMPLETE,
+        CompletenessStatus.PARTIAL,
+        CompletenessStatus.UNKNOWN,
+    ],
+)
+def test_ok_status_accepts_every_non_empty_completeness(completeness):
+    evidence = _evidence(quality=QualityMetadata(completeness=completeness))
+
+    assert evidence.status == STATUS_OK
+    assert evidence.quality.completeness is completeness
+    assert evidence.observation == Decimal("3900.25")
 
 
 def test_ok_status_cannot_claim_empty_quality():
