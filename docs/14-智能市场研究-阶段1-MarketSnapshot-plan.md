@@ -123,7 +123,7 @@
 | `docs/11` §五 职责 | 阶段 1 最小落法 | 复用 / 新建 |
 |---|---|---|
 | **统一身份** | 指数一律用 `IndexIdentity`（`index_registry.py:32`），provider 符号一律用 `IndexProviderSymbolAlias`（`index_symbols.py:19`），来源一律用 `ProviderSpec`（`providers.py:24`，`:25` 是其 docstring） | **全部复用，零新建** |
-| **统一证据结构** | **新建 1 条** `MarketEvidence`：`(subject: IndexIdentity, observation, provider_id, time: TimeMetadata, quality: QualityMetadata, pit_status: PITStatus, status: STATUS_*)` —— 即「一个数字 + 它的来源 + 两个时钟 + 质量 + 能否用」。这是 M3 的唯一补丁，**不含**关系、不含结论、不含存储 | **1 个新数据类**；字段全部引用已有契约，**不新增字段语义** |
+| **统一证据结构** | **新建 1 条** `MarketEvidence`：`(evidence_id, subject: IndexIdentity, metric, observation, provider: ProviderSpec, time: TimeMetadata, quality: QualityMetadata, pit_status: PITStatus, status: STATUS_*)` —— 即「一个数字 + 它的来源 + 两个时钟 + 质量 + 能否用」。`evidence_id` 只标识证据记录；研究对象仍使用既有 `IndexIdentity`。这是 M3 的唯一补丁，**不含**关系、不含结论、不含存储 | **1 个新数据类**；身份、来源、时间、质量和 PIT 状态均复用已有契约；`metric` 与 `observation` 描述单个观测值 |
 | **可追溯关联** | 阶段 1 最小 = 「快照里每个数字都能走到一条 `MarketEvidence`」。**关系类型、归因、置信度一律不做**（那是 `docs/11:74` 的完整语义，属阶段 4） | 只做**单向可追溯**一跳 |
 | **质量与边界表达** | 直接用 `QualityMetadata` + `MaxAgePolicy` + `TradingDayStatus`。三态映射固定为：`completeness=empty` → 缺失；`freshness=stale` → 延迟；`status=error/unsupported` → 不可用 | **全部复用** |
 
@@ -137,7 +137,7 @@
 
 ## 五、数据 / 接口 / 界面工作拆分（S0-S8）
 
-排序原则：**先量基线 → 纯契约（零取数）→ 身份接线 → 取数边界 → 状态与时间 → 诚实性 → 离线产物 → 界面 → 收官**。
+排序原则：**先量基线 → 快照与证据纯契约（零取数）→ 取数边界 → 状态与时间 → 诚实性 → 离线产物 → 界面 → 收官**。
 沿用 `docs/10:290-296` 的渐进式验收形态：**新模块先建独立测试，再切换调用，切换时保持输入/返回值/文案/阈值不变**。
 
 > **验收方向一律不以「接了几个源 / 几个端点 / 多少行」计**（`docs/11:92`）。下表「验收方向」列写的是用户可核对的事实。
@@ -145,8 +145,8 @@
 | # | 片 | 范围 | 计划新增/改动文件（**尚未创建**） | 硬约束 | 验收方向 |
 |---|---|---|---|---|---|
 | **S0** | **实测基线** | **不改源码、不实现功能**。实测并写死当前基线：全量 Pytest `passed`/`skipped` 数、Critical Ruff 现状、`reports/` 现有条目 sha256 清单、Python 矩阵可用性 | 只更新本文件（回填实测数字） | 跑测试前用**独立外层哨兵**阻断非 loopback 出口并报告计数（§六） | 基线数字是**实测值**，不是本文档的估计值；后续每片开工前与收官后各测一次，两次的**基线计数**（`passed`/`skipped`/`deselected`/哨兵计数）必须逐项相同（耗时按各自实测原值记录，不参与判定，口径见 5.2.1） |
-| **S1** | 快照契约 | 纯数据类：`MarketSnapshot`（快照容器）+ `MarketEvidence`（M3 唯一补丁）。零取数、零渲染 | `analysis/research/market_snapshot.py`、`tests/research/test_market_snapshot.py` | 字段只引用 §4.1 已有契约；frozen + `__post_init__` 校验，照抄 `quality.py:38-80` / `index_registry.py:43-58` 的写法 | 缺证据的数字**无法构造**（类型层面挡住）；单测全绿 |
-| **S2** | 指数身份接线 | 定义 A 股核心指数清单，接到 `IndexIdentity` + `IndexProviderSymbolAlias`；证明契约与市场无关（为港股/美股预留） | `analysis/research/market_index_universe.py`、`tests/research/test_market_index_universe.py` | 不新增 id 词法；不预置港股/美股**数据** | 清单里每个指数都有稳定 `index_id`；新增一个市场只加数据不改编契约 |
+| **S1** | 快照容器契约 | 纯数据类：`MarketSnapshot`（只记录快照身份、覆盖市场、指数身份与已知 provider 符号）。零取数、零渲染、无行情数字 | `analysis/research/market_snapshot.py`、`tests/research/test_market_snapshot.py` | 复用 `IndexIdentity` + `IndexProviderSymbolAlias`；frozen + `__post_init__` 校验 | 容器不暴露数字、时间或质量字段；单测全绿 |
+| **S2** | 市场证据契约 | 纯数据类：`MarketEvidence`，为单个指数观测显式关联证据身份、指标和值、provider、时间、质量、PIT 与来源状态。零取数、零聚合、零渲染 | `analysis/research/market_evidence.py`、`tests/research/test_market_evidence.py` | 复用 `IndexIdentity`、`ProviderSpec`、`TimeMetadata`、`QualityMetadata`、`PITStatus` 与 `fetcher_contract` 状态；`data_as_of` 与 `fetched_at` 分开，缺失不填 0 | 有值必须关联既有指数身份和来源；无值保留显式状态及质量，不伪装成数字 |
 | **S3** | 取数边界 | 指数日线取数的**可注入 transport** 边界，复用 `fetcher_contract` 4 状态。**不接任何 live 源** | `analysis/research/market_quote_source.py`、`tests/research/test_market_quote_source.py` | transport 可注入（照 `trading_calendar_szse_fetch.py:1-12`）；单测**零网络**；4 状态语义与 `fetcher_contract.py:19-22` 一字不差 | 契约测试**在哨兵计数 0 下全绿**；能构造 ok/empty/error/unsupported 四种返回 |
 | **S4** | 市场状态与时间 | 组合 `TradingCalendar` + `TimeMetadata` + `MaxAgePolicy` + `QualityMetadata`，产出「可确认状态」 | `analysis/research/market_state.py`、`tests/research/test_market_state.py` | 不按周末/节假日/系统时钟推断交易日（`trading_calendar.py:1-11`）；`data_as_of` 与 `fetched_at` 分字段不混用 | 无日历证据时状态为 `UNKNOWN` 而非 `CLOSED`；策略由调用方传入 |
 | **S5** | 缺失/延迟/不可用 | 三态**分别**表达；禁止 0 值 / 上一日值静默顶替 | `analysis/research/market_availability.py`、`tests/research/test_market_availability.py` | 三态不可合并；降级路径必须留 `degraded` / `quality_flags` | 构造「某指数今天没数据」时，产物里是显式缺失，**不是** 0 |
