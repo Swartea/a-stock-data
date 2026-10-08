@@ -1338,6 +1338,104 @@ def test_text_is_deterministically_utf8_encodable() -> None:
     assert text.encode("utf-8").decode("utf-8") == text
 
 
+# --- UTF-8 encoding boundary ------------------------------------------------
+
+
+def _alias_snapshot_with_symbol(provider_symbol: str) -> MarketSnapshot:
+    """Return a valid snapshot whose single declared alias carries ``provider_symbol``.
+
+    Every other field is an ordinary synthetic fixture, so the *only* thing under
+    test in the encoding tests below is the alias text itself.
+    """
+
+    alias = IndexProviderSymbolAlias(
+        index_id=SUBJECT_CSI.index_id,
+        provider_id=PROVIDER.provider_id,
+        provider_symbol=provider_symbol,
+    )
+    return _synthetic_snapshot(indexes=(SUBJECT_CSI,), provider_symbols=(alias,))
+
+
+@pytest.mark.parametrize("label", ["U+D800", "U+DC00"])
+def test_isolated_surrogate_in_alias_fails_at_the_projector(label: str) -> None:
+    high = IndexProviderSymbolAlias(
+        index_id=SUBJECT_CSI.index_id,
+        provider_id=PROVIDER.provider_id,
+        provider_symbol=ALIAS_CSI_PRIMARY.provider_symbol + chr(0xD800),
+    )
+    low = IndexProviderSymbolAlias(
+        index_id=SUBJECT_CSI.index_id,
+        provider_id=PROVIDER.provider_id,
+        provider_symbol=ALIAS_CSI_PRIMARY.provider_symbol + chr(0xDC00),
+    )
+    alias = {"U+D800": high, "U+DC00": low}[label]
+
+    # The alias itself is an otherwise-valid contract object: S1 accepts it.
+    assert isinstance(alias, IndexProviderSymbolAlias)
+    snapshot = _synthetic_snapshot(indexes=(SUBJECT_CSI,), provider_symbols=(alias,))
+
+    # The projector call itself must fail.  The caller must never receive a str
+    # it would only discover is unencodable at some later ``.encode()`` call.
+    with pytest.raises((UnicodeEncodeError, ValueError)) as excinfo:
+        project_market_snapshot(snapshot=snapshot, evidence=(), decisions=())
+
+    assert isinstance(excinfo.value, (UnicodeEncodeError, ValueError))
+
+
+def test_isolated_surrogate_is_not_replaced_escaped_or_dropped() -> None:
+    snapshot = _alias_snapshot_with_symbol(
+        ALIAS_CSI_PRIMARY.provider_symbol + chr(0xD800)
+    )
+
+    try:
+        text = project_market_snapshot(snapshot=snapshot, evidence=(), decisions=())
+    except (UnicodeEncodeError, ValueError):
+        return
+    # If it did return, the surrogate must not have been silently repaired.
+    assert chr(0xD800) not in text
+    assert "\\ud800" not in text
+    raise AssertionError("isolated surrogate was accepted without an explicit error")
+
+
+@pytest.mark.parametrize(
+    ("label", "provider_symbol"),
+    [
+        ("chinese", "SYN:合成000001"),
+        ("non_bmp", "SYN:\U0001f680000001"),
+    ],
+)
+def test_valid_unicode_in_alias_is_preserved_and_strictly_encodable(
+    label: str, provider_symbol: str
+) -> None:
+    snapshot = _alias_snapshot_with_symbol(provider_symbol)
+
+    text = project_market_snapshot(snapshot=snapshot, evidence=(), decisions=())
+
+    # Real characters, not \uXXXX escapes.
+    assert provider_symbol in text
+    assert "\\u" not in text
+    # Strictly UTF-8 encodable, byte-exact round trip.
+    assert isinstance(text, str)
+    assert text.encode("utf-8").decode("utf-8") == text
+    # Canonical ordering / settings / exactly one trailing LF are unchanged.
+    assert text.endswith("}\n")
+    assert not text.endswith("\n\n")
+    assert text.count("\n\n") == 0
+    assert "\r" not in text
+    reparsed = json.loads(text)
+    assert json.dumps(
+        reparsed, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False
+    ) + "\n" == text
+    assert list(reparsed) == [
+        "evidence",
+        "indexes",
+        "provider_symbols",
+        "schema_version",
+        "snapshot",
+    ]
+    assert reparsed["provider_symbols"][0]["provider_symbol"] == provider_symbol
+
+
 # --- parameter validation ---------------------------------------------------
 
 

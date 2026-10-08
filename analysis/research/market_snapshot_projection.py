@@ -383,6 +383,13 @@ def project_market_snapshot(
     * The result is ``json.dumps(..., ensure_ascii=False, sort_keys=True,
       indent=2, allow_nan=False)`` plus exactly one trailing ``"\\n"``.  Errors
       are raised before anything is returned; there is no partial output.
+    * The finished text is strictly UTF-8 encoded as the last step before it is
+      returned, so an isolated surrogate reaching the document through any
+      projected field (an alias symbol, a display name, a flag, a reason, ...)
+      fails *here* with :class:`UnicodeEncodeError` instead of producing a
+      ``str`` that only breaks later in some caller's ``.encode()``.  The check
+      is validation only: the original ``str`` is what is returned, and no
+      escaping, replacement, dropping, or normalization is applied.
     """
 
     if not isinstance(snapshot, MarketSnapshot):
@@ -424,7 +431,13 @@ def project_market_snapshot(
         ],
         "evidence": rows,
     }
-    return f"{_canonical_json(document)}\n"
+    text = f"{_canonical_json(document)}\n"
+    # Strict UTF-8 validation of the *complete* finished document, including its
+    # single trailing newline, performed before anything is returned.  The
+    # encoded bytes are discarded on purpose: this is a boundary check, not a
+    # conversion, so the caller still receives the original str unchanged.
+    text.encode("utf-8")
+    return text
 
 
 def _materialize(items: Sequence[Any], *, expected: type, name: str) -> list[Any]:
