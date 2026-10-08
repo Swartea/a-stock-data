@@ -219,15 +219,19 @@ class MarketIndexQuoteSource:
         1. ``universe.require_index`` -- an index outside the declared universe
            raises :class:`KeyError` here, before any transport exists in the
            call path.
-        2. ``universe.aliases_for`` and an exact ``provider_id`` comparison --
+        2. The ``provider``/``time`` types are checked, still before the
+           transport exists in the call path, so a caller mistake can never be
+           reported as a provider-level ``unsupported`` state.
+        3. ``universe.aliases_for`` and an exact ``provider_id`` comparison --
            a covered index with no declared alias for this provider returns
            ``unsupported`` without calling the transport.
-        3. :class:`MarketQuoteRequest` construction validates the
+        4. :class:`MarketQuoteRequest` construction validates the
            identity/provider/alias/time quadruple.
-        4. Only then is the transport called, exactly once.
+        5. Only then is the transport called, exactly once.
         """
 
         identity = self._universe.require_index(index_id)
+        self._require_typed_call_arguments(provider=provider, time=time)
         alias = self._select_alias(index_id, provider)
 
         if alias is None:
@@ -258,6 +262,27 @@ class MarketIndexQuoteSource:
         return MarketQuoteEnvelope(
             identity=identity, provider=provider, alias=alias, time=time, result=result
         )
+
+    @staticmethod
+    def _require_typed_call_arguments(
+        *, provider: ProviderSpec, time: TimeMetadata
+    ) -> None:
+        """Reject a mistyped provider or time before any state is derived.
+
+        Both values are only ever used as attribute carriers further down
+        (``provider.provider_id`` during alias selection, ``time.data_as_of``
+        when the result is built). Without this gate a caller mistake would
+        escape as an ``AttributeError`` from deep inside alias lookup -- or,
+        worse, would never be detected at all for an index that has no alias
+        for that provider, because then ``provider.provider_id`` is only read
+        while formatting a message. Both readings are wrong: a caller mistake
+        is a :class:`TypeError`, raised here, with the transport untouched.
+        """
+
+        if not isinstance(provider, ProviderSpec):
+            raise TypeError("provider must be ProviderSpec")
+        if not isinstance(time, TimeMetadata):
+            raise TypeError("time must be TimeMetadata")
 
     def _select_alias(
         self,
@@ -475,7 +500,21 @@ def _validated_units(
 def _validated_error(
     raw_error: Any,
 ) -> tuple[Optional[dict[str, Any]], Optional[str]]:
-    """Return ``(error, problem)``; a non-``None`` problem rejects the payload."""
+    """Return ``(error, problem)``; a non-``None`` problem rejects the payload.
+
+    An error object is accepted only when it matches what
+    :func:`~analysis.fetcher_contract.make_error` actually produces: a non-blank
+    ``code``, a non-blank string ``message``, and an actual ``bool``
+    ``retryable``. All three are *required*. Treating an absent field as a
+    weaker form of valid would let ``make_error``'s defaults silently invent a
+    ``retryable=True`` for a failure the provider never declared as retryable,
+    and would invent a default code for one it never named.
+
+    An accepted object is rebuilt through ``make_error`` rather than copied, so
+    the canonical result carries exactly ``code``/``message``/``retryable`` and
+    never forwards an ad-hoc extension field a provider attached to its own
+    payload.
+    """
 
     if raw_error is None:
         return None, None
@@ -486,15 +525,15 @@ def _validated_error(
         )
 
     code = raw_error.get("code")
-    if not isinstance(code, str) or not code:
-        return None, "transport error must carry a non-empty code"
+    if not isinstance(code, str) or not code.strip():
+        return None, "transport error must carry a non-blank code"
 
     message = raw_error.get("message")
-    if message is not None and not isinstance(message, str):
-        return None, "transport error message must be a string or absent"
+    if not isinstance(message, str) or not message.strip():
+        return None, "transport error must carry a non-blank string message"
 
     retryable = raw_error.get("retryable")
-    if retryable is not None and not isinstance(retryable, bool):
-        return None, "transport error retryable must be a bool or absent"
+    if not isinstance(retryable, bool):
+        return None, "transport error must carry a bool retryable"
 
-    return dict(raw_error), None
+    return make_error(code, message, retryable=retryable), None

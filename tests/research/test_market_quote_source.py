@@ -288,7 +288,11 @@ def test_falsey_but_present_data_is_preserved_verbatim() -> None:
 
 def test_empty_with_a_valid_error_object_is_preserved() -> None:
     source, transport = _source(
-        {"status": STATUS_EMPTY, "data": None, "error": {"code": "PARSE", "message": "no rows"}}
+        {
+            "status": STATUS_EMPTY,
+            "data": None,
+            "error": {"code": "PARSE", "message": "no rows", "retryable": False},
+        }
     )
 
     result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
@@ -439,6 +443,209 @@ def test_result_absent_units_default_to_empty_mapping() -> None:
     result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
 
     assert result["units"] == {}
+
+
+# --- transport error objects must match make_error exactly ------------------
+
+
+def _error_response(status, error):
+    """A minimal, state-shaped transport response carrying one error object."""
+
+    return {"status": status, "data": None, "error": error}
+
+
+@pytest.mark.parametrize(
+    ("label", "error"),
+    [
+        ("missing_message", {"code": "NET_TIMEOUT", "retryable": True}),
+        ("missing_retryable", {"code": "NET_TIMEOUT", "message": "read timed out"}),
+        ("blank_message", {"code": "NET_TIMEOUT", "message": "   ", "retryable": True}),
+        ("empty_message", {"code": "NET_TIMEOUT", "message": "", "retryable": True}),
+        ("blank_code", {"code": "   ", "message": "read timed out", "retryable": True}),
+        ("missing_code_and_message", {"retryable": True}),
+        ("null_retryable", {"code": "NET_TIMEOUT", "message": "x", "retryable": None}),
+        ("numeric_retryable", {"code": "NET_TIMEOUT", "message": "x", "retryable": 1}),
+        ("missing_all_three", {}),
+    ],
+)
+def test_incomplete_transport_error_object_is_rejected(label, error) -> None:
+    """Absent is not a weaker form of valid: all three fields are required.
+
+    Without this the contract helper's defaults would invent a code and a
+    retryable flag that the provider never declared.
+    """
+
+    source, transport = _source(_error_response(STATUS_ERROR, error))
+
+    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+
+    assert result["status"] == STATUS_ERROR, label
+    assert result["data"] is None, label
+    assert result["error"]["code"] == ERR_VALIDATION, label
+    assert result["error"]["retryable"] is False, label
+    assert transport.call_count == 1, label
+
+
+def test_rejected_error_object_is_replaced_wholesale() -> None:
+    """A malformed object is discarded; its own code never survives."""
+
+    source, _ = _source(
+        _error_response(
+            STATUS_ERROR,
+            {"code": "NET_TIMEOUT", "message": " ", "retryable": True},
+        )
+    )
+
+    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+
+    assert result["error"]["code"] == ERR_VALIDATION
+    assert result["error"]["code"] != "NET_TIMEOUT"
+
+
+def test_error_object_extension_keys_are_not_forwarded() -> None:
+    """Provider-specific extras are dropped by the canonical rebuild."""
+
+    source, _ = _source(
+        _error_response(
+            STATUS_ERROR,
+            {
+                "code": "NET_TIMEOUT",
+                "message": "read timed out",
+                "retryable": True,
+                "detail": {"socket": "10.0.0.1"},
+                "trace_id": "abc-123",
+                "http_status": 504,
+            },
+        )
+    )
+
+    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+
+    assert result["status"] == STATUS_ERROR
+    assert set(result["error"]) == {"code", "message", "retryable"}
+    assert result["error"] == {
+        "code": "NET_TIMEOUT", "message": "read timed out", "retryable": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("label", "status", "error"),
+    [
+        (
+            "error",
+            STATUS_ERROR,
+            {"code": "NET_5XX", "message": "bad gateway", "retryable": True},
+        ),
+        (
+            "empty",
+            STATUS_EMPTY,
+            {"code": "PARSE", "message": "no rows", "retryable": False},
+        ),
+        (
+            "unsupported",
+            STATUS_UNSUPPORTED,
+            {"code": ERR_UNSUPPORTED, "message": "no such endpoint", "retryable": False},
+        ),
+    ],
+)
+def test_complete_error_object_survives_rebuild_in_every_state(label, status, error) -> None:
+    """A well-formed object is rebuilt, not rejected, in each reporting state."""
+
+    source, transport = _source(_error_response(status, dict(error, extra="dropped")))
+
+    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+
+    assert transport.call_count == 1, label
+    assert result["status"] == status, label
+    assert result["data"] is None, label
+    assert result["error"] == error, label
+
+
+def test_transport_error_message_is_bounded_by_the_contract_helper() -> None:
+    """Rebuilding goes through make_error, so the 200-char cap still applies."""
+
+    source, _ = _source(
+        _error_response(
+            STATUS_ERROR,
+            {"code": "PARSE", "message": "x" * 500, "retryable": False},
+        )
+    )
+
+    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+
+    assert len(result["error"]["message"]) == 200
+
+
+# --- provider/time types are checked before any state is derived ------------
+
+
+@pytest.mark.parametrize(
+    ("label", "index_id", "provider", "time", "match"),
+    [
+        ("provider_str", "sse.composite", "tencent", _TIME, "provider must be ProviderSpec"),
+        ("provider_none", "sse.composite", None, _TIME, "provider must be ProviderSpec"),
+        ("time_str", "sse.composite", _TENCENT, "2026-10-08", "time must be TimeMetadata"),
+        ("time_none", "sse.composite", _TENCENT, None, "time must be TimeMetadata"),
+        (
+            "time_mapping",
+            "sse.composite",
+            _TENCENT,
+            {"fetched_at": "2026-10-08T01:00:00+08:00"},
+            "time must be TimeMetadata",
+        ),
+        # The same mistakes where no alias exists at all: without an early
+        # type gate these would have been reported as `unsupported` instead.
+        ("provider_str_no_alias", "szse.chinext", "tencent", _TIME, "provider must be ProviderSpec"),
+        ("time_str_no_alias", "szse.chinext", _TENCENT, "2026-10-08", "time must be TimeMetadata"),
+        (
+            "provider_str_unmatched_alias",
+            "sse.composite",
+            "eastmoney",
+            _TIME,
+            "provider must be ProviderSpec",
+        ),
+        (
+            "time_none_unmatched_alias",
+            "sse.composite",
+            _EASTMONEY,
+            None,
+            "time must be TimeMetadata",
+        ),
+    ],
+)
+def test_invalid_provider_or_time_raises_type_error_before_any_state(
+    label, index_id, provider, time, match
+) -> None:
+    """A caller mistake is a TypeError, never an unsupported/empty result."""
+
+    source, transport = _source(_ok())
+
+    with pytest.raises(TypeError, match=match):
+        source.fetch(index_id, provider=provider, time=time)
+
+    assert transport.call_count == 0, label
+
+
+def test_invalid_time_raises_even_when_the_alias_would_have_matched() -> None:
+    """The type gate runs before the alias gate, not after it."""
+
+    source, transport = _source(_ok())
+
+    with pytest.raises(TypeError, match="time must be TimeMetadata"):
+        source.fetch("sse.composite", provider=_TENCENT, time=None)
+
+    assert transport.call_count == 0
+
+
+def test_unknown_index_still_wins_over_the_argument_type_checks() -> None:
+    """An unknown id is a KeyError even when provider/time are also mistyped."""
+
+    source, transport = _source(_ok())
+
+    with pytest.raises(KeyError):
+        source.fetch("szse.component", provider="tencent", time=_TIME)
+
+    assert transport.call_count == 0
 
 
 # --- gates that must run before the transport ------------------------------
