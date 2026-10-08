@@ -149,31 +149,33 @@ def test_require_index_rejects_non_string_lookup() -> None:
 
 
 def test_constructor_accepts_caller_supplied_identities() -> None:
+    """The identifiers below are synthetic samples, not real market indexes."""
+
     custom = MarketIndexUniverse(
         identities=(
-            IndexIdentity("us.spy", IndexPublisher.CSI, "SPX"),
-            IndexIdentity("hk.hsi", IndexPublisher.SSE, "HSI"),
+            IndexIdentity("sample.alpha", IndexPublisher.CSI, "SAA1"),
+            IndexIdentity("sample.beta", IndexPublisher.SSE, "SAB1"),
         )
     )
 
-    assert custom.index_ids == ("us.spy", "hk.hsi")
+    assert custom.index_ids == ("sample.alpha", "sample.beta")
     assert custom.aliases == ()
-    assert custom.aliases_for("us.spy") == ()
-    assert custom.require_index("hk.hsi") == IndexIdentity(
-        "hk.hsi", IndexPublisher.SSE, "HSI"
+    assert custom.aliases_for("sample.alpha") == ()
+    assert custom.require_index("sample.beta") == IndexIdentity(
+        "sample.beta", IndexPublisher.SSE, "SAB1"
     )
 
 
 def test_custom_universe_gating_is_independent_of_the_a_share_default() -> None:
     custom = MarketIndexUniverse(
-        identities=(IndexIdentity("us.dji", IndexPublisher.CNI, "DJI"),)
+        identities=(IndexIdentity("sample.gamma", IndexPublisher.CNI, "SAG1"),)
     )
 
     with pytest.raises(KeyError):
         custom.require_index("csi.300")
 
     with pytest.raises(KeyError):
-        A_SHARE_CORE_UNIVERSE.require_index("us.dji")
+        A_SHARE_CORE_UNIVERSE.require_index("sample.gamma")
 
 
 # --- immutability -----------------------------------------------------------
