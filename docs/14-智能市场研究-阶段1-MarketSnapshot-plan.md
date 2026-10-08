@@ -14,7 +14,18 @@
 > **当前本地分支亦包含 S5 可用性分类**（`analysis/research/market_availability.py` + `tests/research/test_market_availability.py`），
 > 同样**只存在于本分支，未合并、未推送**；**S5 是纯分类器**——唯一输入是显式传入的 **S2 `MarketEvidence` + S4 `MarketStateDecision`**，
 > **不新增事实、不改写证据，无 live 数据、无取数、无 transport、无 fallback、无生产接线**；
-> S6-S8、界面与服务层仍无代码，**阶段 1（Market Snapshot）尚未完成**。PR #2 与本线分离，本分支**未导入**其任何实现
+> **当前本地分支亦包含 S6 的两片进展**：
+> **`S6-A`** 为**有界的只读材料盘点与投影准备**（**不写不改、无代码产出**）——在**限定的 2 份 stock golden + 8 份选定既有报告**样本内**未找到合格的真实指数观测**，
+> 该结论**只覆盖该限定样本**，**不声称**其余报告或本机其它位置也没有；样本中的 `002353` 是**仓库内逐标量出处整理的单股 curation**，
+> **非合成行情、非 raw provider capture**；两处 `大盘股` 文本命中是**股票 tier，非指数证据**；
+> **`S6-B`** 为**纯 JSON 投影**（`analysis/research/market_snapshot_projection.py` + `tests/research/test_market_snapshot_projection.py`），
+> **已在当前本地分支实现并经主控验收接受**、同样**只存在于本分支，未合并、未推送**——
+> **只把显式传入的 S1 身份 / S2 证据 / S4 状态 / S5 可用性映射为确定性 JSON**，保留类型化标量、时间（含原始七个时钟）、质量、决策与证据语义，输出**严格 UTF-8、跨独立进程可复现**，
+> 但**不取数、不推断、无生产接线、无 provider provenance manifest**，且**声明的 alias 清单不证明某条观测实际用了哪个 alias**，**其单测样例明确为合成契约样例、不能当实盘**；
+> ⚠️ **S6 整体仍未完成**：**尚无真实归档行情采集与逐字段 provider / index / symbol / scalar / time 出处材料**，**未创建 `market_snapshot` golden**、既有 golden `README.md` **未改动**；
+> **S7（界面形态与数据前置）、S8（收官）与界面 / 服务层仍无代码**，**阶段 1（Market Snapshot）尚未完成**。
+> 老板对**真实离线材料 / 逐字段出处**与**S7 形态**的取舍**已被提出一次、目前无答复**，故**不代填选择、不启动真实 fixture 或 S7**。
+> PR #2 与本线分离，本分支**未导入**其任何实现
 > 纪律: 全部开发与审查只安排 MiniMax; 不安排 Kimi
 > 前置: `docs/08-规范整改-P2D-报告渲染拆分-plan.md` 是**在途未完成**计划（工作区 `M` 状态、未提交），阶段 1 **不得假定**其已完成（见 §六 依赖声明）
 
@@ -162,8 +173,8 @@
 | **S3** | 指数清单接线 + 取数边界 | ① **指数清单（本片前置输入）**：定义 **A 股核心指数清单**，接到 `IndexIdentity` + `IndexProviderSymbolAlias`，证明身份契约**与市场无关**（为港股/美股预留）；② **取数边界**：指数日线取数的**可注入 transport** 边界，复用 `fetcher_contract` 4 状态。**不接任何 live 源**。落法见下「S3 前置输入」 | `analysis/research/market_index_universe.py` ✅**已在当前本地分支创建**、`tests/research/test_market_index_universe.py` ✅**已在当前本地分支创建**（子步①）；`analysis/research/market_quote_source.py`、`tests/research/test_market_quote_source.py` ✅**已在当前本地分支创建**（子步②，可注入 transport **边界**，**无 provider adapter / 无默认 transport / 无 live 源**）。⚠️ 四个文件**均只存在于本分支，未合并、未推送** | 清单是 transport 的**显式入参**，无清单构造不出取数调用；不新增 id 词法（`index_registry.py:44-54` 校验已足够）；不预置港股/美股**数据**；transport 可注入（照 `trading_calendar_szse_fetch.py:1-12`）；单测**零网络**；4 状态语义与 `fetcher_contract.py:19-22` 一字不差 | 清单里每个指数都有稳定 `index_id`，且新增一个市场**只加数据、不改编契约**；取数边界**只能在给定清单上运行**；契约测试**在哨兵计数 0 下全绿**；能构造 ok/empty/error/unsupported 四种返回 |
 | **S4** | 市场状态与时间 | 组合 `TradingCalendar` + `TimeMetadata` + `MaxAgePolicy` + `QualityMetadata`，产出「可确认状态」 | `analysis/research/market_state.py` ✅**已在当前本地分支创建**、`tests/research/test_market_state.py` ✅**已在当前本地分支创建**。⚠️ 两个文件**只存在于本分支，未合并、未推送**；**纯契约组合**——日历 / 时间 / 策略 / 质量四类输入**全部由调用方显式传入**，**无 live 行情源、无真实数据取数，未跑 live 数据** | 不按周末/节假日/系统时钟推断交易日（`trading_calendar.py:1-11`）；`data_as_of` 与 `fetched_at` 分字段不混用 | 无日历证据时状态为 `UNKNOWN` 而非 `CLOSED`；策略由调用方传入 |
 | **S5** | 缺失/延迟/不可用 | 缺失 / 延迟 / 不可用**分别**表达；禁止 0 值 / 上一日值静默顶替 | `analysis/research/market_availability.py` ✅**已在当前本地分支创建**、`tests/research/test_market_availability.py` ✅**已在当前本地分支创建**。⚠️ 两个文件**只存在于本分支，未合并、未推送**；**纯分类器**——唯一输入为显式传入的 **S2 `MarketEvidence` + S4 `MarketStateDecision`**，**不新增事实、不改写证据，无 live 数据 / 取数 / transport / fallback / 生产接线**。共**五种**分类：`AVAILABLE`、`MISSING`、`DELAYED`、`UNAVAILABLE`、`UNKNOWN`，各自带 reason（`observation_fresh` / `source_empty` / `observation_stale` / `source_error`+`provider_unsupported`+`pit_rejected` / `pit_unknown`+`observation_time_unknown`）；**来源状态先于 PIT 与新鲜度判定** | 各态不可合并；**标量 0 或 `False` 是真实值**，缺失只在 source 为 `EMPTY` 下表现为**显式 `None`**；**无上一日 / 其它 provider 兜底**，不隐式造证据；质量、完整性、降级标记、来源状态、PIT、新鲜度**仍是彼此独立的证据维度**（availability ≠ completeness，陈旧/缺失不自动标记 `degraded`） | 构造「某指数今天没数据」时，产物里是显式缺失（`MISSING` / `source_empty`），**不是** 0；同一输入得到同一分类，无隐式兜底 |
-| **S6** | 离线快照产物 | 用**离线 fixture**（M6）端到端产出一份 market snapshot JSON，沿用 golden 目录与出处登记 | `tests/fixtures/golden/market_snapshot-*.json`、`tests/fixtures/golden/README.md`（**追加**，不覆盖既有两份） | 不联网、不用合成行情冒充实盘；归一化口径写进 README；缺键不补 | fixture 能在哨兵计数 0 下重复生成出**同一 sha256**（跨进程自证，方法沿用 P2D §7.1） |
-| **S7** | 界面 | 把快照渲染成最小可读视图（T1-T4 可见）。**形态见 §九歧义，需老板先定** | 形态定后再定路径，**不得复用 `analysis/html_report_v3.py`**（见 §六 依赖声明） | 单股 V3 报告的 HTML 资产、CSS token、区块顺序**一个字不改**；`docs/11:85` 三价位与 `docs/11:83-85` 口径零影响 | 界面上 T1-T4 四条**逐条**可被人工核对（截图 + 对照 fixture） |
+| **S6** | 离线快照产物 | 用**离线 fixture**（M6）端到端产出一份 market snapshot JSON，沿用 golden 目录与出处登记 | 🟡 **S6-A 已完成（有界只读盘点，无代码）**；**S6-B 已完成并经主控验收接受**：`analysis/research/market_snapshot_projection.py` + `tests/research/test_market_snapshot_projection.py` ✅**已在当前本地分支创建**，⚠️ 二者**只存在于本分支，未合并、未推送**，**纯 JSON 投影、无生产接线**；**S6 尚未完成** —— `tests/fixtures/golden/market_snapshot-*.json`、**`tests/fixtures/golden/README.md`（追加）均仍未创建 / 未改动** | 不联网、不用合成行情冒充实盘；归一化口径写进 README；缺键不补 | fixture 能在哨兵计数 0 下重复生成出**同一 sha256**（跨进程自证，方法沿用 P2D §7.1）。⚠️ **当前进展只覆盖「投影可复现」这一条**：S6-B 的**跨独立进程 bytes / hash 一致性**已实测成立，但**其输入是合成契约样例**，**尚无真实离线 fixture**，**本片验收方向整体未达成** |
+| **S7** | 界面 | 把快照渲染成最小可读视图（T1-T4 可见）。**形态见 §九歧义，需老板先定** | ❌ **仍未开工、无代码**；⚠️ **前置缺口有二**：**S6 的真实 fixture / 逐字段出处材料尚未提供**（等老板答复），且**形态与数据前置仍需老板拍板**（§九-3） | 形态定后再定路径，**不得复用 `analysis/html_report_v3.py`**（见 §六 依赖声明）；单股 V3 报告的 HTML 资产、CSS token、区块顺序**一个字不改**；`docs/11:85` 三价位与 `docs/11:83-85` 口径零影响 | 界面上 T1-T4 四条**逐条**可被人工核对（截图 + 对照 fixture） |
 | **S8** | 收官 | 端到端价值 / 证据可追溯 / 数据质量三面验收 + 抽样核验 + 不改 V3 的证明 | 只更新本文件签字栏 | §六 全部纪律 | §七 验收门槛逐条打勾；**V3 回归**对 S0 基线零变化 |
 
 > **切片形态（每片统一，沿用 `docs/10` Phase 1C/1D 已验证模式）**：① 新建模块写实现；② 建自己的单测；
@@ -353,6 +364,51 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
 
 ---
 
+## 五之三、S6 状态记录（2026-10-08 新增，不追改上方历史切片记录）
+
+> 本节为**追加的独立 S6 状态记录**。§五 表中 S0-S5 各行的既有描述、S0 实测基线（§五之二）、历史切片表述与 UNVERIFIED 口径**均未追改**。
+
+### 5.3.1 S6-A：有界只读材料盘点与投影准备（已完成，无代码产出）
+
+- **性质**：**只读盘点与投影方案准备**，**不写任何源码、不改任何文件、不取任何数据**。
+- **检查范围（严格有界）**：**2 份 stock golden + 8 份选定的既有报告**，共 10 个被检查对象。
+- **结论**：在这**限定的样本内**未找到**合格的真实指数观测**。
+- ⚠️ **本节的否定结论只覆盖上述限定样本**：**未逐份检查其余报告，也未检查本机其它位置**，**不声称**别处不存在此类材料（不做全机断言、不做穷尽性断言）。
+- **样本内两类易误读项的定性**：
+  - `002353` 相关条目是**仓库内逐标量出处整理的单股 curation** —— **不是合成行情，也不是 raw provider capture**，**不可当作指数离线 fixture**。
+  - 两处 `大盘股` 文本命中指的是**股票 tier（盘子大小）**，**不是指数数据 / 指数证据**。
+
+### 5.3.2 S6-B：纯 JSON 投影（已在本地分支实现并经主控验收接受）
+
+- **新增文件**：`analysis/research/market_snapshot_projection.py` + `tests/research/test_market_snapshot_projection.py`。⚠️ **只存在于当前本地分支，未合并、未推送**。
+- **做什么**：把**显式传入**的 **S1 身份、S2 证据、S4 状态、S5 可用性**映射为**确定性 JSON**；保留已文档化的**类型化标量**、**时间语义（含原始七个时钟）**、**质量**、**决策**与**证据**语义；输出**严格 UTF-8**，**跨独立进程 bytes / hash 一致**。
+- **明确不做什么（边界）**：**不取数、不推断、无生产接线、无 provider provenance manifest**。
+- ⚠️ **声明的 alias 清单不证明某条观测实际使用了哪个 alias** —— 清单是声明，不是捕获记录。
+- ⚠️ **其单测所用样例明确为合成契约样例**，**不能当实盘**；跨独立进程 bytes/hash 一致且**出网尝试为 0**。
+
+### 5.3.3 S6 未完成项（下一步所缺）
+
+| # | 仍缺 | 现状 |
+|---|---|---|
+| 1 | **真实归档行情采集**（archive / capture）及其**逐字段 provider / index / symbol / scalar / time 出处材料** | **尚未提供** |
+| 2 | **`tests/fixtures/golden/market_snapshot-*.json`** | **未创建** |
+| 3 | **`tests/fixtures/golden/README.md` 的追加登记** | **未改动**（本片只读） |
+| 4 | **S7 形态与数据前置**、**S8 收官** | **未开工**；服务、界面、阶段 2、P2-D/E、V3 工作**均未启动** |
+
+⇒ **S6 整体与阶段 1 均保持开放**；§七 验收门槛**未因 S6-B 而打勾**。
+
+### 5.3.4 验证分账与仓库状态（口径须照读，不得混用）
+
+- **仓库状态**：`main` = `3277bfe7b0618f90c231801ce0879c2b39c5e498`；**S1 已合并进 `main`**；**S2 仍在 PR #5 中 open / 未合并**（head `270b88d1fde1a913a00c2a2ec8311f90d5eec35f`，base `main`）；**S3-A、S3-B、S4、S5 与 S6-B 均只在本地分支、未推送、未合并**。**PR #2 分离、未导入**。
+- **测试证据分账**：
+  - **主控为 S6-B 新跑**：**506 个定向测试通过（0.51s）**、**出网 0**、新增两文件完整 Ruff 与 analysis/tests Critical Ruff **PASS**。
+  - **沿用同一精确代码 HEAD（`1544819c60285dc72674679a481e367e62ef4fa6`）已核验的 AO 证据，本次文档片未重跑**：projection **111**；research **741**；full **1429 passed / 10 skipped / 2 deselected**（14.03s）；各组出网 **0**。
+  - **S5 控制**：full **1318 / 10 / 2**。
+  - ⚠️ **本节为纯文档记录：本次未在文档 HEAD 上运行任何项目测试或 Ruff。**
+- ⚠️ **本节数字不得回填 §五之二 S0 基线**：S0 的 987 / 11 / 2 及其归因、历史日期**一字未改**；§十 签字栏「开工条件」与 S3 **恰好两个子步**的表述亦维持原样。
+
+---
+
 ## 六、硬约束
 
 ### 6.1 V3 业务口径（`docs/11:81-87`，逐条不得违反）
@@ -477,13 +533,19 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
   共**五种**分类 `AVAILABLE` / `MISSING` / `DELAYED` / `UNAVAILABLE` / `UNKNOWN` 及其 reason 映射；
   **标量 0 或 `False` 是真实值**，缺失是 source 为 `EMPTY` 下的**显式 `None`**，陈旧值**保留原值与 `data_as_of`** 仍记为延迟，**无上一日 / 其它 provider 兜底**；
   **质量、完整性、降级标记、来源状态、PIT、新鲜度仍是彼此独立的证据维度**；
+  **当前本地分支亦包含 S6 的两片进展**：`S6-A` 为**有界的只读材料盘点与投影准备**（**无代码产出**）——**限定的 2 份 stock golden + 8 份选定既有报告**样本内**未找到合格真实指数观测**，
+  ⚠️ 该结论**仅覆盖该限定样本**、**不声称**其余报告或本机其它位置也没有；`002353` 是**仓库内逐标量出处整理的单股 curation**，**非合成行情、非 raw provider capture**，两处 `大盘股` 是**股票 tier、非指数证据**；
+  `S6-B` 为**纯 JSON 投影**（`market_snapshot_projection.py` + `tests/research/test_market_snapshot_projection.py` 已创建并经主控验收接受）——**只映射显式传入的 S1 身份 / S2 证据 / S4 状态 / S5 可用性**，
+  保留类型化标量、时间（含原始七个时钟）、质量、决策与证据语义，输出**严格 UTF-8、跨独立进程可复现**，但**不取数、不推断、无生产接线、无 provider provenance manifest**，
+  **声明的 alias 清单不证明某观测实际用了哪个 alias**，**其单测样例明确为合成契约样例、不能当实盘**；
   上述文件**均只存在于本分支，未合并、未推送**；
-  **S6-S8、界面与服务层仍无代码，阶段 1（Market Snapshot）尚未完成**。PR #2 与本线分离，本分支未导入其任何实现
+  ⚠️ **S6 整体仍未完成**（**无真实归档行情采集、无逐字段出处材料、未创建 `market_snapshot` golden、既有 golden `README.md` 未改动**）；
+  **S7、S8、界面与服务层仍无代码，阶段 1（Market Snapshot）尚未完成**。PR #2 与本线分离，本分支未导入其任何实现
 - S0 实测: 987 passed / 11 skipped / 2 deselected（**两轮**基线计数一致，耗时不同不参与判定）、哨兵计数 0（**默认全量运行**）、Ruff 4 errors（既存，在 `scripts/`）、
   `reports/` 仅 `.gitkeep`、live 门禁三层在**默认关闭**下逐条实测生效；
   **局限**：仅 py3.13.5 单版本实测，CI 矩阵 py3.10-3.12 未复现；`DA_A_RUN_LIVE=1` 放行后的 live 执行结果 **UNVERIFIED**
   （peg 那条 live 用例无桩、会真实联网，本次按 O1 未运行）；`skipped = 11` 的逐条归因尚差 1 条未落实
 - 开工条件: 老板「开干」+ §九 五条歧义**至少就 1/2/3 条给出结论**，然后**从 S0（实测基线）开始** —— S0 不做，后续每片都失去对比基准
-  （S0 已完成；S1 已合并、S2 在 PR #5 未合并（head `270b88d1fde1a913a00c2a2ec8311f90d5eec35f`）；当前本地分支已有 **S3 的两个子步 + S4 + S5**，四者均**只在本地分支、未合并、未推送**、待组合验收与合流；S6 及之后的工作**尚未启动、也不在此预先宣布**）
+  （S0 已完成；S1 已合并、S2 在 PR #5 未合并（head `270b88d1fde1a913a00c2a2ec8311f90d5eec35f`）；当前本地分支已有 **S3 的两个子步 + S4 + S5**，四者均**只在本地分支、未合并、未推送**、待组合验收与合流；**S6 的 S6-A 盘点与 S6-B 投影亦只在本地分支**，其中 **S6-B 已本地实现并经主控验收接受，但 S6 整体未完成**（缺真实离线 fixture 与逐字段出处）；**S6 完成后的 S7 / S8 及界面、服务层工作尚未启动，也不在此预先宣布**）
 - 提交授权: **本任务已获授权做「小而聚焦的本地提交」**（不含 push / PR / merge）；其余各片提交仍逐片拍板
 - 审查安排: 全部由 MiniMax 独立只读验收; **不安排 Kimi**
