@@ -48,6 +48,7 @@ provider's symbol would be a fabrication, so the module refuses instead.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, fields
 from typing import Any, Callable, Mapping, Optional
 
@@ -246,12 +247,14 @@ class MarketIndexQuoteSource:
         try:
             raw = self._transport(request)
         except Exception as exc:  # transport failures are data, not crashes
+            detail = _safe_exception_detail(exc)
             result = self._canonical(
                 status=STATUS_ERROR,
                 data=None,
                 error=make_error(
                     ERR_UNKNOWN,
-                    f"transport raised {type(exc).__name__} for {request.alias.provider_symbol!r}",
+                    f"transport raised {type(exc).__name__} for "
+                    f"{request.alias.provider_symbol!r}: {detail}",
                 ),
                 provider=provider,
                 time=time,
@@ -495,6 +498,33 @@ def _validated_units(
             return None, "transport unit values must be non-empty strings"
         units[key] = value
     return units, None
+
+
+_SENSITIVE_CREDENTIAL_NAME = (
+    r"(?:authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|"
+    r"client[_-]?secret|api[_-]?key|secret|password|token)"
+)
+_AUTHORIZATION_HEADER_RE = re.compile(
+    r"(?i)(\bauthorization\b\s*[:=]\s*)(?:(?:bearer|basic)\s+)?[^\s,;&]+"
+)
+_SENSITIVE_ERROR_DETAIL_RE = re.compile(
+    rf"(?i)((?<![a-z0-9]){_SENSITIVE_CREDENTIAL_NAME}(?![a-z0-9])"
+    r"\s*[:=]\s*)([^\s,;&]+)"
+)
+_SENSITIVE_QUERY_VALUE_RE = re.compile(
+    rf"(?i)([?&]{_SENSITIVE_CREDENTIAL_NAME}=)"
+    r"[^&#\s]+"
+)
+
+
+def _safe_exception_detail(exc: Exception) -> str:
+    """Keep a bounded, single-line transport reason without common credentials."""
+
+    detail = " ".join(str(exc).split())
+    detail = _AUTHORIZATION_HEADER_RE.sub(r"\1[redacted]", detail)
+    detail = _SENSITIVE_ERROR_DETAIL_RE.sub(r"\1[redacted]", detail)
+    detail = _SENSITIVE_QUERY_VALUE_RE.sub(r"\1[redacted]", detail)
+    return detail or "no exception detail"
 
 
 def _validated_error(

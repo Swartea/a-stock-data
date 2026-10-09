@@ -360,6 +360,33 @@ def test_transport_exception_becomes_canonical_error_with_unknown() -> None:
     assert result["data"] is None
     assert result["error"]["code"] == ERR_UNKNOWN
     assert "ConnectionRefusedError" in result["error"]["message"]
+    assert "no route" in result["error"]["message"]
+
+
+@pytest.mark.parametrize(
+    "detail,expected",
+    [
+        ("token=secret-value", "token=[redacted]"),
+        ("https://example.test/quote?api_key=secret-value", "api_key=[redacted]"),
+        ("refresh_token=secret-value", "refresh_token=[redacted]"),
+        ("client_secret=secret-value", "client_secret=[redacted]"),
+        ("Authorization: Bearer abc123", "Authorization: [redacted]"),
+        ("first line\npassword: secret-value", "password: [redacted]"),
+    ],
+)
+def test_transport_exception_detail_is_sanitized_and_single_line(
+    detail: str, expected: str
+) -> None:
+    source, _ = _source(ConnectionRefusedError(detail))
+
+    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+
+    message = result["error"]["message"]
+    assert expected in message
+    assert "secret-value" not in message
+    assert "abc123" not in message
+    assert "\n" not in message
+    assert len(message) <= 200
 
 
 def test_base_exception_from_transport_is_not_swallowed() -> None:
