@@ -26,6 +26,9 @@ class IndexPublisher(str, Enum):
     SSE = "sse"
     SZSE = "szse"
     CNI = "cni"
+    HANG_SENG = "hang_seng"
+    SP_DJI = "sp_dji"
+    NASDAQ = "nasdaq"
 
 
 @dataclass(frozen=True)

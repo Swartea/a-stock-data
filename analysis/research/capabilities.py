@@ -125,6 +125,7 @@ DEFAULT_CAPABILITY_SPECS: tuple[CapabilitySpec, ...] = (
     CapabilitySpec("market.trading_calendar", "交易日历", "market"),
     CapabilitySpec("index.registry", "指数主数据", "index"),
     CapabilitySpec("index.quote", "指数行情", "index"),
+    CapabilitySpec("index.daily_k", "指数日K", "index"),
     CapabilitySpec("index.membership", "指数成分", "index"),
     CapabilitySpec("index.weights", "指数权重", "index"),
     CapabilitySpec("index.valuation", "指数估值", "index"),
