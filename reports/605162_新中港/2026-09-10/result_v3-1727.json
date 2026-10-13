@@ -1,0 +1,1728 @@
+{
+  "code": "605162",
+  "name": "新中港",
+  "quote": {
+    "name": "新中港",
+    "price": 10.65,
+    "prev_close": 11.23,
+    "open": 11.13,
+    "high": 11.23,
+    "low": 10.6,
+    "volume_shou": 503393.0,
+    "turnover_wan": 54668.0,
+    "amplitude": 5.61,
+    "turnover_rate": 11.37,
+    "pe_ttm": 46.21,
+    "pb": 2.85,
+    "float_mcap": 47.16,
+    "vol_ratio": 1.35,
+    "limit_up": 12.35,
+    "limit_down": 10.11
+  },
+  "valuation": {
+    "name": "新中港",
+    "code": "605162",
+    "price": 10.65,
+    "mcap_yi": 47.16,
+    "pe_ttm": 46.21,
+    "pb": 2.85,
+    "eps_cur": null,
+    "eps_next": null,
+    "analyst_count": 0,
+    "pe_fwd": null,
+    "cagr_pct": null,
+    "peg": null,
+    "digest_years": 0.0
+  },
+  "blocks": [
+    {
+      "error": "HTTPSConnectionPool(host='push2.eastmoney.com', port=443): Read timed out. (read timeout=10)"
+    }
+  ],
+  "fund": {
+    "error": "HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/fflow/kline/get?secid=1.605162&klt=1&fields1=f1%2Cf2%2Cf3%2Cf7&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57 (Caused by ProxyError('Unable to connect to proxy', RemoteDisconnected('Remote end closed connection without response')))",
+    "klines": []
+  },
+  "valuation_hist": {
+    "error": "无数据"
+  },
+  "lockup": {
+    "as_of": "2026-09-10",
+    "upcoming": [],
+    "n_upcoming": 0,
+    "max_ratio_pct": 0
+  },
+  "dragon": {
+    "records": [],
+    "n_records": 0
+  },
+  "macro": {
+    "hsgt": {
+      "latest_hgt_yi": -9.28,
+      "latest_sgt_yi": 379.75,
+      "total_yi": 370.47,
+      "data_points": 262
+    },
+    "industries": [],
+    "hot_stocks": [
+      {
+        "code": "000532",
+        "name": "华金资本",
+        "change": 0,
+        "reason": "创投+人工智能+铝电解电容器"
+      },
+      {
+        "code": "000048",
+        "name": "京基智农",
+        "change": 0,
+        "reason": "生猪养殖+机器人+饲料"
+      },
+      {
+        "code": "600735",
+        "name": "ST新华锦",
+        "change": 0,
+        "reason": "处罚落地+石墨新材料+发制品出口"
+      },
+      {
+        "code": "002856",
+        "name": "*ST美芝",
+        "change": 0,
+        "reason": "庭外重组+投资人招募+建筑装饰"
+      },
+      {
+        "code": "600644",
+        "name": "乐山电力",
+        "change": 0,
+        "reason": "电力+虚拟电厂+水电"
+      },
+      {
+        "code": "600712",
+        "name": "南宁百货",
+        "change": 0,
+        "reason": "百货零售+中报扭亏+降本增效"
+      },
+      {
+        "code": "002531",
+        "name": "天顺风能",
+        "change": 0,
+        "reason": "风电+海工装备+油气船舶+定增扩产"
+      },
+      {
+        "code": "002174",
+        "name": "游族网络",
+        "change": 0,
+        "reason": "先进封装+AI应用+AI游戏+海外游戏"
+      },
+      {
+        "code": "600180",
+        "name": "*ST瑞茂",
+        "change": 0,
+        "reason": "庭外重组推进+海外煤炭+生物柴油"
+      },
+      {
+        "code": "002514",
+        "name": "*ST宝馨",
+        "change": 0,
+        "reason": "司法拍卖+智能制造+共享充电宝"
+      },
+      {
+        "code": "603601",
+        "name": "再升科技",
+        "change": 0,
+        "reason": "石英纤维+PTFE+商业航天"
+      },
+      {
+        "code": "000823",
+        "name": "超声电子",
+        "change": 0,
+        "reason": "PCB+高阶HDI"
+      },
+      {
+        "code": "002204",
+        "name": "大连重工",
+        "change": 0,
+        "reason": "港口机械+重型装备+商业航天+机器人"
+      },
+      {
+        "code": "002636",
+        "name": "金安国纪",
+        "change": 0,
+        "reason": "覆铜板+业绩增长+扩产"
+      },
+      {
+        "code": "600744",
+        "name": "华银电力",
+        "change": 0,
+        "reason": "电力+新能源+央企"
+      },
+      {
+        "code": "600491",
+        "name": "ST龙元",
+        "change": 0,
+        "reason": "预重整+建筑总包+绿色建筑"
+      },
+      {
+        "code": "002543",
+        "name": "万和电气",
+        "change": 0,
+        "reason": "燃气热水器+空气能热泵+海外布局"
+      },
+      {
+        "code": "920268",
+        "name": "百迈科",
+        "change": 0,
+        "reason": "北交次新股+外科手术医疗器械+手术缝线+业绩增长"
+      },
+      {
+        "code": "000722",
+        "name": "湖南发展",
+        "change": 0,
+        "reason": "水力发电+光伏发电+业绩增长+资产重组"
+      },
+      {
+        "code": "001299",
+        "name": "美能能源",
+        "change": 0,
+        "reason": "城镇燃气+智慧燃气+储能布局"
+      },
+      {
+        "code": "603105",
+        "name": "芯能科技",
+        "change": 0,
+        "reason": "分布式光伏+工商业储能+户用储能"
+      },
+      {
+        "code": "601231",
+        "name": "环旭电子",
+        "change": 0,
+        "reason": "800G光引擎+CPO+AI算力+营收增长"
+      },
+      {
+        "code": "600876",
+        "name": "凯盛新能",
+        "change": 0,
+        "reason": "光伏玻璃+产线退出预期+央企"
+      },
+      {
+        "code": "000993",
+        "name": "闽东电力",
+        "change": 0,
+        "reason": "清洁能源+海上风电+福建国资"
+      },
+      {
+        "code": "603421",
+        "name": "鼎信通讯",
+        "change": 0,
+        "reason": "智能电网+电能表芯片+配电自动化"
+      },
+      {
+        "code": "603316",
+        "name": "诚邦股份",
+        "change": 0,
+        "reason": "半导体存储+业绩增长+芯片扩产"
+      },
+      {
+        "code": "000565",
+        "name": "渝三峡A",
+        "change": 0,
+        "reason": "辐射制冷+工业涂料+业绩增长"
+      },
+      {
+        "code": "002661",
+        "name": "克明食品",
+        "change": 0,
+        "reason": "挂面主业+冷冻面+生猪产能"
+      },
+      {
+        "code": "603318",
+        "name": "水发燃气",
+        "change": 0,
+        "reason": "氦气+燃气轮机+天然气+山东国资"
+      },
+      {
+        "code": "002201",
+        "name": "九鼎新材",
+        "change": 0,
+        "reason": "特种玻纤+复合材料+航空航天"
+      },
+      {
+        "code": "600667",
+        "name": "太极实业",
+        "change": 0,
+        "reason": "SK海力士+存储芯片+半导体封测"
+      },
+      {
+        "code": "002912",
+        "name": "中新赛克",
+        "change": 0,
+        "reason": "AI应用+数据安全+深圳国资"
+      },
+      {
+        "code": "600792",
+        "name": "云煤能源",
+        "change": 0,
+        "reason": "焦炭主业+焦炭增产+钢企直供"
+      },
+      {
+        "code": "600192",
+        "name": "长城电工",
+        "change": 0,
+        "reason": "输变电设备+核电+资产剥离"
+      },
+      {
+        "code": "002377",
+        "name": "国创高新",
+        "change": 0,
+        "reason": "改性沥青+业绩增长+控股股东增持"
+      },
+      {
+        "code": "600359",
+        "name": "新农开发",
+        "change": 0,
+        "reason": "棉花种业+粮食加工+甘草深加工"
+      },
+      {
+        "code": "600318",
+        "name": "新力金融",
+        "change": 0,
+        "reason": "多元金融+供销社+业绩增长"
+      },
+      {
+        "code": "600488",
+        "name": "津药药业",
+        "change": 0,
+        "reason": "甾体激素+海外注册+集采中选"
+      },
+      {
+        "code": "002790",
+        "name": "瑞尔特",
+        "change": 0,
+        "reason": "智能卫浴+适老卫浴+冲水组件"
+      },
+      {
+        "code": "000978",
+        "name": "桂林旅游",
+        "change": 0,
+        "reason": "AI文旅+景区旅游+游船票务"
+      }
+    ],
+    "hot_tags": [
+      [
+        "业绩增长",
+        7
+      ],
+      [
+        "机器人",
+        2
+      ],
+      [
+        "电力",
+        2
+      ],
+      [
+        "AI应用",
+        2
+      ],
+      [
+        "商业航天",
+        2
+      ],
+      [
+        "央企",
+        2
+      ],
+      [
+        "创投",
+        1
+      ],
+      [
+        "人工智能",
+        1
+      ]
+    ],
+    "north_scope": "market",
+    "north_label": "北向资金(全市场口径): 沪股通 -9.3 亿 / 深股通 +379.8 亿 ｜ 合计 +370.5 亿"
+  },
+  "chip_data": {
+    "error": "无 K 线数据"
+  },
+  "sw_data": {
+    "error": "申万表加载失败"
+  },
+  "announcements": {
+    "announcements": [
+      {
+        "date": "2026-09-11",
+        "title": "新中港:2026年员工持股计划第一次持有人会议决议公告",
+        "category": "员工持股计划",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202609101829227142.html"
+      },
+      {
+        "date": "2026-09-11",
+        "title": "新中港:关于2026年半年度业绩说明会召开情况的公告",
+        "category": "调研活动",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202609101829227143.html"
+      },
+      {
+        "date": "2026-09-11",
+        "title": "新中港:2026年员工持股计划完成股票非交易过户的公告",
+        "category": "员工持股计划",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202609101829227144.html"
+      },
+      {
+        "date": "2026-09-02",
+        "title": "新中港:关于召开2026年半年度业绩说明会的公告",
+        "category": "其他",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202609011828881409.html"
+      },
+      {
+        "date": "2026-08-25",
+        "title": "新中港:2026年半年度报告摘要",
+        "category": "半年度报告摘要",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202608241828362672.html"
+      },
+      {
+        "date": "2026-08-25",
+        "title": "新中港:关于使用部分闲置自有资金进行委托理财的公告",
+        "category": "委托（受托）事项、投资理财",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202608241828362674.html"
+      },
+      {
+        "date": "2026-08-25",
+        "title": "新中港:2026年半年度报告",
+        "category": "半年度报告全文",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202608241828362676.html"
+      },
+      {
+        "date": "2026-08-25",
+        "title": "新中港:委托理财管理制度(2026年8月)",
+        "category": "管理办法/制度",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202608241828362675.html"
+      },
+      {
+        "date": "2026-08-25",
+        "title": "新中港:第三届董事会第二十二次会议决议公告",
+        "category": "董事会决议公告",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202608241828362679.html"
+      },
+      {
+        "date": "2026-08-25",
+        "title": "新中港:关于2026年半年度募集资金存放、管理与实际使用情况的专项报告",
+        "category": "募集资金使用情况报告",
+        "sentiment": "中性",
+        "url": "https://data.eastmoney.com/notices/detail/605162/AN202608241828362673.html"
+      }
+    ],
+    "count": 10,
+    "source": "eastmoney",
+    "fetched_at": "2026-09-10T17:27:08.026820+08:00"
+  },
+  "finance": {
+    "reports": [
+      {
+        "report_date": "2026-06-30",
+        "eps": 0.1,
+        "revenue_yi": 3.33,
+        "profit_yi": 0.41,
+        "roe": 2.88,
+        "gross_margin": 26.85,
+        "debt_ratio": 8.31,
+        "yoy_revenue": -8.64,
+        "yoy_profit": -34.07,
+        "qoq_revenue": 31.63,
+        "qoq_profit": 135.61
+      },
+      {
+        "report_date": "2026-03-31",
+        "eps": 0.03,
+        "revenue_yi": 1.44,
+        "profit_yi": 0.12,
+        "roe": 0.92,
+        "gross_margin": 26.26,
+        "debt_ratio": 27.95,
+        "yoy_revenue": -17.41,
+        "yoy_profit": -21.43,
+        "qoq_revenue": -19.59,
+        "qoq_profit": -61.2
+      },
+      {
+        "report_date": "2025-12-31",
+        "eps": 0.31,
+        "revenue_yi": 7.08,
+        "profit_yi": 1.23,
+        "roe": 9.28,
+        "gross_margin": 33.41,
+        "debt_ratio": 28.44,
+        "yoy_revenue": -18.82,
+        "yoy_profit": -15.98,
+        "qoq_revenue": 8.75,
+        "qoq_profit": 4.22
+      },
+      {
+        "report_date": "2025-09-30",
+        "eps": 0.23,
+        "revenue_yi": 5.29,
+        "profit_yi": 0.92,
+        "roe": 6.85,
+        "gross_margin": 33.6,
+        "debt_ratio": 27.47,
+        "yoy_revenue": -18.48,
+        "yoy_profit": 2.51,
+        "qoq_revenue": -13.65,
+        "qoq_profit": -35.23
+      },
+      {
+        "report_date": "2025-06-30",
+        "eps": 0.15,
+        "revenue_yi": 3.64,
+        "profit_yi": 0.62,
+        "roe": 4.58,
+        "gross_margin": 31.61,
+        "debt_ratio": 28.36,
+        "yoy_revenue": null,
+        "yoy_profit": null,
+        "qoq_revenue": 9.38,
+        "qoq_profit": 199.97
+      },
+      {
+        "report_date": "2025-03-31",
+        "eps": 0.04,
+        "revenue_yi": 1.74,
+        "profit_yi": 0.15,
+        "roe": 1.17,
+        "gross_margin": 24.54,
+        "debt_ratio": 28.03,
+        "yoy_revenue": null,
+        "yoy_profit": null,
+        "qoq_revenue": -21.94,
+        "qoq_profit": -72.87
+      },
+      {
+        "report_date": "2024-12-31",
+        "eps": 0.37,
+        "revenue_yi": 8.72,
+        "profit_yi": 1.47,
+        "roe": 11.49,
+        "gross_margin": 29.59,
+        "debt_ratio": 29.96,
+        "yoy_revenue": null,
+        "yoy_profit": null,
+        "qoq_revenue": null,
+        "qoq_profit": null
+      },
+      {
+        "report_date": "2024-09-30",
+        "eps": 0.22,
+        "revenue_yi": 6.49,
+        "profit_yi": 0.9,
+        "roe": 7.1,
+        "gross_margin": 27.81,
+        "debt_ratio": 29.95,
+        "yoy_revenue": null,
+        "yoy_profit": null,
+        "qoq_revenue": null,
+        "qoq_profit": null
+      }
+    ],
+    "latest": {
+      "report_date": "2026-06-30",
+      "eps": 0.1,
+      "revenue_yi": 3.33,
+      "profit_yi": 0.41,
+      "roe": 2.88,
+      "gross_margin": 26.85,
+      "debt_ratio": 8.31,
+      "yoy_revenue": -8.64,
+      "yoy_profit": -34.07,
+      "qoq_revenue": 31.63,
+      "qoq_profit": 135.61
+    },
+    "source": "datacenter RPT_F10_FINANCE_MAINFINADATA",
+    "fetched_at": "2026-09-10T17:27:09+08:00"
+  },
+  "news": {
+    "news": [
+      {
+        "date": "2026-09-10 15:21:00",
+        "title": "新中港跌5.16%，成交额5.47亿元，近3日主力净流入7128.35万",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/aiassist/ggsp/2026-09-10/doc-inirinuu5391019.shtml",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-09-09 17:00:00",
+        "title": "新中港：公司暂无算电协同、地热发电、微电网等相关业务",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/1850649324/6e4eaaec02002izqg",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-09-02 00:00:00",
+        "title": "浙江新中港热电股份有限公司 关于召开2026年半年度业绩说明会的公告",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/jjxw/2026-09-02/doc-iniqkqvk3156480.shtml",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-09-01 19:02:00",
+        "title": "新中港：公司将于9月10日召开2026年半年度业绩说明会",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/relnews/cn/2026-09-01/doc-iniqitrq4823766.shtml",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-25 19:13:00",
+        "title": "新中港2026年半年度营收3.33亿元，同比下降8.64%",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/6372873842/17bda567202001ljvu",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-25 15:17:00",
+        "title": "新中港2026年半年报：综合热效率86.47%领跑，向弗迪电池供汽已启动",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/relnews/cn/2026-08-25/doc-inippmeu2257223.shtml",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-25 15:04:00",
+        "title": "新中港2026年半年报：用汽量下滑致营收利润双降，现金流承压",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/relnews/cn/2026-08-25/doc-inippmes5484160.shtml",
+        "sentiment": "neg"
+      },
+      {
+        "date": "2026-08-25 12:31:00",
+        "title": "新中港十大流通股东格局生变：摩根士丹利国际等新进，李南方等退出，高盛公司等增持",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/aiassist/sdltgdbh/2026-08-25/doc-inipnyqu1689494.shtml",
+        "sentiment": "pos"
+      },
+      {
+        "date": "2026-08-25 10:32:00",
+        "title": "新中港(605162.SH)2026年中报净利润为4074.97万元、较去年同期下降34.07%",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/5570287027/14c03d5b302001otic",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-25 08:55:00",
+        "title": "机构风向标 | 新中港(605162)2026年二季度已披露前十大机构持股比例合计下跌5.45个百分点",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/5182171545/134e1a99902002ip3o",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 23:16:00",
+        "title": "鹰眼预警：新中港营业收入下降",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/yyyj/2026-08-24/doc-inipmxcn2683815.shtml",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 21:28:00",
+        "title": "新中港(605162.SH)发布半年度业绩，归母净利润4075万元，同比下降34.07%",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/hkstock/ggscyd/2026-08-24/doc-inipmsvn5992695.shtml",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 21:22:00",
+        "title": "新中港：第三届董事会第二十二次会议决议公告",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/2311077472/89c03e6002002n7za",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 20:46:00",
+        "title": "新中港：2026年半年度营业收入为332908454.75元",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/2311077472/89c03e6002002n7qc",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 18:15:00",
+        "title": "图解新中港中报：第二季度单季净利润同比下降38.29%",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/1850649324/6e4eaaec02002hkp6",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 17:57:00",
+        "title": "新中港上半年营收3.33亿元同比降8.64%，归母净利润4074.97万元同比降34.07%，毛利率下降4.76个百分点",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/aiassist/yjbg/2026-08-24/doc-inipmhfq1997674.shtml",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 17:30:00",
+        "title": "新中港：上半年归母净利润4075万元 同比下降34.1%",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/7935425109/1d8fcfa5502001jwio",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 17:25:00",
+        "title": "新中港2026年半年度财报解读：经营现金流大降77.97%、扣非净利润下滑38.01% 多重压力凸显经营风险",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/aigc/stockfs/2026-08-24/doc-inipmhfq1969251.shtml",
+        "sentiment": "neg"
+      },
+      {
+        "date": "2026-08-24 17:13:00",
+        "title": "浙江新中港上半年营收3.33亿元 归母净利润同比下降34.07%",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/1644983660/620c756c02001upvq",
+        "sentiment": "neutral"
+      },
+      {
+        "date": "2026-08-24 16:57:00",
+        "title": "新中港(605162.SH)：上半年净利润4074.97万元，同比下降34.07%",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://cj.sina.cn/articles/view/5115326071/130e5ae7702002zv3k",
+        "sentiment": "neutral"
+      }
+    ],
+    "positive": [
+      {
+        "date": "2026-08-25 12:31:00",
+        "title": "新中港十大流通股东格局生变：摩根士丹利国际等新进，李南方等退出，高盛公司等增持",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/aiassist/sdltgdbh/2026-08-25/doc-inipnyqu1689494.shtml",
+        "sentiment": "pos"
+      }
+    ],
+    "negative": [
+      {
+        "date": "2026-08-25 15:04:00",
+        "title": "新中港2026年半年报：用汽量下滑致营收利润双降，现金流承压",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/relnews/cn/2026-08-25/doc-inippmes5484160.shtml",
+        "sentiment": "neg"
+      },
+      {
+        "date": "2026-08-24 17:25:00",
+        "title": "新中港2026年半年度财报解读：经营现金流大降77.97%、扣非净利润下滑38.01% 多重压力凸显经营风险",
+        "summary": "",
+        "source": "新浪财经-个股资讯",
+        "url": "https://finance.sina.com.cn/stock/aigc/stockfs/2026-08-24/doc-inipmhfq1969251.shtml",
+        "sentiment": "neg"
+      }
+    ],
+    "count": 20,
+    "source": "sina_stock_news",
+    "fetched_at": "2026-09-10T09:27:23+00:00",
+    "_degraded": true
+  },
+  "research": {
+    "reports": [],
+    "rating_dist": {},
+    "count": 0,
+    "source": "eastmoney",
+    "fetched_at": "2026-09-10T17:27:09+08:00"
+  },
+  "margin": {
+    "error": "无融资融券数据"
+  },
+  "peers": {
+    "error": "概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比"
+  },
+  "fund_daily5": {
+    "rows": [
+      {
+        "date": "2026-09-04",
+        "main_net_yi": 0.193,
+        "large_super_yi": 0.193
+      },
+      {
+        "date": "2026-09-07",
+        "main_net_yi": -0.165,
+        "large_super_yi": -0.165
+      },
+      {
+        "date": "2026-09-08",
+        "main_net_yi": -0.124,
+        "large_super_yi": -0.124
+      },
+      {
+        "date": "2026-09-09",
+        "main_net_yi": 1.305,
+        "large_super_yi": 1.305
+      },
+      {
+        "date": "2026-09-10",
+        "main_net_yi": -0.494,
+        "large_super_yi": -0.494
+      }
+    ],
+    "total_main_yi": 0.715,
+    "start": "2026-09-04",
+    "end": "2026-09-10",
+    "as_of": "2026-09-10"
+  },
+  "margin_hist": {
+    "error": "两融历史无数据",
+    "rows": []
+  },
+  "score": {
+    "total": 45,
+    "trend": 1,
+    "valuation": 8,
+    "valuation_pctile": 4,
+    "capital": 7,
+    "momentum": 3,
+    "sentiment": 4,
+    "risk": 5,
+    "chip": 4,
+    "sw_stability": 5,
+    "dragon": 4,
+    "factors": [
+      "跌-5.2% -5",
+      "PE=46.2偏高 -1",
+      "PB=2.85正常 +2",
+      "估值分位:无数据 0",
+      "资金流数据不可用 0",
+      "换手11.4%过高 -1",
+      "量比1.4温和放量 +1",
+      "振幅5.6%较大 -1",
+      "无热门概念 -1",
+      "北向资金(全市场)净流入370.5亿 +1",
+      "小盘股(47亿) -3",
+      "筹码: 无 K 线数据 0",
+      "申万: 申万表加载失败 0",
+      "近30日未上龙虎榜 -1"
+    ],
+    "change_pct": -5.16
+  },
+  "advice": "中性偏空",
+  "emoji": "🟡",
+  "detail": "减仓观望，已有持仓设紧止损",
+  "trading_plan": {
+    "entry_low": 10.33,
+    "entry_high": 10.65,
+    "stop_loss": 9.9,
+    "tp1": 11.72,
+    "tp2": 13.31,
+    "tp3": 15.98,
+    "position": "不进场 / 已有持仓减仓",
+    "period": "短线 1-2 周",
+    "stop_loss_pct": 7.0,
+    "state": "neutral",
+    "template_used": "【结论】综合评分 45 处于 45-55 区间，多空平衡、震荡格局 ｜ 【操作】区间操作 — 上沿 11.72 减仓、下沿 10.33 低吸、严格止损 9.9 ｜ 【风险】单边突破区间则按突破方向顺势操作，不预判方向"
+  },
+  "three_levels": {
+    "support": null,
+    "resistance": null,
+    "stop_loss": 9.9,
+    "support_candidates": {},
+    "resistance_candidates": {},
+    "method": "4 候选取最近者（支撑 ≤ 1.05×现价；压力 ≥ 0.95×现价；N=0）"
+  },
+  "signals": {
+    "good": [
+      "✅ PB=2.85正常",
+      "✅ 量比1.4温和放量",
+      "✅ 北向资金(全市场)净流入370.5亿"
+    ],
+    "bad": [
+      "⚠️ 跌-5.2%",
+      "⚠️ PE=46.2偏高",
+      "⚠️ 换手11.4%过高",
+      "⚠️ 振幅5.6%较大",
+      "⚠️ 无热门概念",
+      "⚠️ 小盘股(47亿)",
+      "⚠️ 近30日未上龙虎榜"
+    ]
+  },
+  "run_log": {
+    "started_at": "2026-09-10T17:24:23+08:00",
+    "finished_at": "2026-09-10T17:27:50+08:00",
+    "total_sec": 206.3,
+    "sources": {
+      "行情": "ok, 1022ms",
+      "估值一致预期": "ok, 4865ms",
+      "概念板块": "error:接口异常, 10012ms",
+      "当日资金流": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 2941ms",
+      "估值历史分位": "error:无数据, 111842ms",
+      "解禁日历": "ok, 2047ms",
+      "龙虎榜": "ok, 2044ms",
+      "宏观底色": "ok, 13245ms",
+      "筹码K线": "error:无 K 线数据, 1081ms",
+      "申万分类": "error:申万表加载失败, 6491ms",
+      "公告": "ok:eastmoney, 3246ms",
+      "财务摘要": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 1696ms",
+      "研报观点": "ok:eastmoney, 4167ms",
+      "新闻舆情": "ok:sina_stock_news, 9198ms",
+      "irm": "ok, 5115ms",
+      "holders": "ok, 7251ms",
+      "dividend": "ok, 515ms",
+      "board": "ok, 4317ms",
+      "dragon_market": "ok, 3430ms",
+      "融资融券": "error:无融资融券数据, 544ms"
+    },
+    "source_meta": {
+      "行情": {
+        "ms": 1022,
+        "at": "17:24:24",
+        "status": "ok, 1022ms",
+        "detail": "腾讯实时行情 qt.gtimg.cn"
+      },
+      "估值一致预期": {
+        "ms": 4865,
+        "at": "17:24:29",
+        "status": "ok, 4865ms",
+        "detail": "同花顺一致预期 basic.10jqka.com.cn"
+      },
+      "概念板块": {
+        "ms": 10012,
+        "at": "17:24:39",
+        "status": "error:接口异常, 10012ms",
+        "detail": "东财概念板块 slist"
+      },
+      "当日资金流": {
+        "ms": 2941,
+        "at": "17:24:42",
+        "status": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 2941ms",
+        "detail": "东财当日分钟资金流 fflow"
+      },
+      "估值历史分位": {
+        "ms": 111842,
+        "at": "17:26:34",
+        "status": "error:无数据, 111842ms",
+        "detail": "baostock 估值历史(近3年)"
+      },
+      "解禁日历": {
+        "ms": 2047,
+        "at": "17:26:36",
+        "status": "ok, 2047ms",
+        "detail": "东财数据中心 RPT_LIFT_STAGE"
+      },
+      "龙虎榜": {
+        "ms": 2044,
+        "at": "17:26:38",
+        "status": "ok, 2044ms",
+        "detail": "东财数据中心 RPT_DAILYBILLBOARD_DETAILSNEW"
+      },
+      "宏观底色": {
+        "ms": 13245,
+        "at": "17:26:51",
+        "status": "ok, 13245ms",
+        "detail": "同花顺北向 + 东财行业 + 同花顺强势股"
+      },
+      "筹码K线": {
+        "ms": 1081,
+        "at": "17:26:52",
+        "status": "error:无 K 线数据, 1081ms",
+        "detail": "baostock 前复权日K(筹码计算用)"
+      },
+      "申万分类": {
+        "ms": 6491,
+        "at": "17:26:59",
+        "status": "error:申万表加载失败, 6491ms",
+        "detail": "申万行业分类表 swsresearch"
+      },
+      "公告": {
+        "ms": 3246,
+        "status": "ok:eastmoney, 3246ms",
+        "detail": "东财公告 / 巨潮 cninfo"
+      },
+      "财务摘要": {
+        "ms": 1696,
+        "status": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 1696ms",
+        "detail": "东财数据中心 RPT_F10_FINANCE_MAINFINADATA"
+      },
+      "研报观点": {
+        "ms": 4167,
+        "status": "ok:eastmoney, 4167ms",
+        "detail": "东财研报 reportapi / 同花顺降级"
+      },
+      "新闻舆情": {
+        "ms": 9198,
+        "status": "ok:sina_stock_news, 9198ms",
+        "detail": "东财个股新闻"
+      },
+      "融资融券": {
+        "ms": 544,
+        "at": "17:27:44",
+        "status": "error:无融资融券数据, 544ms",
+        "detail": "东财数据中心 RPTA_WEB_RZRQ_GGMX"
+      },
+      "资金面-5日主力": {
+        "at": "17:27:46",
+        "ms": 2214,
+        "status": "ok, 2214ms",
+        "detail": "资金面-5日主力"
+      },
+      "两融历史": {
+        "at": "17:27:48",
+        "ms": 2068,
+        "status": "error:两融历史无数据, 2068ms",
+        "detail": "两融历史"
+      },
+      "同业对比": {
+        "at": "17:27:50",
+        "ms": 1504,
+        "status": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1504ms",
+        "detail": "同业对比"
+      }
+    },
+    "guard": {
+      "status": "N/A 单票流程不用池CSV",
+      "kline_freshness": "last_bar=N/A vs 最新交易日=2026-09-10 -> na (无K线(筹码模块失败: 无 K 线数据), 无法校验K线时点)"
+    },
+    "fallback_chain": [
+      "申万分类: SSL直连失败且 verify=False 重试亦失败: 申万表加载失败",
+      "概念板块: error:接口异常, 10012ms",
+      "当日资金流: error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 2941ms",
+      "估值历史分位: error:无数据, 111842ms",
+      "筹码K线: error:无 K 线数据, 1081ms",
+      "申万分类: error:申万表加载失败, 6491ms",
+      "融资融券: 无融资融券数据"
+    ],
+    "fatal": null,
+    "sections_count": 5,
+    "supplements": {
+      "资金面-5日主力": "ok, 2214ms",
+      "两融历史": "error:两融历史无数据, 2068ms",
+      "同业对比": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1504ms"
+    },
+    "artifacts": {
+      "md": "605162-新中港-1727.md",
+      "html": "605162-新中港-v3-20260910-1727.html",
+      "docx": "605162-新中港-1727.docx",
+      "result_json": "result_v3-1727.json",
+      "html_status": "ok",
+      "html_ms": 10912,
+      "docx_status": "ok",
+      "docx_ms": 211,
+      "sizes_bytes": {
+        "605162-新中港-1727.md": 16081,
+        "605162-新中港-v3-20260910-1727.html": 60595,
+        "605162-新中港-1727.docx": 51451,
+        "result_v3-1727.json": 49516,
+        "run_log-1727.json": null
+      }
+    }
+  },
+  "report_date": "2026-09-10",
+  "irm": {
+    "rows": []
+  },
+  "holders": {
+    "rows": []
+  },
+  "dividend": {
+    "rows": []
+  },
+  "board": {
+    "zt": [
+      {
+        "code": "000978",
+        "name": "桂林旅游",
+        "price": 9.69,
+        "change_pct": 9.988649368286133,
+        "limit_days": 4,
+        "first_seal": "092500",
+        "seal_fund": 70007963.0,
+        "industry": "旅游及景"
+      },
+      {
+        "code": "002790",
+        "name": "瑞尔特",
+        "price": 8.46,
+        "change_pct": 10.0130033493042,
+        "limit_days": 3,
+        "first_seal": "092500",
+        "seal_fund": 372712947.0,
+        "industry": "家居用品"
+      },
+      {
+        "code": "600318",
+        "name": "新力金融",
+        "price": 8.09,
+        "change_pct": 10.068026542663574,
+        "limit_days": 1,
+        "first_seal": "092501",
+        "seal_fund": 44051668.0,
+        "industry": "多元金融"
+      },
+      {
+        "code": "600359",
+        "name": "新农开发",
+        "price": 9.64,
+        "change_pct": 10.045661926269531,
+        "limit_days": 2,
+        "first_seal": "092503",
+        "seal_fund": 43204552.0,
+        "industry": "种植业"
+      },
+      {
+        "code": "600488",
+        "name": "津药药业",
+        "price": 5.9,
+        "change_pct": 10.074626922607422,
+        "limit_days": 1,
+        "first_seal": "092503",
+        "seal_fund": 40274869.0,
+        "industry": "化学制药"
+      },
+      {
+        "code": "002377",
+        "name": "国创高新",
+        "price": 3.47,
+        "change_pct": 10.158730506896973,
+        "limit_days": 2,
+        "first_seal": "093000",
+        "seal_fund": 104476148.0,
+        "industry": "炼化及贸"
+      },
+      {
+        "code": "600792",
+        "name": "云煤能源",
+        "price": 5.41,
+        "change_pct": 9.959349632263184,
+        "limit_days": 3,
+        "first_seal": "093042",
+        "seal_fund": 33286648.0,
+        "industry": "焦炭Ⅱ"
+      },
+      {
+        "code": "600192",
+        "name": "长城电工",
+        "price": 8.68,
+        "change_pct": 10.012674331665039,
+        "limit_days": 2,
+        "first_seal": "093045",
+        "seal_fund": 38523576.0,
+        "industry": "电网设备"
+      },
+      {
+        "code": "000993",
+        "name": "闽东电力",
+        "price": 12.62,
+        "change_pct": 10.026155471801758,
+        "limit_days": 2,
+        "first_seal": "093351",
+        "seal_fund": 122261941.0,
+        "industry": "电力"
+      },
+      {
+        "code": "002912",
+        "name": "中新赛克",
+        "price": 21.37,
+        "change_pct": 9.984560012817383,
+        "limit_days": 1,
+        "first_seal": "093421",
+        "seal_fund": 10231956.0,
+        "industry": "计算机设"
+      },
+      {
+        "code": "600667",
+        "name": "太极实业",
+        "price": 19.98,
+        "change_pct": 10.022026062011719,
+        "limit_days": 1,
+        "first_seal": "093622",
+        "seal_fund": 541973484.0,
+        "industry": "工程咨询"
+      },
+      {
+        "code": "002201",
+        "name": "九鼎新材",
+        "price": 10.08,
+        "change_pct": 10.043667793273926,
+        "limit_days": 1,
+        "first_seal": "093836",
+        "seal_fund": 73920036.0,
+        "industry": "玻璃玻纤"
+      },
+      {
+        "code": "603318",
+        "name": "水发燃气",
+        "price": 10.35,
+        "change_pct": 9.989372253417969,
+        "limit_days": 1,
+        "first_seal": "093842",
+        "seal_fund": 42894353.0,
+        "industry": "燃气Ⅱ"
+      },
+      {
+        "code": "002661",
+        "name": "克明食品",
+        "price": 9.6,
+        "change_pct": 9.965636253356934,
+        "limit_days": 1,
+        "first_seal": "094057",
+        "seal_fund": 21744969.0,
+        "industry": "食品加工"
+      },
+      {
+        "code": "603421",
+        "name": "鼎信通讯",
+        "price": 7.29,
+        "change_pct": 9.954751014709473,
+        "limit_days": 2,
+        "first_seal": "094136",
+        "seal_fund": 65399464.0,
+        "industry": "通信设备"
+      },
+      {
+        "code": "000565",
+        "name": "渝三峡Ａ",
+        "price": 7.91,
+        "change_pct": 10.013908386230469,
+        "limit_days": 2,
+        "first_seal": "094139",
+        "seal_fund": 48895103.0,
+        "industry": "化学制品"
+      },
+      {
+        "code": "603316",
+        "name": "诚邦股份",
+        "price": 15.72,
+        "change_pct": 10.006998062133789,
+        "limit_days": 1,
+        "first_seal": "094150",
+        "seal_fund": 28771844.0,
+        "industry": "半导体"
+      },
+      {
+        "code": "600876",
+        "name": "凯盛新能",
+        "price": 7.91,
+        "change_pct": 10.013908386230469,
+        "limit_days": 1,
+        "first_seal": "094624",
+        "seal_fund": 14763959.0,
+        "industry": "玻璃玻纤"
+      },
+      {
+        "code": "601231",
+        "name": "环旭电子",
+        "price": 27.92,
+        "change_pct": 10.007880210876465,
+        "limit_days": 1,
+        "first_seal": "094806",
+        "seal_fund": 113219257.0,
+        "industry": "消费电子"
+      },
+      {
+        "code": "603105",
+        "name": "芯能科技",
+        "price": 8.38,
+        "change_pct": 9.973752975463867,
+        "limit_days": 1,
+        "first_seal": "094819",
+        "seal_fund": 47569070.0,
+        "industry": "电力"
+      },
+      {
+        "code": "001299",
+        "name": "美能能源",
+        "price": 11.83,
+        "change_pct": 10.04651165008545,
+        "limit_days": 1,
+        "first_seal": "094903",
+        "seal_fund": 9034854.0,
+        "industry": "燃气Ⅱ"
+      },
+      {
+        "code": "000722",
+        "name": "湖南发展",
+        "price": 14.74,
+        "change_pct": 10.0,
+        "limit_days": 1,
+        "first_seal": "095048",
+        "seal_fund": 69183678.0,
+        "industry": "电力"
+      },
+      {
+        "code": "920268",
+        "name": "百迈科",
+        "price": 34.94,
+        "change_pct": 29.985118865966797,
+        "limit_days": 1,
+        "first_seal": "095315",
+        "seal_fund": 14478961.0,
+        "industry": "医疗器械"
+      },
+      {
+        "code": "002543",
+        "name": "万和电气",
+        "price": 7.9,
+        "change_pct": 10.027854919433594,
+        "limit_days": 1,
+        "first_seal": "095648",
+        "seal_fund": 15553599.0,
+        "industry": "厨卫电器"
+      },
+      {
+        "code": "600744",
+        "name": "华银电力",
+        "price": 7.0,
+        "change_pct": 10.06289291381836,
+        "limit_days": 1,
+        "first_seal": "100947",
+        "seal_fund": 143580367.0,
+        "industry": "电力"
+      },
+      {
+        "code": "002636",
+        "name": "金安国纪",
+        "price": 76.45,
+        "change_pct": 10.0,
+        "limit_days": 1,
+        "first_seal": "101351",
+        "seal_fund": 287750919.0,
+        "industry": "元件"
+      },
+      {
+        "code": "002204",
+        "name": "大连重工",
+        "price": 5.89,
+        "change_pct": 10.09345817565918,
+        "limit_days": 1,
+        "first_seal": "101818",
+        "seal_fund": 124424989.0,
+        "industry": "专用设备"
+      },
+      {
+        "code": "000823",
+        "name": "超声电子",
+        "price": 18.7,
+        "change_pct": 10.0,
+        "limit_days": 1,
+        "first_seal": "102854",
+        "seal_fund": 65195025.0,
+        "industry": "元件"
+      },
+      {
+        "code": "603601",
+        "name": "再升科技",
+        "price": 9.96,
+        "change_pct": 10.055248260498047,
+        "limit_days": 1,
+        "first_seal": "103715",
+        "seal_fund": 47018371.0,
+        "industry": "专业工程"
+      },
+      {
+        "code": "002174",
+        "name": "游族网络",
+        "price": 13.64,
+        "change_pct": 10.0,
+        "limit_days": 1,
+        "first_seal": "130103",
+        "seal_fund": 23844084.0,
+        "industry": "游戏Ⅱ"
+      },
+      {
+        "code": "002531",
+        "name": "天顺风能",
+        "price": 6.91,
+        "change_pct": 10.03184700012207,
+        "limit_days": 1,
+        "first_seal": "130303",
+        "seal_fund": 91847837.0,
+        "industry": "风电设备"
+      },
+      {
+        "code": "600712",
+        "name": "南宁百货",
+        "price": 6.83,
+        "change_pct": 9.98389720916748,
+        "limit_days": 1,
+        "first_seal": "130813",
+        "seal_fund": 63135837.0,
+        "industry": "一般零售"
+      },
+      {
+        "code": "600644",
+        "name": "乐山电力",
+        "price": 10.12,
+        "change_pct": 10.0,
+        "limit_days": 1,
+        "first_seal": "131742",
+        "seal_fund": 64907210.0,
+        "industry": "电力"
+      },
+      {
+        "code": "000048",
+        "name": "京基智农",
+        "price": 23.2,
+        "change_pct": 10.004741668701172,
+        "limit_days": 1,
+        "first_seal": "142045",
+        "seal_fund": 22317564.0,
+        "industry": "养殖业"
+      },
+      {
+        "code": "000532",
+        "name": "华金资本",
+        "price": 12.43,
+        "change_pct": 10.0,
+        "limit_days": 1,
+        "first_seal": "144703",
+        "seal_fund": 30885094.0,
+        "industry": "多元金融"
+      }
+    ],
+    "dt": [
+      {
+        "code": "002365",
+        "name": "永安药业",
+        "price": 13.98,
+        "change_pct": -9.980682373046875,
+        "pct": -9.980682373046875,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 1013550.0,
+        "industry": "化学制药"
+      },
+      {
+        "code": "600479",
+        "name": "千金药业",
+        "price": 12.71,
+        "change_pct": -9.985836029052734,
+        "pct": -9.985836029052734,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 1173044.0,
+        "industry": "中药Ⅱ"
+      },
+      {
+        "code": "603090",
+        "name": "宏盛股份",
+        "price": 36.88,
+        "change_pct": -10.00487995147705,
+        "pct": -10.00487995147705,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 7173160.0,
+        "industry": "通用设备"
+      },
+      {
+        "code": "000020",
+        "name": "深华发Ａ",
+        "price": 13.41,
+        "change_pct": -10.0,
+        "pct": -10.0,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 23204221.0,
+        "industry": "光学光电"
+      },
+      {
+        "code": "603042",
+        "name": "华脉科技",
+        "price": 16.8,
+        "change_pct": -10.016068458557129,
+        "pct": -10.016068458557129,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 24294580.0,
+        "industry": "通信设备"
+      },
+      {
+        "code": "000912",
+        "name": "泸天化",
+        "price": 4.68,
+        "change_pct": -10.0,
+        "pct": -10.0,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 32719747.0,
+        "industry": "农化制品"
+      },
+      {
+        "code": "601118",
+        "name": "海南橡胶",
+        "price": 7.34,
+        "change_pct": -9.938650131225586,
+        "pct": -9.938650131225586,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 44631082.0,
+        "industry": "种植业"
+      },
+      {
+        "code": "002855",
+        "name": "捷荣技术",
+        "price": 14.99,
+        "change_pct": -9.969969749450684,
+        "pct": -9.969969749450684,
+        "dt_time": "",
+        "dt_days": 2,
+        "seal_fund": 56480821.0,
+        "industry": "消费电子"
+      },
+      {
+        "code": "003040",
+        "name": "楚天龙",
+        "price": 18.9,
+        "change_pct": -10.0,
+        "pct": -10.0,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 86606679.0,
+        "industry": "通信设备"
+      },
+      {
+        "code": "600737",
+        "name": "中粮糖业",
+        "price": 17.82,
+        "change_pct": -10.0,
+        "pct": -10.0,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 127761452.0,
+        "industry": "农产品加"
+      },
+      {
+        "code": "000017",
+        "name": "深中华A",
+        "price": 8.33,
+        "change_pct": -10.043196678161621,
+        "pct": -10.043196678161621,
+        "dt_time": "",
+        "dt_days": 1,
+        "seal_fund": 130969666.0,
+        "industry": "饰品"
+      }
+    ],
+    "yzt": [],
+    "limit_up_reasons": [],
+    "sentiment": {}
+  },
+  "dragon_market": {
+    "stocks": [
+      {
+        "code": "002636",
+        "name": "金安国纪",
+        "net_buy": 548582049.82,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日涨幅偏离值达到7%的前5只证券"
+      },
+      {
+        "code": "301689",
+        "name": "电科思仪",
+        "net_buy": 304571843.44,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "无价格涨跌幅限制的证券"
+      },
+      {
+        "code": "600744",
+        "name": "华银电力",
+        "net_buy": 222344577.84,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券"
+      },
+      {
+        "code": "002174",
+        "name": "游族网络",
+        "net_buy": 155758106.21,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日涨幅偏离值达到7%的前5只证券"
+      },
+      {
+        "code": "000823",
+        "name": "超声电子",
+        "net_buy": 92062323.58,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日涨幅偏离值达到7%的前5只证券"
+      },
+      {
+        "code": "000565",
+        "name": "渝三峡A",
+        "net_buy": 79571289.61,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "连续三个交易日内，涨幅偏离值累计达到20%的证券"
+      },
+      {
+        "code": "301176",
+        "name": "逸豪新材",
+        "net_buy": 72447380.36,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日涨幅达到15%的前5只证券"
+      },
+      {
+        "code": "600488",
+        "name": "津药药业",
+        "net_buy": 67772633.1,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券"
+      },
+      {
+        "code": "000993",
+        "name": "闽东电力",
+        "net_buy": 62242925.6,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "连续三个交易日内，涨幅偏离值累计达到20%的证券"
+      },
+      {
+        "code": "600359",
+        "name": "新农开发",
+        "net_buy": 59342128.8,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券"
+      },
+      {
+        "code": "002377",
+        "name": "国创高新",
+        "net_buy": 50300599.8,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "连续三个交易日内，涨幅偏离值累计达到20%的证券"
+      },
+      {
+        "code": "600722",
+        "name": "金牛化工",
+        "net_buy": 39562520.59,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "有价格涨跌幅限制的日价格振幅达到15%的前五只证券"
+      },
+      {
+        "code": "000565",
+        "name": "渝三峡A",
+        "net_buy": 31077028.8,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日振幅值达到15%的前5只证券"
+      },
+      {
+        "code": "600318",
+        "name": "新力金融",
+        "net_buy": 26035949.48,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券"
+      },
+      {
+        "code": "300290",
+        "name": "ST荣科",
+        "net_buy": 25750521.92,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "连续三个交易日内，涨幅偏离值累计达到30%的证券"
+      },
+      {
+        "code": "600192",
+        "name": "长城电工",
+        "net_buy": 21881213.3,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券"
+      },
+      {
+        "code": "002855",
+        "name": "捷荣技术",
+        "net_buy": 12310935.0,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日跌幅偏离值达到7%的前5只证券"
+      },
+      {
+        "code": "301520",
+        "name": "万邦医药",
+        "net_buy": 10748592.1,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日换手率达到30%的前5只证券"
+      },
+      {
+        "code": "000993",
+        "name": "闽东电力",
+        "net_buy": 8768598.37999999,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "日涨幅偏离值达到7%的前5只证券"
+      },
+      {
+        "code": "002855",
+        "name": "捷荣技术",
+        "net_buy": 6455199.48,
+        "net_buy_pct": 0.0,
+        "buy_amount": 0.0,
+        "sell_amount": 0.0,
+        "reason": "连续三个交易日内，跌幅偏离值累计达到20%的证券"
+      }
+    ],
+    "total_records": 64,
+    "trade_date": "20260910"
+  },
+  "_files": {
+    "md": "/Users/swarteachou/Desktop/大A数据/reports/605162_新中港/2026-09-10/605162-新中港-1727.md",
+    "html": "/Users/swarteachou/Desktop/大A数据/reports/605162_新中港/2026-09-10/605162-新中港-v3-20260910-1727.html",
+    "docx": "/Users/swarteachou/Desktop/大A数据/reports/605162_新中港/2026-09-10/605162-新中港-1727.docx",
+    "json": "/Users/swarteachou/Desktop/大A数据/reports/605162_新中港/2026-09-10/result_v3-1727.json",
+    "run_log": "/Users/swarteachou/Desktop/大A数据/reports/605162_新中港/2026-09-10/run_log-1727.json",
+    "day_dir": "/Users/swarteachou/Desktop/大A数据/reports/605162_新中港/2026-09-10",
+    "status": {
+      "html": "ok",
+      "docx": "ok",
+      "html_err": "",
+      "docx_err": ""
+    }
+  }
+}
