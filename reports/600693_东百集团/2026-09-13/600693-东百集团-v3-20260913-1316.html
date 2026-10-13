@@ -1,0 +1,966 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>东百集团 600693 · V3 报告</title><script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script><style>
+:root{
+  /* ================= §2.1 设计 token (docs/06-排版美化方案) ================= */
+  --bg:#fafaf9;            /* 中性底 (不纯黑纯白) */
+  --surface:#ffffff;
+  --zebra:#f5f5f4;         /* 表格斑马纹 (中性灰阶梯) */
+  --ink-1:#1c1917;         /* 主文字 (17.5:1) */
+  --ink-2:#57534e;         /* 次级文字 (7.6:1) */
+  --ink-3:#78716c;         /* 弱文字/注释 (4.8:1, AA) */
+  --accent:#2563eb;        /* 强调 (5.2:1) */
+  --warn:#d97706;          /* 警告/中性 */
+  --warn-bg:#fffbeb;
+  --danger:#dc2626;        /* 危险 (4.8:1) */
+  --good:#16a34a;          /* 正向 */
+  --hairline:#e7e5e4;      /* hairline 分隔线 */
+  /* ================= A股例外: 红涨绿跌 (覆盖国际惯例, 全篇一致) ================= */
+  /* 涨/利好 = 红系; 跌/利空 = 绿系; 风险警报区仍红警示 */
+  --up:#dc2626;            /* 涨/利好 = 危险红 (红系主色) */
+  --up-ink:#b91c1c;        /* 涨红 AA 文字档 6.5:1 */
+  --up-bg:#fef2f2;
+  --down:#16a34a;          /* 跌/利空 = 正向绿 (绿系主色) */
+  --down-ink:#15803d;      /* 跌绿 AA 文字档 5.0:1 */
+  --down-bg:#f0fdf4;
+  --neutral-ink:#b45309;   /* 中性琥珀 AA 文字档 5.0:1 */
+  --risk-ink:#b91c1c; --risk-bg:#fef2f2; --risk-line:#fecaca;
+  --ok-ink:#15803d; --ok-bg:#f0fdf4; --ok-line:#bbf7d0;
+  /* ================= §2.2 字体: CJK 栈 + 数字等宽 ================= */
+  --font-cjk:"PingFang SC","Source Han Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+  --font-num:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  /* ================= §2.3 8px 基线网格: 间距/圆角 = 8 的倍数 ================= */
+  --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px;
+  --radius:8px;            /* 圆角统一 8px */
+  --shadow:0 1px 2px rgba(28,25,23,.05),0 2px 8px rgba(28,25,23,.04);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font-cjk);background:var(--bg);color:var(--ink-1);
+     margin:0;font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums}
+.container{max-width:800px;margin:0 auto;padding:var(--sp-2) var(--sp-2) var(--sp-4)}
+.self-test-note{background:var(--warn-bg);border:1px dashed var(--warn);
+     color:var(--neutral-ink);padding:var(--sp-1) var(--sp-2);border-radius:var(--radius);
+     font-size:12px;margin-bottom:var(--sp-2)}
+.card{background:var(--surface);border-radius:var(--radius);padding:var(--sp-2);
+     margin-bottom:var(--sp-2);box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin:0 0 var(--sp-1);color:var(--ink-1);
+     display:flex;align-items:center;gap:var(--sp-1)}
+.card h2 .bar{width:4px;height:16px;border-radius:2px;background:var(--accent);
+     display:inline-block}
+.no-data{color:var(--ink-3);font-size:13px;padding:var(--sp-2);text-align:center;
+     background:var(--bg);border:1px dashed var(--hairline);border-radius:var(--radius)}
+.src-line{font-size:11.5px;color:var(--ink-3);margin:-4px 0 var(--sp-1);line-height:1.5}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1)}
+@media(min-width:600px){.mini-grid{grid-template-columns:repeat(3,1fr)}}
+.kpi{background:var(--bg);border-radius:var(--radius);padding:var(--sp-1) 12px}
+.kpi .l{color:var(--ink-3);font-size:11px}
+.kpi .v{font-size:17px;font-weight:600;margin-top:2px;font-family:var(--font-num)}
+table.v3-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+table.v3-tbl th,table.v3-tbl td{padding:var(--sp-1);text-align:left;vertical-align:top;
+     border-bottom:1px solid var(--hairline)}
+table.v3-tbl th{color:var(--ink-3);font-weight:500;font-size:11.5px;background:var(--bg);
+     white-space:nowrap}
+table.v3-tbl tbody tr:last-child td{border-bottom:none}
+table.v3-tbl tbody tr:nth-child(even){background:var(--zebra)}  /* zebra 斑马纹 */
+table.v3-tbl td.num,table.v3-tbl th.num{text-align:right;font-family:var(--font-num);
+     font-variant-numeric:tabular-nums}
+.tbl-wrap{max-height:360px;overflow:auto;border:1px solid var(--hairline);
+     border-radius:var(--radius);background:var(--surface)}
+.tbl-wrap table.v3-tbl thead th{position:sticky;top:0;z-index:2}  /* 长表 sticky 表头 */
+.up{color:var(--up-ink)}       /* A股: 涨 = 红系 */
+.down{color:var(--down-ink)}   /* A股: 跌 = 绿系 */
+a{color:var(--accent);text-decoration:none}
+.disc{color:var(--ink-3);font-size:11.5px}
+.mono{font-family:var(--font-num)}
+
+/* ---------- §2.4 顶部 masthead 条: 股票名 + 代码 + 报告日期 + 数据截止时点 ---------- */
+.masthead{background:var(--surface);border-bottom:1px solid var(--hairline);
+     padding:var(--sp-2);display:flex;justify-content:space-between;align-items:center;
+     gap:var(--sp-1);flex-wrap:wrap;box-shadow:var(--shadow)}
+.masthead .mh-name{font-size:24px;font-weight:700;letter-spacing:.5px;
+     display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap}
+.masthead .mh-code{font-family:var(--font-num);font-size:13px;font-weight:600;
+     color:var(--ink-1);background:var(--bg);border:1px solid var(--hairline);
+     border-radius:999px;padding:2px 10px}
+.masthead .mh-meta{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.masthead .mh-chip{font-size:11.5px;color:var(--ink-2);background:var(--bg);
+     border:1px solid var(--hairline);border-radius:999px;padding:3px 10px;
+     white-space:nowrap}
+/* ---------- §2.4 hero 行情区: 结论大字 + 评分大字 + 现价等宽 + 三价位显式卡片 ---------- */
+.hero{margin-bottom:var(--sp-2);padding:var(--sp-2);color:#fff;box-shadow:var(--shadow)}
+.hero-bull{background:linear-gradient(160deg,#991b1b 0%,#b91c1c 55%,#dc2626 100%)}
+.hero-bear{background:linear-gradient(160deg,#14532d 0%,#15803d 55%,#16a34a 100%)}
+.hero-neutral{background:linear-gradient(160deg,#92400e 0%,#b45309 55%,#d97706 100%)}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);
+     flex-wrap:wrap}
+.verdict{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
+.adv-dot{display:inline-flex;align-items:center;justify-content:center;min-width:40px;
+     height:40px;padding:0 6px;background:rgba(255,255,255,.96);border-radius:999px;
+     font-size:20px;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.18);white-space:nowrap}
+.hero .advice{font-size:30px;font-weight:800;letter-spacing:1px;line-height:1.2}
+.score-box{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
+.hero .score{font-family:var(--font-num);font-size:40px;font-weight:800;line-height:1;
+     font-variant-numeric:tabular-nums}
+.hero .score small{font-size:14px;font-weight:400;opacity:.85;font-family:var(--font-cjk)}
+.score-box .cap{font-size:11px;opacity:.85;letter-spacing:2px}
+.px-line{display:flex;align-items:center;gap:var(--sp-1);margin:var(--sp-2) 0 var(--sp-1);
+     flex-wrap:wrap}
+.hero .px{font-family:var(--font-num);font-size:32px;font-weight:700;line-height:1.1}
+.hero .px small{font-family:var(--font-cjk);font-size:13px;font-weight:400;opacity:.85}
+.chg-pill{font-family:var(--font-num);font-size:13.5px;font-weight:700;line-height:1;
+     background:rgba(255,255,255,.96);padding:6px 12px;border-radius:999px}
+.chg-pill.up{color:var(--up-ink)}       /* 涨 → 红系 */
+.chg-pill.down{color:var(--down-ink)}   /* 跌 → 绿系 */
+.price3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--sp-1);
+     margin:var(--sp-1) 0 var(--sp-2)}
+.price3 .p3{background:rgba(255,255,255,.14);border-radius:var(--radius);
+     padding:var(--sp-1) 10px;text-align:center;
+     box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.price3 .p3 .l{font-size:11px;opacity:.92}
+.price3 .p3 .v{font-size:17px;font-weight:700;margin-top:3px;font-family:var(--font-num);
+     line-height:1.35}
+.price3 .p3 .v .l{font-size:11px;font-weight:400;opacity:.92;margin-top:2px;
+     font-family:var(--font-cjk)}
+.hero .reason{margin-top:var(--sp-1);font-size:13px;padding:10px 12px;
+     border-radius:var(--radius);background:rgba(255,255,255,.16);line-height:1.65}
+.hero .reason-hint{font-size:11.5px;opacity:.92;margin-top:var(--sp-1);line-height:1.5}
+.grid-2-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:560px){.grid-2-wrap{grid-template-columns:1fr}}
+
+/* ---------- §2.4 操作检查清单 (色语义: 买点=红系做多, 止损=红系警示, 卖点=强调蓝) ---------- */
+.chk{display:flex;gap:var(--sp-1);padding:var(--sp-1) 10px;border-radius:var(--radius);
+     margin-bottom:var(--sp-1);background:var(--bg);border-left:4px solid var(--hairline);
+     font-size:13px}
+.chk .box{color:var(--accent);font-weight:800;flex:none}
+.chk .t{flex:1}
+.chk .grp{color:var(--ink-3);font-size:11px;margin:10px 0 2px;font-weight:600}
+.chk-buy{border-left-color:var(--up);background:var(--up-bg)}
+.chk-sell{border-left-color:var(--accent);background:var(--surface)}
+.chk-stop{border-left-color:var(--risk-ink);background:var(--risk-bg)}
+.chk-watch{border-left-color:var(--hairline)}
+/* ---------- §2.4 5 项 GFM checkbox 清单 (债 5 修法, Task 7.2) ---------- */
+.task-list{list-style:none;padding:0;margin:8px 0 0}
+.task-list-item{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;
+     margin-bottom:6px;border-radius:var(--radius);background:var(--bg);
+     border-left:3px solid var(--accent);font-size:13px;line-height:1.6}
+.task-list-item .cb{color:var(--accent);font-weight:800;flex:none;font-size:15px;
+     line-height:1.4}
+.task-list-item .lbl{flex:1;color:var(--ink-2)}
+.task-list-item .lbl b{color:var(--ink-1)}
+.task-bull{border-left-color:var(--up)}
+.task-stop{border-left-color:var(--risk-ink);background:var(--risk-bg)}
+.task-watch{border-left-color:var(--hairline)}
+/* ---------- §2.4 风险警报区 (红系警示不变) ---------- */
+.risk{background:var(--risk-bg);border:1px solid var(--risk-line);border-radius:var(--radius);
+     padding:12px 14px;margin-bottom:var(--sp-1)}
+.risk .h{color:var(--risk-ink);font-weight:700;font-size:14px;display:flex;
+     justify-content:space-between;gap:var(--sp-1)}
+.risk .h .d{font-weight:400;font-size:12px;color:var(--risk-ink)}
+.risk .b{font-size:12.5px;color:var(--risk-ink);margin-top:4px;line-height:1.55}
+.risk-ok{background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok-ink);
+     border-radius:var(--radius);padding:12px 14px;font-size:13.5px;font-weight:600}
+/* ---------- 图表卡片: hairline 分隔, 克制阴影 ---------- */
+.chart-card{margin-bottom:var(--sp-2)}
+.chart-head{display:flex;justify-content:space-between;align-items:center;
+     margin-bottom:var(--sp-1);flex-wrap:wrap;gap:4px}
+.chart-head .t{font-size:15px;font-weight:700;color:var(--ink-1)}
+.chart-head .tm{font-size:10.5px;color:var(--ink-3);background:var(--bg);
+     border:1px solid var(--hairline);padding:2px 10px;border-radius:999px;white-space:nowrap}
+.chart-body{text-align:center;overflow-x:auto;border:1px solid var(--hairline);
+     border-radius:var(--radius);padding:var(--sp-1) 2px 2px;background:var(--surface)}
+.chart-body svg{max-width:100%;height:auto}
+.chart-body.radar svg{max-width:340px;height:auto}
+.tag-row{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-1)}
+.v3-tag{padding:2px 10px;border-radius:999px;font-size:11.5px;font-weight:500;
+     white-space:nowrap}
+/* ---------- §2.4 页脚: 免责声明 + 数据来源 + 生成时间 ---------- */
+.foot{text-align:center;color:var(--ink-3);font-size:11.5px;padding:var(--sp-1) 0 var(--sp-3);
+     line-height:1.8}
+.dark-tbl td{font-size:12px}
+@media(max-width:460px){.hero .advice{font-size:24px}.hero .px{font-size:24px}
+     .container{padding:var(--sp-1)}.price3 .p3 .v{font-size:15px}
+     .masthead .mh-name{font-size:20px}}
+
+/* ── mingli30119 双主题 · 红涨绿跌 · 金棕强调 · 响应式 ── */
+.v3-stock-report{
+--bg:#0c0f15;--card-bg:#1a1c24;--card-bg-alt:#1e2029;--border:#2a2d3a;
+--text-primary:#e8e9ec;--text-secondary:#b0b3be;--text-muted:#7a7d8a;
+--red-up:#f55656;--green-down:#28c75b;--gold:#d4a853;--gold-light:#e3c26d;
+--blue-accent:#4a90d9;--orange-warn:#e8923a;
+--shadow:0 4px 20px rgba(0,0,0,.3);--radius:10px;
+--font-sans:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+--font-mono:"JetBrains Mono","SF Mono","Consolas",monospace;--transition:.2s ease;
+}
+.v3-stock-report, .v3-stock-report *{font-family:var(--font-sans)}
+.v3-stock-report.light-mode{
+--bg:#fdf8f0;--card-bg:#fffbf5;--card-bg-alt:#fef5e7;--border:#e2cfa2;
+--text-primary:#2a1f12;--text-secondary:#6b5634;--text-muted:#9c8b6e;
+--red-up:#dc2626;--green-down:#16a34a;--gold:#b38a3c;--gold-light:#d4a853;
+--blue-accent:#2563eb;--orange-warn:#c2410c;--shadow:0 4px 20px rgba(162,125,57,.08)
+}
+.v3-stock-report{background:var(--bg);color:var(--text-primary);line-height:1.7;font-size:14px;
+background-image:radial-gradient(circle at 15% 10%,rgba(212,168,83,.03) 0%,transparent 35%),
+radial-gradient(circle at 85% 70%,rgba(212,168,83,.03) 0%,transparent 35%);background-attachment:fixed;
+max-width:1300px;margin:0 auto;padding:24px 20px 40px}
+/* 顶部导航 */
+.v3-stock-report .top-nav{position:sticky;top:0;z-index:100;background:rgba(10,12,18,.92);
+backdrop-filter:blur(12px);border-bottom:2px solid var(--gold-light);padding:10px 28px;
+margin:-24px -20px 24px;display:flex;align-items:center;justify-content:space-between;
+flex-wrap:wrap;gap:12px}
+.v3-stock-report .top-nav .logo{display:flex;align-items:center;gap:10px;color:#fff}
+.v3-stock-report .top-nav .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#c0392b,#8b0000);
+border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#fff}
+.v3-stock-report .top-nav .stock-name{font-weight:700;font-size:17px;letter-spacing:.5px}
+.v3-stock-report .top-nav .stock-code{font-size:12px;opacity:.7;font-family:var(--font-mono)}
+.v3-stock-report .nav-links{display:flex;gap:8px;flex-wrap:wrap}
+.v3-stock-report .nav-links a{font-size:12px;padding:5px 14px;border-radius:16px;color:var(--gold-light);
+text-decoration:none;border:1px solid transparent;transition:var(--transition);font-weight:500;white-space:nowrap}
+.v3-stock-report .nav-links a:hover,.v3-stock-report .nav-links a.active{background:rgba(255,255,255,.08);
+color:#fff;border-color:var(--gold)}
+.v3-stock-report .theme-toggle{background:rgba(255,255,255,.08);border:1px solid var(--gold-light);
+color:var(--gold-light);padding:5px 14px;border-radius:16px;font-size:12px;cursor:pointer;
+transition:var(--transition);margin-left:12px}
+.v3-stock-report .theme-toggle:hover{background:rgba(255,255,255,.15)}
+/* Hero 行情卡片 */
+.v3-stock-report .hero{background:linear-gradient(105deg,#1c1010 0%,#2c1a1a 50%,#3d2424 100%);
+border-radius:var(--radius);padding:28px 32px;margin-bottom:24px;border:1px solid var(--gold-light);
+box-shadow:0 8px 28px rgba(100,55,55,.2);display:flex;flex-wrap:wrap;gap:24px;
+align-items:center;color:#fff;position:relative;overflow:hidden}
+.v3-stock-report .hero::after{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,.08) 0%,transparent 70%);pointer-events:none}
+.v3-stock-report .hero-price-block{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-price{font-size:56px;font-weight:900;line-height:1;font-family:var(--font-mono)}
+.v3-stock-report .hero-change{font-size:20px;font-weight:700;padding:4px 12px;border-radius:6px;
+background:rgba(245,86,86,.2);color:#f87171;font-family:var(--font-mono)}
+.v3-stock-report .hero-meta{display:flex;gap:28px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-meta-item{text-align:center}
+.v3-stock-report .hero-meta-item .val{font-size:22px;font-weight:700;font-family:var(--font-mono);color:var(--gold-light)}
+.v3-stock-report .hero-meta-item .label{font-size:11px;color:rgba(255,255,255,.7);letter-spacing:1px}
+.v3-stock-report .hero-tags{display:flex;gap:8px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-tag{background:rgba(255,255,255,.08);border:1px solid rgba(255,215,0,.3);
+color:var(--gold-light);padding:4px 9px;border-radius:20px;font-size:11px;font-weight:500}
+/* 结论置顶 */
+.v3-stock-report .conclusion-top{background:linear-gradient(135deg,#1e1a10 0%,#241f14 100%);
+border:2px solid var(--gold);border-radius:var(--radius);padding:22px 28px;margin-bottom:24px;position:relative}
+.v3-stock-report .conclusion-top::before{content:'核心结论';position:absolute;top:-13px;left:24px;
+background:var(--gold);color:#000;padding:3px 16px;border-radius:12px;font-weight:700;font-size:12px;letter-spacing:1px}
+.v3-stock-report .conclusion-top .big-verdict{font-weight:800;font-size:20px;color:#fff;margin-top:8px}
+.v3-stock-report .conclusion-top .verdict-detail{font-size:14px;color:var(--text-secondary);margin-top:8px;line-height:1.7}
+.v3-stock-report .conclusion-top .verdict-tags{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+/* 卡片 */
+.v3-stock-report .card{background:var(--card-bg);border:1px solid var(--border);
+border-radius:var(--radius);padding:22px 28px;margin-bottom:20px;box-shadow:var(--shadow);
+transition:var(--transition)}
+.v3-stock-report .card:hover{box-shadow:0 8px 30px rgba(0,0,0,.5);border-color:var(--gold)}
+.v3-stock-report .card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;
+padding-bottom:12px;border-bottom:2px solid var(--border)}
+.v3-stock-report .card-header .icon{width:32px;height:32px;border-radius:8px;
+background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;
+font-weight:700;font-size:16px;color:var(--gold)}
+.v3-stock-report .card-header h2{font-size:18px;font-weight:700;color:#fff;letter-spacing:.5px}
+.v3-stock-report .card-header .sub{margin-left:auto;font-size:11px;color:var(--text-muted)}
+/* 布局网格 */
+.v3-stock-report .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.v3-stock-report .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+/* 表格 */
+.v3-stock-report table.cons{width:100%;border-collapse:collapse;font-size:13px;
+background:var(--card-bg-alt);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:12px 0}
+.v3-stock-report table.cons thead th{background:linear-gradient(180deg,#2c1a1a 0%,#1c1010 100%);
+color:#fff;font-weight:600;padding:10px 12px;text-align:left;font-size:12px;letter-spacing:1px}
+.v3-stock-report table.cons tbody tr{border-bottom:1px dashed var(--border)}
+.v3-stock-report table.cons tbody tr:hover{background:rgba(255,255,255,.02)}
+.v3-stock-report table.cons tbody td{padding:9px 12px;vertical-align:middle;color:var(--text-secondary)}
+.v3-stock-report .val-up{color:var(--red-up);font-weight:600}
+.v3-stock-report .val-down{color:var(--green-down);font-weight:600}
+/* 标签 */
+.v3-stock-report .tag{display:inline-block;padding:3px 12px;border-radius:14px;font-size:11px;
+font-weight:600;background:rgba(212,168,83,.15);color:var(--gold-light);border:1px solid var(--gold);
+margin-right:6px;margin-bottom:4px}
+/* KPI 行 */
+.v3-stock-report .kpi-info-row{display:flex;justify-content:space-around;margin-top:18px;
+padding-top:14px;border-top:2px solid var(--border)}
+.v3-stock-report .kpi-info-item{text-align:center}
+.v3-stock-report .kpi-info-item .label{font-size:12px;color:var(--text-muted)}
+.v3-stock-report .kpi-info-item .value{font-size:20px;font-weight:700;color:var(--gold-light)}
+/* 浅色模式 */
+.v3-stock-report.light-mode .hero{background:linear-gradient(105deg,#fef5e7,#fffbf5);
+color:var(--text-primary);border-color:var(--gold)}
+.v3-stock-report.light-mode .hero-price{color:var(--text-primary)}
+.v3-stock-report.light-mode .hero-change{background:rgba(220,38,38,.1);color:var(--red-up)}
+.v3-stock-report.light-mode .hero-meta-item .val{color:var(--gold)}
+.v3-stock-report.light-mode .hero-meta-item .label{color:var(--text-muted)}
+.v3-stock-report.light-mode .hero-tag{background:rgba(212,168,83,.15);border-color:var(--gold);color:var(--gold)}
+.v3-stock-report.light-mode .conclusion-top{background:linear-gradient(135deg,#fff9f0,#fef5e7)}
+.v3-stock-report.light-mode .conclusion-top .big-verdict{color:var(--text-primary)}
+.v3-stock-report.light-mode .card-header h2{color:var(--text-primary)}
+.v3-stock-report.light-mode .tag{background:rgba(212,168,83,.15);color:var(--gold);border-color:var(--gold)}
+.v3-stock-report.light-mode .kpi-info-item .value{color:var(--gold)}
+.v3-stock-report.light-mode .top-nav .logo{color:var(--text-primary)}
+.v3-stock-report.light-mode .top-nav .logo-icon{color:var(--card-bg)}
+.v3-stock-report.light-mode .top-nav .stock-name{color:var(--text-primary)}
+.v3-stock-report.light-mode .theme-toggle{background:rgba(0,0,0,.05);border-color:var(--gold);color:var(--gold)}
+/* 响应式 */
+@media(max-width:850px){
+.v3-stock-report .grid-2,.v3-stock-report .grid-3{grid-template-columns:1fr}
+.v3-stock-report .hero{flex-direction:column;align-items:flex-start}
+.v3-stock-report .hero-price{font-size:40px}
+.v3-stock-report .top-nav{padding:10px 14px}
+}
+</style></head><body><div class="v3-stock-report"><nav class="top-nav"><div class="logo"><div class="logo-icon">东</div><span class="stock-name">东百集团</span><span class="stock-code">600693</span></div><div class="nav-links"><span class="hero-tag">报告日期 2026-09-13</span><span class="hero-tag">行情截止 2026-09-11</span><span class="hero-tag">生成 2026-09-13 13:16</span></div><button class="theme-toggle" id="themeToggle">☀️ 浅色模式</button></nav><div class="hero hero-bear">
+<div class="hero-top"><div class="verdict"><span class="adv-dot">🟢🟢</span><span class="advice">强烈看空</span></div><div class="score-box"><span class="score">33<small>/100</small></span><span class="cap">综合评分</span></div></div>
+<div class="px-line"><span class="px">9.93<small> 元</small></span><span class="chg-pill down">-7.71%</span></div>
+<div class="price3">
+<div class="p3"><div class="l">支撑（分批进区）</div><div class="v">9.63 ~ 9.93</div></div>
+<div class="p3"><div class="l">压力（一档）</div><div class="v">10.92</div></div>
+<div class="p3"><div class="l">止损（纪律）</div><div class="v">9.23<div class="l" style="margin-top:2px">跌 7.0% 必走</div></div></div>
+</div>
+<div class="reason">💬 清仓回避，等底部放量企稳</div>
+<div class="reason-hint">仓位建议：清仓回避 · 持仓周期：中线 3-6 个月</div>
+</div><div class="card"><h2><span class="bar"></span>✅ 操作检查清单</h2><div class="src-line">触发条件、止损纪律与仓位建议 · 按 看空（<35 分） 5 状态机给出</div><div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">三价位(同源)</div><div class="t">三价位(同源): 支撑=7.16 压力=12.20 止损=9.23 | 4 支撑候选: ma60=8.99 / recent_low=7.16 / chip_peak=11.30 / boll_lower=8.03 | 3 压力候选: ma250_or_ma120=9.75 / recent_high=12.20 / boll_upper=11.80</div></div></div>
+<div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">操作口诀（5 状态机）</div><div class="t">【结论】综合评分 33 &amp;lt; 35，空头主导、看空确立 ｜ 【操作】清仓回避 — 等待综合评分回升至 45+ 再评估进场 ｜ 【风险】不抢反弹、不抄底；套牢者按计划止损，不补仓摊薄</div></div></div>
+<div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">买入触发</div><div class="t">空头结构，不建议新开仓；等底部放量企稳再评估</div></div></div>
+<div class="chk chk-sell"><span class="box">☐</span><div class="grp" style="margin:0 0 2px">卖出触发</div><div class="t">已有持仓：逢反弹至 9.63 元 附近减仓/离场</div></div>
+<div class="chk chk-stop"><span class="box">☐</span><div class="grp" style="margin:0 0 2px">止损纪律</div><div class="t">跌破 9.23 元 清仓回避，不抄底、不接飞刀</div></div>
+<div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">仓位建议</div><div class="t">清仓回避 · 持仓周期 中线 3-6 个月</div></div></div>
+<div class="src-line">操作清单由 trading_plan + signals 生成 · signals 数据源暂缺</div>
+<ul class="task-list" style="margin-top:12px">
+<li class="task-list-item task-stop"><span class="cb">☐</span><span class="lbl"><b>状态确认：</b>评分 &lt;35 + 趋势空头, 5 状态机判定为空头 (下跌趋势)</span></li>
+<li class="task-list-item task-stop"><span class="cb">☐</span><span class="lbl"><b>买点触发：</b>❌ 不买入 / 不补仓 / 不抄底; 空仓者观望等底部放量企稳信号</span></li>
+<li class="task-list-item task-stop"><span class="cb">☐</span><span class="lbl"><b>卖点触发：</b>反弹至压力位 10.92 元 一带分批减仓; 持仓者跌破 9.23 元 清仓; 不抢反弹</span></li>
+<li class="task-list-item task-stop"><span class="cb">☐</span><span class="lbl"><b>止损纪律：</b>反弹减仓/清仓纪律优先, 止损 9.23 元 上方不留幻想仓</span></li>
+<li class="task-list-item task-stop"><span class="cb">☐</span><span class="lbl"><b>仓位管理：</b>清仓回避 / 极轻仓短线者当日进出</span></li>
+</ul></div><div class="card"><h2><span class="bar"></span>🚨 风险警报</h2><div style="font-size:11.5px;color:var(--risk-ink);margin:-2px 0 8px">⚠️ 风险事件 2 项（红=高 / 橙=中 / 黄=低 / 绿=无）</div>
+<table class="risk-tbl" style="width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px">
+<thead><tr style="background:var(--risk-bg)"><th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline);width:80px">类别</th><th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline)">描述</th><th style="padding:6px 8px;text-align:center;border:1px solid var(--hairline);width:60px">严重度</th><th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline);width:130px">触发条件</th><th style="padding:6px 8px;text-align:left;border:1px solid var(--hairline);width:140px">应对</th></tr></thead><tbody>
+<tr><td style="padding:6px 8px;border:1px solid var(--hairline);font-weight:600">估值</td><td style="padding:6px 8px;border:1px solid var(--hairline)">PE(TTM) 176.5 极高估</td><td style="padding:6px 8px;border:1px solid var(--hairline);text-align:center;color:var(--risk-ink);font-weight:700">🔴高</td><td style="padding:6px 8px;border:1px solid var(--hairline);font-size:11.5px;color:var(--ink-3)">PE &gt; 80; 估值分位 65.5%</td><td style="padding:6px 8px;border:1px solid var(--hairline);font-size:11.5px">减仓兑现, 不追高</td></tr>
+<tr><td style="padding:6px 8px;border:1px solid var(--hairline);font-weight:600">龙虎榜</td><td style="padding:6px 8px;border:1px solid var(--hairline)">近 30 日平均净卖出 -9538 万元</td><td style="padding:6px 8px;border:1px solid var(--hairline);text-align:center;color:#d97706;font-weight:700">🟠中</td><td style="padding:6px 8px;border:1px solid var(--hairline);font-size:11.5px;color:var(--ink-3)">近 30 日均净卖 &gt; 1000 万</td><td style="padding:6px 8px;border:1px solid var(--hairline);font-size:11.5px">游资撤退, 谨慎追涨</td></tr>
+</tbody></table></div><div class="grid-2-wrap"><div class="chart-card card"><div class="chart-head"><span class="t">📈 K 线 · 前复权</span><span class="tm">⏱ 数据截止 2026-09-11</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock 前复权日线 · 近 60 交易日</div><div class="chart-body"><svg width="720" height="240" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<line x1="30" y1="20.0" x2="660" y2="20.0" stroke="#eee"/>
+<text x="665" y="24.0" font-size="10" fill="#999">12.45</text>
+<line x1="30" y1="67.5" x2="660" y2="67.5" stroke="#eee"/>
+<text x="665" y="71.5" font-size="10" fill="#999">11.07</text>
+<line x1="30" y1="115.0" x2="660" y2="115.0" stroke="#eee"/>
+<text x="665" y="119.0" font-size="10" fill="#999">9.68</text>
+<line x1="30" y1="162.5" x2="660" y2="162.5" stroke="#eee"/>
+<text x="665" y="166.5" font-size="10" fill="#999">8.29</text>
+<line x1="30" y1="210.0" x2="660" y2="210.0" stroke="#eee"/>
+<text x="665" y="214.0" font-size="10" fill="#999">6.91</text>
+<line x1="33.5" y1="155.8" x2="33.5" y2="165.0" stroke="#14b143" stroke-width="1"/>
+<rect x="30.0" y="157.5" width="7.0" height="1.7" fill="#14b143"/>
+<line x1="44.0" y1="152.1" x2="44.0" y2="163.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="40.5" y="161.9" width="7.0" height="1.0" fill="#ef232a"/>
+<line x1="54.5" y1="162.3" x2="54.5" y2="177.3" stroke="#14b143" stroke-width="1"/>
+<rect x="51.0" y="162.3" width="7.0" height="8.2" fill="#14b143"/>
+<line x1="65.0" y1="164.0" x2="65.0" y2="174.6" stroke="#14b143" stroke-width="1"/>
+<rect x="61.5" y="170.5" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="75.5" y1="169.5" x2="75.5" y2="181.4" stroke="#14b143" stroke-width="1"/>
+<rect x="72.0" y="170.1" width="7.0" height="11.3" fill="#14b143"/>
+<line x1="86.0" y1="170.5" x2="86.0" y2="187.9" stroke="#ef232a" stroke-width="1"/>
+<rect x="82.5" y="178.0" width="7.0" height="3.4" fill="#ef232a"/>
+<line x1="96.5" y1="175.3" x2="96.5" y2="183.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="93.0" y="179.3" width="7.0" height="1.0" fill="#ef232a"/>
+<line x1="107.0" y1="166.0" x2="107.0" y2="181.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="103.5" y="168.1" width="7.0" height="11.6" fill="#ef232a"/>
+<line x1="117.5" y1="156.8" x2="117.5" y2="170.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="114.0" y="166.4" width="7.0" height="4.4" fill="#ef232a"/>
+<line x1="128.0" y1="164.3" x2="128.0" y2="174.6" stroke="#14b143" stroke-width="1"/>
+<rect x="124.5" y="164.7" width="7.0" height="3.4" fill="#14b143"/>
+<line x1="138.5" y1="165.4" x2="138.5" y2="173.5" stroke="#ef232a" stroke-width="1"/>
+<rect x="135.0" y="172.9" width="7.0" height="1.0" fill="#ef232a"/>
+<line x1="149.0" y1="173.9" x2="149.0" y2="181.7" stroke="#14b143" stroke-width="1"/>
+<rect x="145.5" y="174.6" width="7.0" height="6.8" fill="#14b143"/>
+<line x1="159.5" y1="173.9" x2="159.5" y2="183.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="156.0" y="179.0" width="7.0" height="2.4" fill="#ef232a"/>
+<line x1="170.0" y1="177.3" x2="170.0" y2="186.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="166.5" y="180.4" width="7.0" height="4.8" fill="#ef232a"/>
+<line x1="180.5" y1="164.3" x2="180.5" y2="181.7" stroke="#ef232a" stroke-width="1"/>
+<rect x="177.0" y="168.1" width="7.0" height="12.6" fill="#ef232a"/>
+<line x1="191.0" y1="166.0" x2="191.0" y2="183.1" stroke="#14b143" stroke-width="1"/>
+<rect x="187.5" y="170.5" width="7.0" height="11.9" fill="#14b143"/>
+<line x1="201.5" y1="172.9" x2="201.5" y2="185.5" stroke="#ef232a" stroke-width="1"/>
+<rect x="198.0" y="173.5" width="7.0" height="1.0" fill="#ef232a"/>
+<line x1="212.0" y1="152.7" x2="212.0" y2="179.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="208.5" y="159.9" width="7.0" height="16.0" fill="#ef232a"/>
+<line x1="222.5" y1="148.0" x2="222.5" y2="165.4" stroke="#14b143" stroke-width="1"/>
+<rect x="219.0" y="155.5" width="7.0" height="5.8" fill="#14b143"/>
+<line x1="233.0" y1="148.6" x2="233.0" y2="188.0" stroke="#14b143" stroke-width="1"/>
+<rect x="229.5" y="161.6" width="7.0" height="22.6" fill="#14b143"/>
+<line x1="243.5" y1="174.3" x2="243.5" y2="191.1" stroke="#ef232a" stroke-width="1"/>
+<rect x="240.0" y="184.2" width="7.0" height="5.5" fill="#ef232a"/>
+<line x1="254.0" y1="182.9" x2="254.0" y2="201.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="250.5" y="182.9" width="7.0" height="3.4" fill="#ef232a"/>
+<line x1="264.5" y1="179.8" x2="264.5" y2="189.7" stroke="#ef232a" stroke-width="1"/>
+<rect x="261.0" y="186.3" width="7.0" height="1.7" fill="#ef232a"/>
+<line x1="275.0" y1="177.0" x2="275.0" y2="191.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="271.5" y="177.0" width="7.0" height="12.7" fill="#ef232a"/>
+<line x1="285.5" y1="177.0" x2="285.5" y2="189.7" stroke="#14b143" stroke-width="1"/>
+<rect x="282.0" y="181.1" width="7.0" height="7.5" fill="#14b143"/>
+<line x1="296.0" y1="178.1" x2="296.0" y2="192.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="292.5" y="178.4" width="7.0" height="13.4" fill="#ef232a"/>
+<line x1="306.5" y1="151.7" x2="306.5" y2="180.5" stroke="#ef232a" stroke-width="1"/>
+<rect x="303.0" y="151.7" width="7.0" height="27.8" fill="#ef232a"/>
+<line x1="317.0" y1="122.2" x2="317.0" y2="153.7" stroke="#ef232a" stroke-width="1"/>
+<rect x="313.5" y="122.2" width="7.0" height="17.8" fill="#ef232a"/>
+<line x1="327.5" y1="91.0" x2="327.5" y2="132.1" stroke="#14b143" stroke-width="1"/>
+<rect x="324.0" y="128.7" width="7.0" height="3.1" fill="#14b143"/>
+<line x1="338.0" y1="119.1" x2="338.0" y2="163.3" stroke="#ef232a" stroke-width="1"/>
+<rect x="334.5" y="123.2" width="7.0" height="40.1" fill="#ef232a"/>
+<line x1="348.5" y1="120.8" x2="348.5" y2="138.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="345.0" y="124.9" width="7.0" height="13.0" fill="#ef232a"/>
+<line x1="359.0" y1="109.2" x2="359.0" y2="127.7" stroke="#ef232a" stroke-width="1"/>
+<rect x="355.5" y="115.7" width="7.0" height="11.0" fill="#ef232a"/>
+<line x1="369.5" y1="108.5" x2="369.5" y2="120.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="366.0" y="111.2" width="7.0" height="3.8" fill="#ef232a"/>
+<line x1="380.0" y1="103.7" x2="380.0" y2="122.9" stroke="#14b143" stroke-width="1"/>
+<rect x="376.5" y="111.6" width="7.0" height="7.9" fill="#14b143"/>
+<line x1="390.5" y1="112.9" x2="390.5" y2="128.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="387.0" y="117.4" width="7.0" height="2.4" fill="#ef232a"/>
+<line x1="401.0" y1="96.2" x2="401.0" y2="119.5" stroke="#ef232a" stroke-width="1"/>
+<rect x="397.5" y="98.5" width="7.0" height="18.8" fill="#ef232a"/>
+<line x1="411.5" y1="95.8" x2="411.5" y2="109.5" stroke="#14b143" stroke-width="1"/>
+<rect x="408.0" y="104.7" width="7.0" height="2.1" fill="#14b143"/>
+<line x1="422.0" y1="95.8" x2="422.0" y2="114.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="418.5" y="98.2" width="7.0" height="10.6" fill="#ef232a"/>
+<line x1="432.5" y1="74.9" x2="432.5" y2="105.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="429.0" y="87.6" width="7.0" height="15.8" fill="#ef232a"/>
+<line x1="443.0" y1="93.8" x2="443.0" y2="123.2" stroke="#14b143" stroke-width="1"/>
+<rect x="439.5" y="95.5" width="7.0" height="25.7" fill="#14b143"/>
+<line x1="453.5" y1="113.3" x2="453.5" y2="126.3" stroke="#14b143" stroke-width="1"/>
+<rect x="450.0" y="114.7" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="464.0" y1="83.8" x2="464.0" y2="117.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="460.5" y="114.0" width="7.0" height="2.1" fill="#ef232a"/>
+<line x1="474.5" y1="110.2" x2="474.5" y2="137.3" stroke="#14b143" stroke-width="1"/>
+<rect x="471.0" y="112.6" width="7.0" height="23.6" fill="#14b143"/>
+<line x1="485.0" y1="131.8" x2="485.0" y2="141.4" stroke="#14b143" stroke-width="1"/>
+<rect x="481.5" y="132.1" width="7.0" height="7.9" fill="#14b143"/>
+<line x1="495.5" y1="138.6" x2="495.5" y2="149.6" stroke="#ef232a" stroke-width="1"/>
+<rect x="492.0" y="140.0" width="7.0" height="1.4" fill="#ef232a"/>
+<line x1="506.0" y1="141.7" x2="506.0" y2="157.2" stroke="#14b143" stroke-width="1"/>
+<rect x="502.5" y="142.4" width="7.0" height="12.7" fill="#14b143"/>
+<line x1="516.5" y1="128.4" x2="516.5" y2="158.2" stroke="#ef232a" stroke-width="1"/>
+<rect x="513.0" y="139.7" width="7.0" height="17.5" fill="#ef232a"/>
+<line x1="527.0" y1="129.1" x2="527.0" y2="145.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="523.5" y="141.7" width="7.0" height="4.1" fill="#ef232a"/>
+<line x1="537.5" y1="111.9" x2="537.5" y2="146.2" stroke="#ef232a" stroke-width="1"/>
+<rect x="534.0" y="126.3" width="7.0" height="15.1" fill="#ef232a"/>
+<line x1="548.0" y1="118.1" x2="548.0" y2="129.7" stroke="#ef232a" stroke-width="1"/>
+<rect x="544.5" y="119.1" width="7.0" height="4.5" fill="#ef232a"/>
+<line x1="558.5" y1="112.3" x2="558.5" y2="128.4" stroke="#14b143" stroke-width="1"/>
+<rect x="555.0" y="119.5" width="7.0" height="8.2" fill="#14b143"/>
+<line x1="569.0" y1="95.8" x2="569.0" y2="122.5" stroke="#ef232a" stroke-width="1"/>
+<rect x="565.5" y="95.8" width="7.0" height="25.4" fill="#ef232a"/>
+<line x1="579.5" y1="73.9" x2="579.5" y2="104.0" stroke="#14b143" stroke-width="1"/>
+<rect x="576.0" y="89.0" width="7.0" height="13.7" fill="#14b143"/>
+<line x1="590.0" y1="68.4" x2="590.0" y2="111.9" stroke="#ef232a" stroke-width="1"/>
+<rect x="586.5" y="68.4" width="7.0" height="34.6" fill="#ef232a"/>
+<line x1="600.5" y1="38.9" x2="600.5" y2="106.1" stroke="#ef232a" stroke-width="1"/>
+<rect x="597.0" y="72.2" width="7.0" height="11.3" fill="#ef232a"/>
+<line x1="611.0" y1="43.7" x2="611.0" y2="72.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="607.5" y="53.0" width="7.0" height="19.9" fill="#ef232a"/>
+<line x1="621.5" y1="28.6" x2="621.5" y2="62.9" stroke="#14b143" stroke-width="1"/>
+<rect x="618.0" y="49.2" width="7.0" height="2.7" fill="#14b143"/>
+<line x1="632.0" y1="46.1" x2="632.0" y2="74.6" stroke="#ef232a" stroke-width="1"/>
+<rect x="628.5" y="57.1" width="7.0" height="4.5" fill="#ef232a"/>
+<line x1="642.5" y1="57.1" x2="642.5" y2="81.8" stroke="#14b143" stroke-width="1"/>
+<rect x="639.0" y="61.9" width="7.0" height="16.1" fill="#14b143"/>
+<line x1="653.0" y1="66.3" x2="653.0" y2="107.1" stroke="#14b143" stroke-width="1"/>
+<rect x="649.5" y="76.3" width="7.0" height="30.2" fill="#14b143"/>
+<line x1="30" y1="106.4" x2="660" y2="106.4" stroke="#ff9800" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="665" y="110.4" font-size="10" fill="#ff9800">9.93</text>
+</svg></div></div><div class="chart-card card"><div class="chart-head"><span class="t">🎰 筹码分布</span><span class="tm">⏱ 数据截止 2026-09-11</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock · 红=套牢 绿=获利</div><div class="chart-body"><svg width="720" height="200" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<text x="50" y="16" font-size="11" fill="#666">筹码分布 (红=套牢 绿=获利)</text>
+<rect x="50.0" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<text x="58.6" y="182.0" font-size="9" fill="#999" text-anchor="middle">9.0</text>
+<rect x="70.3" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="90.7" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="111.0" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="131.3" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="151.7" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<text x="160.3" y="182.0" font-size="9" fill="#999" text-anchor="middle">9.4</text>
+<rect x="172.0" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="192.3" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="212.7" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="233.0" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<rect x="253.3" y="170.0" width="17.3" height="0.0" fill="#14b143" opacity="0.75"/>
+<text x="262.0" y="182.0" font-size="9" fill="#999" text-anchor="middle">9.9</text>
+<rect x="273.7" y="162.3" width="17.3" height="7.7" fill="#ef232a" opacity="0.75"/>
+<rect x="294.0" y="152.7" width="17.3" height="17.3" fill="#ef232a" opacity="0.75"/>
+<rect x="314.3" y="143.0" width="17.3" height="27.0" fill="#ef232a" opacity="0.75"/>
+<rect x="334.7" y="133.4" width="17.3" height="36.6" fill="#ef232a" opacity="0.75"/>
+<rect x="355.0" y="123.7" width="17.3" height="46.3" fill="#ef232a" opacity="0.75"/>
+<text x="363.6" y="182.0" font-size="9" fill="#999" text-anchor="middle">10.4</text>
+<rect x="375.3" y="114.0" width="17.3" height="56.0" fill="#ef232a" opacity="0.75"/>
+<rect x="395.7" y="104.4" width="17.3" height="65.6" fill="#ef232a" opacity="0.75"/>
+<rect x="416.0" y="94.7" width="17.3" height="75.3" fill="#ef232a" opacity="0.75"/>
+<rect x="436.3" y="85.1" width="17.3" height="84.9" fill="#ef232a" opacity="0.75"/>
+<rect x="456.7" y="75.4" width="17.3" height="94.6" fill="#ef232a" opacity="0.75"/>
+<text x="465.3" y="182.0" font-size="9" fill="#999" text-anchor="middle">10.9</text>
+<rect x="477.0" y="65.8" width="17.3" height="104.2" fill="#ef232a" opacity="0.75"/>
+<rect x="497.3" y="56.1" width="17.3" height="113.9" fill="#ef232a" opacity="0.75"/>
+<rect x="517.7" y="46.5" width="17.3" height="123.5" fill="#ef232a" opacity="0.75"/>
+<rect x="538.0" y="36.8" width="17.3" height="133.2" fill="#ef232a" opacity="0.75"/>
+<rect x="558.3" y="32.9" width="17.3" height="137.1" fill="#ef232a" opacity="0.75"/>
+<text x="567.0" y="182.0" font-size="9" fill="#999" text-anchor="middle">11.3</text>
+<rect x="578.7" y="42.5" width="17.3" height="127.5" fill="#ef232a" opacity="0.75"/>
+<rect x="599.0" y="52.2" width="17.3" height="117.8" fill="#ef232a" opacity="0.75"/>
+<rect x="619.3" y="61.8" width="17.3" height="108.2" fill="#ef232a" opacity="0.75"/>
+<rect x="639.7" y="71.5" width="17.3" height="98.5" fill="#ef232a" opacity="0.75"/>
+<line x1="263.6" y1="30" x2="263.6" y2="170" stroke="#ff9800" stroke-width="2" stroke-dasharray="3,3"/>
+<text x="268.6" y="42.0" font-size="11" fill="#ff9800" font-weight="bold">现 9.93</text>
+<line x1="569.6" y1="30" x2="569.6" y2="170" stroke="#2962ff" stroke-width="2" stroke-dasharray="2,2"/>
+<text x="574.6" y="56.0" font-size="11" fill="#2962ff" font-weight="bold">峰 11.30</text>
+</svg></div></div></div><div class="grid-2-wrap"><div class="chart-card card"><div class="chart-head"><span class="t">📊 PE (TTM) 走势</span><span class="tm">⏱ 数据截止 2026-09-11</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock · 3 年窗口取近 180 交易日</div><div class="chart-body"><svg width="720" height="200" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<text x="50" y="16" font-size="11" fill="#666">近 6 个月 PE (TTM) 走势 · 3 年分位 65.5%</text>
+<line x1="50" y1="30.0" x2="660" y2="30.0" stroke="#eee"/>
+<text x="45" y="34.0" font-size="10" fill="#999" text-anchor="end">442</text>
+<line x1="50" y1="65.0" x2="660" y2="65.0" stroke="#eee"/>
+<text x="45" y="69.0" font-size="10" fill="#999" text-anchor="end">356</text>
+<line x1="50" y1="100.0" x2="660" y2="100.0" stroke="#eee"/>
+<text x="45" y="104.0" font-size="10" fill="#999" text-anchor="end">270</text>
+<line x1="50" y1="135.0" x2="660" y2="135.0" stroke="#eee"/>
+<text x="45" y="139.0" font-size="10" fill="#999" text-anchor="end">185</text>
+<line x1="50" y1="170.0" x2="660" y2="170.0" stroke="#eee"/>
+<text x="45" y="174.0" font-size="10" fill="#999" text-anchor="end">99</text>
+<polyline points="50.0,81.5 53.4,77.7 56.8,79.1 60.2,65.9 63.6,60.1 66.9,45.0 70.3,49.2 73.7,41.7 77.1,57.7 80.5,73.0 83.9,73.0 87.3,68.6 90.7,72.6 94.1,72.5 97.4,64.5 100.8,59.4 104.2,48.4 107.6,64.6 111.0,79.2 114.4,92.2 117.8,88.9 121.2,91.7 124.6,94.3 127.9,98.5 131.3,97.2 134.7,92.3 138.1,98.7 141.5,97.4 144.9,100.8 148.3,99.5 151.7,98.2 155.1,93.8 158.4,93.3 161.8,87.8 165.2,78.0 168.6,89.6 172.0,89.2 175.4,95.5 178.8,100.5 182.2,106.8 185.6,108.2 188.9,106.2 192.3,104.7 195.7,107.2 199.1,106.3 202.5,108.6 205.9,112.6 209.3,112.3 212.7,109.7 216.1,110.7 219.4,111.4 222.8,111.8 226.2,112.6 229.6,114.3 233.0,116.2 236.4,116.9 239.8,118.2 243.2,123.2 246.6,124.3 249.9,126.0 253.3,129.9 256.7,127.0 260.1,124.4 263.5,126.3 266.9,125.1 270.3,122.8 273.7,123.3 277.1,124.7 280.4,124.5 283.8,127.3 287.2,125.4 290.6,122.6 294.0,124.5 297.4,124.1 300.8,123.7 304.2,122.9 307.6,121.5 310.9,120.7 314.3,118.0 317.7,117.3 321.1,119.7 324.5,122.7 327.9,124.8 331.3,129.2 334.7,130.5 338.1,131.4 341.4,130.7 344.8,131.8 348.2,132.9 351.6,131.2 355.0,129.8 358.4,129.2 361.8,132.5 365.2,131.2 368.6,136.1 371.9,140.3 375.3,140.1 378.7,142.1 382.1,142.8 385.5,144.8 388.9,144.6 392.3,144.9 395.7,144.0 399.1,140.7 402.4,147.0 405.8,140.6 409.2,136.1 412.6,136.1 416.0,138.2 419.4,142.3 422.8,138.7 426.2,141.0 429.6,145.2 432.9,148.3 436.3,150.7 439.7,149.6 443.1,149.1 446.5,148.2 449.9,151.1 453.3,152.4 456.7,152.1 460.1,152.6 463.4,154.4 466.8,154.6 470.2,156.6 473.6,155.9 477.0,156.2 480.4,153.9 483.8,153.5 487.2,153.9 490.6,154.9 493.9,156.6 497.3,156.1 500.7,156.4 504.1,153.9 507.5,156.8 510.9,155.0 514.3,152.2 517.7,152.5 521.1,157.4 524.4,157.4 527.8,157.2 531.2,157.8 534.6,156.0 538.0,158.3 541.4,156.2 544.8,150.8 548.2,144.8 551.6,146.8 554.9,145.0 558.3,145.4 561.7,143.5 565.1,142.6 568.5,144.3 571.9,143.9 575.3,140.0 578.7,141.7 582.1,136.7 585.4,134.5 588.8,141.6 592.2,140.4 595.6,140.1 599.0,144.8 602.4,145.6 605.8,145.6 609.2,148.8 612.6,145.5 615.9,146.0 619.3,142.7 622.7,141.2 626.1,143.0 629.5,136.2 632.9,137.7 636.3,130.4 639.7,131.2 643.1,127.1 646.4,126.9 649.8,128.0 653.2,132.4 656.6,138.5" fill="none" stroke="#2962ff" stroke-width="2"/>
+<circle cx="50.0" cy="81.5" r="3" fill="#14b143"/>
+<circle cx="656.6" cy="138.5" r="4" fill="#ff9800" stroke="#fff" stroke-width="2"/>
+</svg></div></div><div class="chart-card card"><div class="chart-head"><span class="t">🔬 10 因子雷达</span><span class="tm">⏱ 数据截止 2026-09-13</span></div><div class="src-line" style="margin:0 0 6px">来源本地 10 因子量化引擎 · 满分 100</div><div class="chart-body radar"><svg width="380" height="340" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<polygon points="190.0,146.0 204.1,150.6 212.8,162.6 212.8,177.4 204.1,189.4 190.0,194.0 175.9,189.4 167.2,177.4 167.2,162.6 175.9,150.6" fill="none" stroke="#eee"/>
+<polygon points="190.0,122.0 218.2,131.2 235.7,155.2 235.7,184.8 218.2,208.8 190.0,218.0 161.8,208.8 144.3,184.8 144.3,155.2 161.8,131.2" fill="none" stroke="#eee"/>
+<polygon points="190.0,98.0 232.3,111.8 258.5,147.8 258.5,192.2 232.3,228.2 190.0,242.0 147.7,228.2 121.5,192.2 121.5,147.8 147.7,111.8" fill="none" stroke="#eee"/>
+<polygon points="190.0,74.0 246.4,92.3 281.3,140.3 281.3,199.7 246.4,247.7 190.0,266.0 133.6,247.7 98.7,199.7 98.7,140.3 133.6,92.3" fill="none" stroke="#eee"/>
+<polygon points="190.0,50.0 260.5,72.9 304.1,132.9 304.1,207.1 260.5,267.1 190.0,290.0 119.5,267.1 75.9,207.1 75.9,132.9 119.5,72.9" fill="none" stroke="#eee"/>
+<line x1="190.0" y1="170.0" x2="190.0" y2="50.0" stroke="#eee"/>
+<text x="190.0" y="32.0" font-size="12" fill="#666" text-anchor="middle">趋势</text>
+<line x1="190.0" y1="170.0" x2="260.5" y2="72.9" stroke="#eee"/>
+<text x="273.5" y="59.1" font-size="12" fill="#666" text-anchor="middle">估值</text>
+<line x1="190.0" y1="170.0" x2="304.1" y2="132.9" stroke="#eee"/>
+<text x="325.1" y="130.1" font-size="12" fill="#666" text-anchor="middle">分位</text>
+<line x1="190.0" y1="170.0" x2="304.1" y2="207.1" stroke="#eee"/>
+<text x="325.1" y="217.9" font-size="12" fill="#666" text-anchor="middle">资金</text>
+<line x1="190.0" y1="170.0" x2="260.5" y2="267.1" stroke="#eee"/>
+<text x="273.5" y="288.9" font-size="12" fill="#666" text-anchor="middle">动量</text>
+<line x1="190.0" y1="170.0" x2="190.0" y2="290.0" stroke="#eee"/>
+<text x="190.0" y="316.0" font-size="12" fill="#666" text-anchor="middle">情绪</text>
+<line x1="190.0" y1="170.0" x2="119.5" y2="267.1" stroke="#eee"/>
+<text x="106.5" y="288.9" font-size="12" fill="#666" text-anchor="middle">风险</text>
+<line x1="190.0" y1="170.0" x2="75.9" y2="207.1" stroke="#eee"/>
+<text x="54.9" y="217.9" font-size="12" fill="#666" text-anchor="middle">筹码</text>
+<line x1="190.0" y1="170.0" x2="75.9" y2="132.9" stroke="#eee"/>
+<text x="54.9" y="130.1" font-size="12" fill="#666" text-anchor="middle">申万</text>
+<line x1="190.0" y1="170.0" x2="119.5" y2="72.9" stroke="#eee"/>
+<text x="106.5" y="59.1" font-size="12" fill="#666" text-anchor="middle">龙虎榜</text>
+<polygon points="190.0,160.0 199.4,157.1 232.8,156.1 243.3,187.3 198.8,182.1 190.0,215.0 161.8,208.8 132.9,188.5 94.9,139.1 168.8,140.9" fill="#2962ff" fill-opacity="0.35" stroke="#2962ff" stroke-width="2"/>
+<circle cx="190.0" cy="160.0" r="3" fill="#2962ff"/>
+<text x="190.0" y="153.0" font-size="9" fill="#2962ff" text-anchor="middle">1</text>
+<circle cx="199.4" cy="157.1" r="3" fill="#2962ff"/>
+<text x="199.4" y="150.1" font-size="9" fill="#2962ff" text-anchor="middle">2</text>
+<circle cx="232.8" cy="156.1" r="3" fill="#2962ff"/>
+<text x="232.8" y="149.1" font-size="9" fill="#2962ff" text-anchor="middle">3</text>
+<circle cx="243.3" cy="187.3" r="3" fill="#2962ff"/>
+<text x="243.3" y="180.3" font-size="9" fill="#2962ff" text-anchor="middle">7</text>
+<circle cx="198.8" cy="182.1" r="3" fill="#2962ff"/>
+<text x="198.8" y="175.1" font-size="9" fill="#2962ff" text-anchor="middle">1</text>
+<circle cx="190.0" cy="215.0" r="3" fill="#2962ff"/>
+<text x="190.0" y="208.0" font-size="9" fill="#2962ff" text-anchor="middle">3</text>
+<circle cx="161.8" cy="208.8" r="3" fill="#2962ff"/>
+<text x="161.8" y="201.8" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+<circle cx="132.9" cy="188.5" r="3" fill="#2962ff"/>
+<text x="132.9" y="181.5" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+<circle cx="94.9" cy="139.1" r="3" fill="#2962ff"/>
+<text x="94.9" y="132.1" font-size="9" fill="#2962ff" text-anchor="middle">5</text>
+<circle cx="168.8" cy="140.9" r="3" fill="#2962ff"/>
+<text x="168.8" y="133.9" font-size="9" fill="#2962ff" text-anchor="middle">3</text>
+</svg></div></div></div>
+<div class="chart-card card" id="echarts-kline-section">
+  <div class="chart-head">
+    <span class="t">📈 ECharts K 线 · 含三价位标注</span>
+    <span class="tm">⏱ 数据截止 见图表 · MA5/MA20/MA60</span>
+  </div>
+  <div class="src-line" style="margin:0 0 6px">来源 baostock 前复权日线 · 近 180 交易日 · markLine 标注支撑/压力/止损 (从 three_levels 自动注入)</div>
+  <div id="chart-kline-full" style="width:100%;height:480px;"></div>
+</div>
+
+<div class="chart-card card" id="echarts-tech-section">
+  <div class="chart-head">
+    <span class="t">📊 4 技术指标 · MACD / KDJ / RSI / BOLL</span>
+    <span class="tm">⏱ JS 实时计算 · 双主题自动切换</span>
+  </div>
+  <div class="src-line" style="margin:0 0 6px">MACD (DIF/DEA/柱) · KDJ (K/D/J 0-100) · RSI (6/12/24 0-100) · BOLL (上/中/下轨 + 收盘价)</div>
+  <div class="grid-2-wrap">
+    <div id="chart-macd" style="width:100%;height:280px;"></div>
+    <div id="chart-kdj" style="width:100%;height:280px;"></div>
+  </div>
+  <div class="grid-2-wrap" style="margin-top:12px;">
+    <div id="chart-rsi" style="width:100%;height:260px;"></div>
+    <div id="chart-boll" style="width:100%;height:260px;"></div>
+  </div>
+</div>
+<div class="card"><h2><span class="bar"></span>📚 研报观点</h2><div class="src-line">📡 数据源：ths · 时点：2026-09-13T13:14:41+08:00</div><div class="tag-row"><span class="v3-tag" style="color:#b45309;background:#b4530922">增持 1</span></div> <span class="v3-tag" style="background:#eff6ff;color:#1d4ed8">近 30 日机构覆盖 1 家</span>
+
+<table class="v3-tbl"><thead><tr><th>日期</th><th>机构</th><th>观点</th><th>评级</th><th class="num">目标价</th></tr></thead><tbody><tr><td>2026-05-27</td><td>兴业证券</td><td>兴业证券：仓储物流放量支撑业绩稳增，轻资产拓展打开成长空间</td><td><span style="color:#b45309;font-weight:600">增持</span></td><td class="num">—</td></tr></tbody></table></div><div class="card"><h2><span class="bar"></span>📢 公告速览</h2><div class="src-line">📡 数据源：eastmoney · 时点：2026-09-13T13:14:37.040948+08:00</div><div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-09-10</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/600693/AN202609091829174331.html" target="_blank" rel="noopener">东百集团:东百集团关于召开2026年半年度业绩说明会的公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-29</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/600693/AN202608281828630252.html" target="_blank" rel="noopener">东百集团:东百集团关于转让仓储物流子公司100%股权的进展公告 ↗</a></div></div></div><div class="card"><h2><span class="bar"></span>🩺 财务体检</h2><div class="src-line">📡 数据源：datacenter RPT_F10_FINANCE_MAINFINADATA · 时点：2026-09-13T13:14:41+08:00</div><div class="mini-grid">
+<div class="kpi"><div class="l">最新营收(亿)</div><div class="v">9.4</div></div>
+<div class="kpi"><div class="l">营收同比</div><div class="v">1.7%</div></div>
+<div class="kpi"><div class="l">最新净利(亿)</div><div class="v">0.8</div></div>
+<div class="kpi"><div class="l">净利同比</div><div class="v">4.4%</div></div>
+<div class="kpi"><div class="l">ROE</div><div class="v">2.1%</div></div>
+<div class="kpi"><div class="l">毛利率</div><div class="v">57.1%</div></div>
+<div class="kpi"><div class="l">负债率</div><div class="v">68.6%</div></div>
+<div class="kpi"><div class="l">EPS</div><div class="v">0.09</div></div>
+</div>
+<div class="src-line" style="margin-top:8px">🩺 自动点评：营收、净利同比双增，基本面向上，体检结果偏积极。</div>
+<table class="v3-tbl" style="margin-top:var(--sp-1)"><thead><tr><th>报告期</th><th class="num">营收(亿)</th><th class="num">营收同比</th><th class="num">净利(亿)</th><th class="num">净利同比</th><th class="num">ROE</th></tr></thead><tbody><tr style='font-weight:600'><td>2026-06-30</td><td class="num">9.4</td><td class="num">1.7%</td><td class="num">0.8</td><td class="num">4.4%</td><td class="num">2.1%</td></tr><tr ><td>2026-03-31</td><td class="num">5.0</td><td class="num">2.8%</td><td class="num">0.5</td><td class="num">13.7%</td><td class="num">1.3%</td></tr><tr ><td>2025-12-31</td><td class="num">18.5</td><td class="num">1.7%</td><td class="num">0.5</td><td class="num">5.2%</td><td class="num">1.3%</td></tr><tr ><td>2025-09-30</td><td class="num">13.6</td><td class="num">2.3%</td><td class="num">0.9</td><td class="num">3.0%</td><td class="num">2.5%</td></tr><tr ><td>2025-06-30</td><td class="num">9.3</td><td class="num">—</td><td class="num">0.7</td><td class="num">—</td><td class="num">2.0%</td></tr></tbody></table></div><div class="card"><h2><span class="bar"></span>🏭 同业对比 · 行业定位</h2><div class="src-line">📡 数据源：申万行业表 + baostock 估值历史 · 时点：2026-09-11</div><table class="v3-tbl"><thead><tr><th style="width:38%">定位项</th><th>数值 / 说明</th></tr></thead><tbody>
+<tr><td>PE 3 年分位（本票自身）</td><td>65.5%（相对本票过去 3 年）</td></tr>
+<tr><td>PB 3 年分位（本票自身）</td><td class="num">82.3%</td></tr>
+<tr><td>PE 中位数（本票 3 年）</td><td class="num">156.02</td></tr>
+<tr><td>流通市值</td><td>86 亿</td></tr>
+<tr><td>PE (TTM)</td><td class="num">176.5</td></tr>
+<tr><td>PB</td><td class="num">2.40</td></tr>
+</tbody></table></div><div class="card"><h2><span class="bar"></span>💰 资金面（融资融券）</h2><div class="src-line">📡 数据源：东财数据中心 · 时点：2026-09-11</div><div class="mini-grid">
+<div class="kpi"><div class="l">融资余额(亿)</div><div class="v">1.62</div></div>
+<div class="kpi"><div class="l">当日融资买入(亿)</div><div class="v">0.80</div></div>
+<div class="kpi"><div class="l">当日融资偿还(亿)</div><div class="v">1.06</div></div>
+<div class="kpi"><div class="l">融券余额(亿)</div><div class="v">0.000</div></div>
+</div></div><div class="card"><h2><span class="bar"></span>📰 新闻舆情</h2><div class="src-line">📡 数据源：sina_stock_news · 时点：2026-09-13T05:15:00+00:00</div><div style="font-weight:600;font-size:13px;margin:6px 0 2px;color:#b91c1c">📈 利好 3 条</div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-12 10:04:00</span> <a href="https://finance.sina.com.cn/roll/2026-08-12/doc-inimzivr6995977.shtml" target="_blank" rel="noopener">东百集团上半年营收增长1.68% 东百中心上半年销售额16.01亿 ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-11 23:56:00</span> <a href="https://cj.sina.cn/articles/view/5182171545/134e1a99902002i35s" target="_blank" rel="noopener">东百集团：上半年归母净利润同比增长4.44% ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-11 23:15:00</span> <a href="https://finance.sina.com.cn/stock/yyyj/2026-08-11/doc-inimyhiz0590933.shtml" target="_blank" rel="noopener">鹰眼预警：东百集团应收账款/营业收入比值持续增长 ↗</a></div>
+<div style="font-weight:600;font-size:13px;margin:6px 0 2px;color:#15803d">📉 利空 2 条</div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-09-07 07:07:00</span> <a href="https://finance.sina.com.cn/stock/aiassist/zy/2026-09-07/doc-iniqxynh6419505.shtml" target="_blank" rel="noopener">东百集团质押触发鹰眼“风险”评级 警惕债务风险 ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-12 07:15:00</span> <a href="https://finance.sina.com.cn/stock/aiassist/sdltgdbh/2026-08-12/doc-inimzcpz4137705.shtml" target="_blank" rel="noopener">东百集团十大流通股东格局生变：巴克莱银行等新进，鹏华启航量化选股混合发起式等退出，北向资金等减持 ↗</a></div>
+<div class="src-line" style="margin-top:4px">🧭 舆情倾向：偏正面（利好 3 / 利空 2），消息面温和</div></div><section class="section-irm"><h2>📞 投资者互动问答</h2><p class="warn">⚠️ 互动易无数据</p></section><section class="section-holders"><h2>📊 股东户数变化</h2><table class="holders-table"><thead><tr><th>报告期</th><th>股东户数</th><th>环比</th><th>户均持股</th></tr></thead><tbody><tr><td>2026-06-30</td><td>86517</td><td>-6.8%</td><td>10054</td></tr><tr><td>2026-03-31</td><td>92831</td><td>-45.26%</td><td>9370</td></tr><tr><td>2025-12-31</td><td>169595</td><td>220.41%</td><td>5129</td></tr><tr><td>2025-09-30</td><td>52930</td><td>-14.94%</td><td>16434</td></tr></tbody></table><p class="interpretation">💡 户数环比 ↓-6.80%，筹码集中度上升（潜在主力吸筹）</p><p class="source">📡 数据来源: 东方财富 datacenter-web RPT_HOLDERNUMLATEST</p></section><section class="section-dividend"><h2>💰 分红送转</h2><p class="summary">📊 10 条平均每股派息: <strong>nan</strong> 元</p><table class="dividend-table"><thead><tr><th>报告期</th><th>方案</th><th>每股派息(元)</th><th>每股送股</th><th>每股转增</th></tr></thead><tbody><tr><td>1994-05-21</td><td>10送1股</td><td>0</td><td>0.1</td><td>0</td></tr><tr><td>1995-06-03</td><td>10派2.00元(含税)</td><td>0.2</td><td>0</td><td>0</td></tr><tr><td>1996-07-09</td><td>10派1.00元(含税)</td><td>0.1</td><td>0</td><td>0</td></tr><tr><td>1997-05-28</td><td>10转增1股派3元(含税)</td><td>0.3</td><td>0</td><td>0.1</td></tr><tr><td>1998-07-25</td><td>10派2元(含税)</td><td>0.2</td><td>0</td><td>0</td></tr><tr><td>2001-07-20</td><td>10派1元(含税)</td><td>0.1</td><td>nan</td><td>nan</td></tr><tr><td>2005-08-06</td><td>10派1元(含税)</td><td>0.1</td><td>nan</td><td>nan</td></tr><tr><td>2008-03-12</td><td>10转增10股</td><td>nan</td><td>nan</td><td>1.0</td></tr><tr><td>2009-06-02</td><td>10送3股派1.5元（含税）</td><td>0.15</td><td>0.3</td><td>nan</td></tr><tr><td>2012-06-22</td><td>10派1.5元(含税)</td><td>0.15</td><td>nan</td><td>nan</td></tr></tbody></table><p class="interpretation">💡 10 条平均每股派息 nan 元（分红率低，回报股东能力弱）；含转增，股本扩张</p><p class="source">📡 数据来源: 东方财富 datacenter-web RPT_SHAREBONUS_DET</p></section><section class="section-board"><h2>🎰 打板情绪</h2><p class="interpretation">💡 数据不足，无法判断打板情绪</p><h3>当日涨停 Top 10</h3><table class="board-table"><thead><tr><th>名称</th><th>连板</th><th>封板时间</th><th>封板资金</th><th>行业</th></tr></thead><tbody><tr><td>瑞尔特 002790</td><td>4</td><td>092500</td><td>3.85亿</td><td>家居用品</td></tr><tr><td>闽东电力 000993</td><td>3</td><td>092500</td><td>1.36亿</td><td>电力</td></tr><tr><td>鼎信通讯 603421</td><td>3</td><td>102033</td><td>0.27亿</td><td>通信设备</td></tr><tr><td>超声电子 000823</td><td>2</td><td>130415</td><td>1.28亿</td><td>元件</td></tr><tr><td>中新赛克 002912</td><td>2</td><td>092500</td><td>1.13亿</td><td>计算机设</td></tr><tr><td>九鼎新材 002201</td><td>2</td><td>133624</td><td>0.96亿</td><td>玻璃玻纤</td></tr><tr><td>凯盛新能 600876</td><td>2</td><td>093130</td><td>0.27亿</td><td>玻璃玻纤</td></tr><tr><td>风华高科 000636</td><td>1</td><td>133721</td><td>5.74亿</td><td>元件</td></tr><tr><td>远 望 谷 002161</td><td>1</td><td>092500</td><td>2.72亿</td><td>其他电子</td></tr><tr><td>嘉立创 001232</td><td>1</td><td>134754</td><td>1.54亿</td><td>元件</td></tr></tbody></table><h3>跌停池样本（Top 5 封单额）</h3><table class="board-table"><thead><tr><th>名称</th><th>跌幅%</th><th>连跌</th><th>封单资金</th></tr></thead><tbody><tr><td>精艺股份 002295</td><td>-9.983766555786133</td><td>1</td><td>1.53亿</td></tr><tr><td>亚盛集团 600108</td><td>-9.90476131439209</td><td>1</td><td>1.16亿</td></tr><tr><td>集泰股份 002909</td><td>-9.975961685180664</td><td>1</td><td>1.13亿</td></tr><tr><td>红棉股份 000523</td><td>-10.089685440063477</td><td>1</td><td>0.91亿</td></tr><tr><td>新赛股份 600540</td><td>-10.060976028442383</td><td>1</td><td>0.83亿</td></tr></tbody></table><p class="source">📡 数据来源: 东方财富 push2ex 四池 + 同花顺涨停揭秘（§8.1-8.3）</p></section><section class="section-dragon-market"><h2>🐉 龙虎榜动向（市场）</h2><p class="summary">📊 当日全市场共 <strong>68</strong> 条龙虎榜记录，Top 20 净买总额: <strong>25.95亿</strong></p><p class="interpretation">💡 Top 20 净买总额 25.95亿，主力大幅介入，市场情绪偏多</p><h3>Top 20 净买额个股</h3><table class="dragon-market-table"><thead><tr><th>名称</th><th>净买额</th><th>上榜原因</th><th>涨跌幅%</th></tr></thead><tbody><tr><td>金安国纪 002636</td><td>8.12亿</td><td>连续三个交易日内，涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>博云新材 002297</td><td>4.03亿</td><td>日换手率达到20%的前5只证券</td><td></td></tr><tr><td>风华高科 000636</td><td>2.92亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>九鼎新材 002201</td><td>1.94亿</td><td>连续三个交易日内，涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>嘉立创 001232</td><td>1.87亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>神宇股份 300563</td><td>1.27亿</td><td>日涨幅达到15%的前5只证券</td><td></td></tr><tr><td>崇达技术 002815</td><td>1.09亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>宏辉果蔬 603336</td><td>0.81亿</td><td>有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券</td><td></td></tr><tr><td>中百集团 000759</td><td>0.67亿</td><td>日振幅值达到15%的前5只证券</td><td></td></tr><tr><td>中百集团 000759</td><td>0.67亿</td><td>日换手率达到20%的前5只证券</td><td></td></tr><tr><td>华脉科技 603042</td><td>0.47亿</td><td>有价格涨跌幅限制的日价格振幅达到15%的前五只证券</td><td></td></tr><tr><td>华脉科技 603042</td><td>0.47亿</td><td>有价格涨跌幅限制的日换手率达到20%的前五只证券</td><td></td></tr><tr><td>瑞尔特 002790</td><td>0.41亿</td><td>连续三个交易日内，涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>众泰汽车 000980</td><td>0.33亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>万邦医药 301520</td><td>0.25亿</td><td>日换手率达到30%的前5只证券</td><td></td></tr><tr><td>爱仕达 002403</td><td>0.20亿</td><td>连续三个交易日内，跌幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>中新赛克 002912</td><td>0.15亿</td><td>连续三个交易日内，涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>爱仕达 002403</td><td>0.15亿</td><td>日跌幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>江南水务 601199</td><td>0.12亿</td><td>有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券</td><td></td></tr><tr><td>新农开发 600359</td><td>-0.00亿</td><td>有价格涨跌幅限制的日换手率达到20%的前五只证券</td><td></td></tr></tbody></table><p class="source">📡 数据来源: 东方财富 datacenter-web RPT_DAILYBILLBOARD_DETAILSNEW（§3.9）</p></section><div class="card"><h2><span class="bar"></span>📋 详细数据（筹码 / 估值历史）</h2>
+<div class="tbl-wrap"><table class="v3-tbl dark-tbl"><thead><tr><th>筹码分布明细</th><th class="num"></th></tr></thead><tbody>
+<tr><td>获利比例</td><td class="num">17.9%</td></tr>
+<tr><td>平均成本</td><td class="num">10.65 元</td></tr>
+<tr><td>90% 成本区间</td><td class="num">8.97 ~ 11.70 元</td></tr>
+<tr><td>70% 成本区间</td><td class="num">9.67 ~ 11.45 元</td></tr>
+<tr><td>筹码峰</td><td class="num">11.30 元</td></tr>
+<tr><td>90% 集中度</td><td class="num">13.2%</td></tr>
+<tr><td>窗口累计换手</td><td class="num">1526.3%</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap" style="margin-top:var(--sp-1)"><table class="v3-tbl dark-tbl"><thead><tr><th>估值历史（baostock）</th><th class="num"></th></tr></thead><tbody>
+<tr><td>数据范围</td><td class="num">2023-08-07 → 2026-09-11</td></tr>
+<tr><td>PE 当前 / 中位</td><td class="num">176.49 / 156.02</td></tr>
+<tr><td>PE 区间(min~max)</td><td class="num">58.39 ~ 696.45</td></tr>
+<tr><td>PE 3 年分位</td><td class="num">65.5%</td></tr>
+<tr><td>PB 当前 / 分位</td><td class="num">2.40 / 82.3%</td></tr>
+<tr><td>ST 剔除占比</td><td class="num">0.0%</td></tr>
+</tbody></table></div>
+</div><div class="card"><h2><span class="bar"></span>🧭 数据源清单</h2><div class="tbl-wrap"><table class="v3-tbl dark-tbl"><thead><tr><th>模块</th><th>状态</th><th>时点 / 备注</th></tr></thead><tbody>
+<tr><td>行情</td><td></td><td></td></tr>
+<tr><td>估值一致预期</td><td></td><td></td></tr>
+<tr><td>概念板块</td><td></td><td></td></tr>
+<tr><td>当日资金流</td><td></td><td></td></tr>
+<tr><td>估值历史分位</td><td></td><td></td></tr>
+<tr><td>解禁日历</td><td></td><td></td></tr>
+<tr><td>龙虎榜</td><td></td><td></td></tr>
+<tr><td>宏观底色</td><td></td><td></td></tr>
+<tr><td>筹码K线</td><td></td><td></td></tr>
+<tr><td>申万分类</td><td></td><td></td></tr>
+<tr><td>公告</td><td></td><td></td></tr>
+<tr><td>财务摘要</td><td></td><td></td></tr>
+<tr><td>研报观点</td><td></td><td></td></tr>
+<tr><td>新闻舆情</td><td></td><td></td></tr>
+<tr><td>irm</td><td></td><td></td></tr>
+<tr><td>holders</td><td></td><td></td></tr>
+<tr><td>dividend</td><td></td><td></td></tr>
+<tr><td>board</td><td></td><td></td></tr>
+<tr><td>dragon_market</td><td></td><td></td></tr>
+<tr><td>融资融券</td><td></td><td></td></tr>
+</tbody></table></div>
+<div class="src-line" style="margin:4px 0 0">🛡 guard：{'status': 'N/A 单票流程不用池CSV', 'kline_freshness': 'last_bar=2026-09-11 vs 最新交易日=2026-09-11 -&gt; ok (K线最后交易日 2026-09-11 已到最新交易日, 新鲜)'}</div>
+<div class="src-line">⏱ 2026-09-13T13:13:52+08:00 → 2026-09-13T13:16:26+08:00 · 耗时 153.8 秒</div><div class="foot">⚠️ 本报告由量化模型基于公开数据自动生成，仅供研究参考，不构成投资建议。市场随时变化，请独立判断。<br>数据来源：行情 · 估值一致预期 · 概念板块 · 当日资金流 · 估值历史分位 · 解禁日历 · 龙虎榜 · 宏观底色 · 筹码K线 · 申万分类 · 公告 · 财务摘要 · 研报观点 · 新闻舆情 · irm · holders · dividend · board · dragon_market · 融资融券（以各模块标注时点为准）<br>报告日 2026-09-13 · 行情数据截止 2026-09-11 · 生成 2026-09-13 13:16 · <span style="opacity:.6">a-stock-data V3 HTML</span></div></div>
+<script>
+(function() {
+  var KEY = 'v3-stock-report-theme';
+  var body = document.body;
+  var btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  // 初始化: localStorage > 默认 dark
+  var saved = localStorage.getItem(KEY);
+  if (saved === 'light') {
+    document.querySelector('.v3-stock-report').classList.add('light-mode');
+    btn.textContent = '🌙 深色模式';
+  } else {
+    btn.textContent = '☀️ 浅色模式';
+  }
+  // 切换
+  btn.addEventListener('click', function() {
+    var target = document.querySelector('.v3-stock-report');
+    target.classList.toggle('light-mode');
+    var isLight = target.classList.contains('light-mode');
+    btn.textContent = isLight ? '🌙 深色模式' : '☀️ 浅色模式';
+    try { localStorage.setItem(KEY, isLight ? 'light' : 'dark'); } catch(e) {}
+    // 触发 ECharts 主题重渲染 (如有)
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new Event('resize'));
+    }
+  });
+})();
+</script>
+
+<script>
+(function() {
+var rawData = [["2025-12-17", 17.50593739, 17.5158896, 16.03301031, 16.64009512, 19.6735], ["2025-12-18", 17.05808794, 17.79455148, 16.47090755, 17.12775341, 24.7532], ["2025-12-19", 16.69980838, 18.83953353, 16.4211465, 16.95856584, 19.2325], ["2025-12-22", 17.46612855, 18.65044154, 17.1178012, 18.65044154, 21.7714], ["2025-12-23", 19.23762193, 20.51150481, 18.72010701, 19.4068095, 25.6615], ["2025-12-24", 19.74518464, 21.34749045, 19.74518464, 21.34749045, 25.473], ["2025-12-25", 21.34749045, 22.77065648, 20.4020305, 20.81007111, 26.5253], ["2025-12-26", 21.05887636, 22.37256808, 20.899641, 21.77543548, 21.7715], ["2025-12-29", 22.24318935, 22.2929504, 19.59590149, 19.7053758, 24.3472], ["2025-12-30", 18.20259209, 18.93905563, 17.73483822, 17.73483822, 20.5428], ["2025-12-31", 18.15283104, 18.20259209, 17.03818352, 17.73483822, 15.4141], ["2026-01-05", 17.73483822, 18.78977248, 17.66517275, 18.30211419, 16.0177], ["2026-01-06", 18.30211419, 18.5111106, 17.26708435, 17.79455148, 19.857], ["2026-01-07", 17.22727551, 18.55091944, 17.03818352, 17.80450369, 18.1377], ["2026-01-08", 17.62536391, 19.5063316, 17.1178012, 18.82958132, 23.1122], ["2026-01-09", 18.22249651, 20.18308188, 18.16278325, 19.49637939, 21.8265], ["2026-01-12", 19.2077653, 21.14844625, 18.909199, 20.90959321, 21.0645], ["2026-01-13", 20.52145702, 22.11381062, 18.81962911, 18.81962911, 20.0741], ["2026-01-14", 17.0182791, 18.1130222, 16.93866142, 16.93866142, 16.7063], ["2026-01-15", 16.4211465, 17.18746667, 15.24678572, 15.26669014, 13.0993], ["2026-01-16", 15.21692909, 16.05291473, 14.78898406, 15.69463517, 12.5145], ["2026-01-19", 15.30649898, 15.66477854, 15.07759815, 15.33635561, 7.8919], ["2026-01-20", 15.41597329, 15.59511307, 14.83874511, 14.99798047, 8.2143], ["2026-01-21", 14.8287929, 14.91836279, 14.3311824, 14.46056113, 7.3747], ["2026-01-22", 14.45060892, 14.67950975, 14.35108682, 14.61979649, 4.7759], ["2026-01-23", 14.66955754, 15.37616445, 14.54017881, 15.24678572, 7.5477], ["2026-01-26", 15.19702467, 15.40602108, 14.32123019, 14.4307045, 7.1032], ["2026-01-27", 14.4307045, 14.6297487, 14.10228157, 14.58993986, 5.0832], ["2026-01-28", 14.5302266, 14.77903185, 14.11223378, 14.15204262, 5.6363], ["2026-01-29", 14.04256831, 14.61979649, 13.85347632, 14.32123019, 6.3959], ["2026-01-30", 14.31127798, 15.06764594, 14.2316603, 14.49041776, 7.3935], ["2026-02-02", 14.16199483, 15.30649898, 14.1321382, 15.05769373, 9.5935], ["2026-02-03", 14.928315, 15.27664235, 14.7292708, 15.1273592, 8.6179], ["2026-02-04", 15.13731141, 16.1225802, 14.88850616, 15.83396611, 14.3911], ["2026-02-05", 15.74439622, 17.4163675, 15.08755036, 17.09789678, 17.8599], ["2026-02-06", 16.4211465, 16.89885258, 15.38611666, 15.60506528, 13.2133], ["2026-02-09", 15.13731141, 15.8240139, 14.928315, 15.65482633, 10.108], ["2026-02-10", 15.41597329, 15.4259255, 14.80888848, 14.83874511, 7.2858], ["2026-02-11", 14.7292708, 14.8287929, 14.18189925, 14.20180367, 6.2681], ["2026-02-12", 14.05252052, 14.06247273, 13.36581803, 13.38572245, 7.8882], ["2026-02-13", 13.58476665, 13.7340498, 13.18667825, 13.20658267, 4.3771], ["2026-02-24", 13.44543571, 13.59471886, 13.31605698, 13.46534013, 4.7085], ["2026-02-25", 13.52505339, 13.71414538, 13.4354835, 13.65443212, 3.5175], ["2026-02-26", 13.64447991, 13.7340498, 13.30610477, 13.3359614, 3.9069], ["2026-02-27", 13.28620035, 13.51510118, 13.24639151, 13.44543571, 3.4174], ["2026-03-02", 13.08715615, 13.31605698, 12.95777742, 13.14686941, 3.6799], ["2026-03-03", 13.1369172, 13.27624814, 12.61940228, 12.6393067, 5.3322], ["2026-03-04", 12.4402625, 12.78858985, 12.2412183, 12.67911554, 3.2075], ["2026-03-05", 12.68906775, 13.1369172, 12.68906775, 13.01749068, 4.0071], ["2026-03-06", 12.8383509, 12.99758626, 12.7388288, 12.88811195, 2.6977], ["2026-03-09", 12.62935449, 12.91796858, 12.59949786, 12.79854206, 2.4657], ["2026-03-10", 12.91796858, 12.97768184, 12.66916333, 12.7388288, 2.5777], ["2026-03-11", 12.7388288, 12.84830311, 12.57959344, 12.6393067, 2.43], ["2026-03-12", 12.5397846, 12.65921112, 12.36064482, 12.42035808, 2.1045], ["2026-03-13", 12.3407404, 12.49002355, 12.12179178, 12.17155283, 2.3543], ["2026-03-16", 12.19145725, 12.3407404, 11.92274758, 12.08198294, 2.7516], ["2026-03-17", 12.12179178, 12.17155283, 11.82322548, 11.92274758, 3.2658], ["2026-03-18", 11.80332106, 11.8431299, 10.95738321, 11.27585393, 8.7929], ["2026-03-19", 11.10666636, 11.3455194, 11.02704868, 11.12657078, 4.2789], ["2026-03-20", 11.17633183, 11.29575835, 10.89766995, 10.91757437, 2.988], ["2026-03-23", 10.70857796, 10.8479089, 10.34034619, 10.41001166, 3.8722], ["2026-03-24", 10.61900807, 10.78819564, 10.43986829, 10.77824343, 4.0714], ["2026-03-25", 10.8479089, 11.12657078, 10.78819564, 11.11661857, 3.4334], ["2026-03-26", 10.99719205, 11.19623625, 10.82800448, 10.86781332, 3.3076], ["2026-03-27", 10.90762216, 11.03700089, 10.69862575, 11.02704868, 2.411], ["2026-03-30", 10.90762216, 11.40523266, 10.89766995, 11.32561498, 4.1883], ["2026-03-31", 11.2459973, 11.79336885, 11.19623625, 11.25594951, 6.1225], ["2026-04-01", 11.46494592, 11.50475476, 10.92752658, 11.07680973, 3.7299], ["2026-04-02", 11.07680973, 11.23604509, 11.01709647, 11.10666636, 2.9746], ["2026-04-03", 11.10666636, 11.13652299, 10.71853017, 10.73843459, 2.4308], ["2026-04-07", 10.73843459, 11.01709647, 10.70857796, 10.98723984, 2.1341], ["2026-04-08", 11.08676194, 11.35547161, 11.0469531, 11.35547161, 2.7011], ["2026-04-09", 11.19623625, 11.29575835, 11.02704868, 11.10666636, 1.9248], ["2026-04-10", 11.1464752, 11.27585393, 11.06685752, 11.15642741, 1.9802], ["2026-04-13", 11.47489813, 11.55451581, 11.00714426, 11.12657078, 3.8296], ["2026-04-14", 11.13652299, 11.28580614, 10.99719205, 11.23604509, 3.1724], ["2026-04-15", 11.23604509, 11.6440857, 11.17633183, 11.41518487, 5.2969], ["2026-04-16", 11.28580614, 11.56446802, 11.1464752, 11.51470697, 6.0556], ["2026-04-17", 11.45499371, 12.09193515, 11.27585393, 11.85308211, 11.9943], ["2026-04-20", 11.66399012, 12.09193515, 11.52465918, 11.942652, 10.1919], ["2026-04-21", 11.77346443, 12.57959344, 11.49480255, 11.6440857, 12.9049], ["2026-04-22", 11.52465918, 11.57442023, 11.06685752, 11.25594951, 8.8099], ["2026-04-23", 11.13652299, 11.32561498, 10.7483868, 10.98723984, 6.9144], ["2026-04-24", 10.947431, 10.97728763, 10.38015503, 10.42991608, 5.8108], ["2026-04-27", 10.5493426, 11.47489813, 10.40005945, 11.47489813, 8.1841], ["2026-04-28", 11.48485034, 11.83317769, 11.19623625, 11.3455194, 9.8954], ["2026-04-29", 11.2459973, 11.76351222, 11.20618846, 11.4450415, 7.654], ["2026-04-30", 11.4450415, 11.6440857, 11.17633183, 11.29575835, 6.6725], ["2026-05-06", 11.21614067, 11.29575835, 11.02704868, 11.12657078, 5.5019], ["2026-05-07", 11.11661857, 11.68389454, 11.09671415, 11.37537603, 6.2511], ["2026-05-08", 11.31566277, 11.69384675, 11.28580614, 11.57442023, 6.4643], ["2026-05-11", 11.58437244, 11.71375117, 11.53461139, 11.66399012, 4.7778], ["2026-05-12", 11.7436078, 11.76351222, 11.12657078, 11.18628404, 5.6255], ["2026-05-13", 11.10666636, 11.4450415, 10.92752658, 11.37537603, 5.1622], ["2026-05-14", 11.3455194, 11.47489813, 10.65881691, 10.66876912, 9.3939], ["2026-05-15", 10.69862575, 10.7483868, 9.95221, 10.07163652, 7.4934], ["2026-05-18", 10.02187547, 10.1512542, 9.86264011, 10.10149315, 3.2182], ["2026-05-19", 10.0517321, 10.13134978, 9.68350033, 9.82283127, 4.3399], ["2026-05-20", 9.73326138, 9.83278348, 9.59393044, 9.72330917, 2.7725], ["2026-05-21", 9.83278348, 9.91240116, 9.38493403, 9.42474287, 3.4302], ["2026-05-22", 9.61383486, 9.61383486, 9.3550774, 9.4545995, 3.0673], ["2026-05-25", 9.34512519, 9.50436055, 9.23565088, 9.41479066, 3.0412], ["2026-05-26", 9.30531635, 9.90244895, 9.30531635, 9.54416939, 5.9109], ["2026-05-27", 9.36502961, 10.4498205, 9.11622436, 10.02187547, 10.6719], ["2026-05-28", 9.68350033, 9.73326138, 9.10627215, 9.11622436, 8.2702], ["2026-05-29", 9.00675005, 10.03182768, 8.81765806, 10.03182768, 9.5704], ["2026-06-01", 9.8526879, 10.99719205, 9.7531658, 10.67872133, 15.6034], ["2026-06-02", 10.38015503, 11.0469531, 10.10149315, 10.66876912, 13.0556], ["2026-06-03", 10.3502984, 10.66876912, 10.06168431, 10.37020282, 9.7919], ["2026-06-04", 10.32044177, 10.8479089, 9.66359591, 9.78302243, 10.1641], ["2026-06-05", 9.79297464, 10.75833901, 9.7531658, 10.30053735, 13.4971], ["2026-06-08", 10.10149315, 10.75833901, 9.96216221, 9.97211442, 11.9348], ["2026-06-09", 9.67354812, 9.95221, 9.20579425, 9.37498182, 9.242], ["2026-06-10", 9.37498182, 9.47450392, 8.92713237, 8.92713237, 6.819], ["2026-06-11", 8.7579448, 9.1560332, 8.48923513, 8.58875723, 5.4429], ["2026-06-12", 8.5589006, 8.97689342, 8.42952187, 8.74799259, 6.9364], ["2026-06-15", 8.5589006, 9.07641552, 8.5589006, 8.81765806, 5.4839], ["2026-06-16", 8.70818375, 9.00675005, 8.5589006, 8.94703679, 5.5908], ["2026-06-17", 8.88732353, 8.93708458, 8.50913955, 8.52904397, 5.0856], ["2026-06-18", 8.52904397, 8.58875723, 8.32999977, 8.33995198, 4.037], ["2026-06-22", 8.43947408, 8.48923513, 8.22052546, 8.38971303, 4.1978], ["2026-06-23", 8.29019093, 8.59870944, 8.28023872, 8.31009535, 4.1784], ["2026-06-24", 8.30014314, 8.30014314, 7.8622459, 8.0612901, 4.5744], ["2026-06-25", 8.0612901, 8.25038209, 7.94186358, 8.03143347, 3.7312], ["2026-06-26", 8.07124231, 8.09114673, 7.74281938, 7.74281938, 3.5934], ["2026-06-29", 7.74281938, 8.0612901, 7.55372739, 7.84234148, 4.1887], ["2026-06-30", 7.79258043, 7.92195916, 7.67315391, 7.80253264, 2.6825], ["2026-07-01", 7.79258043, 8.19066883, 7.75277159, 8.13095557, 4.6394], ["2026-07-02", 8.05133789, 8.4593785, 8.05133789, 8.18071662, 4.3168], ["2026-07-03", 8.23047767, 8.24042988, 7.94186358, 8.13095557, 3.7483], ["2026-07-06", 7.99162463, 8.21057325, 7.97172021, 7.99162463, 2.1997], ["2026-07-07", 7.94186358, 7.961768, 7.73286717, 7.74281938, 2.1614], ["2026-07-08", 7.74281938, 7.961768, 7.68310612, 7.81248485, 3.3023], ["2026-07-09", 7.63334507, 7.8622459, 7.58358402, 7.77267601, 3.0504], ["2026-07-10", 7.7627238, 8.24042988, 7.73286717, 8.13095557, 4.9182], ["2026-07-13", 8.0612901, 8.19066883, 7.69305833, 7.71296275, 3.3549], ["2026-07-14", 7.961768, 7.99162463, 7.62339286, 7.97172021, 4.9004], ["2026-07-15", 7.90205474, 8.57880502, 7.81248485, 8.36980861, 8.0196], ["2026-07-16", 8.49918734, 8.71813596, 8.21057325, 8.32999977, 7.4859], ["2026-07-17", 8.32, 8.7, 7.55, 7.66, 8.9465], ["2026-07-20", 7.5, 7.95, 7.46, 7.66, 6.5638], ["2026-07-21", 7.6, 7.7, 7.16, 7.7, 5.4739], ["2026-07-22", 7.55, 7.79, 7.5, 7.6, 3.0502], ["2026-07-23", 7.5, 7.87, 7.45, 7.87, 3.2521], ["2026-07-24", 7.75, 7.87, 7.5, 7.53, 2.7844], ["2026-07-27", 7.44, 7.84, 7.41, 7.83, 3.1099], ["2026-07-28", 7.8, 8.61, 7.77, 8.61, 4.4152], ["2026-07-29", 8.95, 9.47, 8.55, 9.47, 13.745], ["2026-07-30", 9.28, 10.38, 9.18, 9.19, 21.0792], ["2026-07-31", 8.27, 9.56, 8.27, 9.44, 17.6895], ["2026-08-03", 9.01, 9.51, 9.01, 9.39, 11.4714], ["2026-08-04", 9.34, 9.85, 9.31, 9.66, 12.0537], ["2026-08-05", 9.68, 9.87, 9.51, 9.79, 9.9884], ["2026-08-06", 9.78, 10.01, 9.45, 9.55, 8.8238], ["2026-08-07", 9.54, 9.74, 9.3, 9.61, 6.9898], ["2026-08-10", 9.61, 10.23, 9.55, 10.16, 10.7827], ["2026-08-11", 9.98, 10.24, 9.84, 9.92, 8.3341], ["2026-08-12", 9.86, 10.24, 9.71, 10.17, 9.8756], ["2026-08-13", 10.02, 10.85, 9.96, 10.48, 13.7337], ["2026-08-14", 10.25, 10.3, 9.44, 9.5, 12.5249], ["2026-08-17", 9.69, 9.73, 9.35, 9.66, 6.6418], ["2026-08-18", 9.65, 10.59, 9.61, 9.71, 10.0283], ["2026-08-19", 9.75, 9.82, 9.03, 9.06, 6.8714], ["2026-08-20", 9.18, 9.19, 8.91, 8.95, 4.7754], ["2026-08-21", 8.91, 8.99, 8.67, 8.95, 3.889], ["2026-08-24", 8.88, 8.9, 8.45, 8.51, 4.3985], ["2026-08-25", 8.45, 9.29, 8.42, 8.96, 7.5328], ["2026-08-26", 8.78, 9.27, 8.78, 8.9, 5.8598], ["2026-08-27", 8.91, 9.77, 8.77, 9.35, 8.261], ["2026-08-28", 9.43, 9.59, 9.25, 9.56, 6.1344], ["2026-08-31", 9.55, 9.76, 9.29, 9.31, 5.3393], ["2026-09-01", 9.5, 10.24, 9.46, 10.24, 5.1585], ["2026-09-02", 10.44, 10.88, 10.0, 10.04, 18.7792], ["2026-09-03", 10.03, 11.04, 9.77, 11.04, 17.2537], ["2026-09-04", 10.6, 11.9, 9.94, 10.93, 21.663], ["2026-09-07", 10.91, 11.76, 10.91, 11.49, 18.165], ["2026-09-08", 11.6, 12.2, 11.2, 11.52, 18.6892], ["2026-09-09", 11.24, 11.69, 10.86, 11.37, 14.5265], ["2026-09-10", 11.23, 11.37, 10.65, 10.76, 12.3157], ["2026-09-11", 10.81, 11.1, 9.91, 9.93, 12.7406]];
+
+// 数据处理
+var dates = [], ohlc = [], volumesRaw = [];
+rawData.forEach(function(d) {
+  dates.push(d[0]);
+  ohlc.push([d[1], d[4], d[3], d[2]]);
+  volumesRaw.push(d[5]);
+});
+var closes = ohlc.map(function(d) { return d[1]; });
+var highs = rawData.map(function(d) { return d[4]; });
+var lows = rawData.map(function(d) { return d[3]; });
+function calcMA(arr, n) {
+  return arr.map(function(_, i) {
+    if (i < n - 1) return null;
+    var sum = arr.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0);
+    return +(sum / n).toFixed(2);
+  });
+}
+var ma5 = calcMA(closes, 5), ma20 = calcMA(closes, 20), ma60 = calcMA(closes, 60);
+var volumes = volumesRaw.map(function(v) { return +(v / 10000).toFixed(2); });
+var dateLabels = dates.map(function(d) {
+  var parts = d.split('-');
+  return parts[1] + '-' + parts[2];
+});
+
+// 主题色 (跟随 v3-stock-report.light-mode)
+function getThemeColors() {
+  var isLight = document.body.classList.contains('light-mode') ||
+                (document.querySelector('.v3-stock-report') &&
+                 document.querySelector('.v3-stock-report').classList.contains('light-mode'));
+  return {
+    textColor:    isLight ? '#2a1f12' : '#e8e9ec',
+    textSecondary:isLight ? '#6b5634' : '#b0b3be',
+    textMuted:    isLight ? '#9c8b6e' : '#7a7d8a',
+    upColor:      isLight ? '#dc2626' : '#f55656',
+    downColor:    isLight ? '#16a34a' : '#28c75b',
+    ma5Color:     isLight ? '#2563eb' : '#4a90d9',
+    ma20Color:    isLight ? '#16a34a' : '#28c75b',
+    ma60Color:    isLight ? '#c2410c' : '#e8923a',
+    volUpColor:   isLight ? 'rgba(220,38,38,0.25)'  : 'rgba(245,86,86,0.35)',
+    volDownColor: isLight ? 'rgba(22,163,74,0.25)'  : 'rgba(40,199,91,0.35)',
+  };
+}
+
+// 技术指标计算
+function calcEMA(arr, n) {
+  var k = 2 / (n + 1);
+  var ema = [arr[0]];
+  for (var i = 1; i < arr.length; i++) ema.push(arr[i] * k + ema[i-1] * (1 - k));
+  return ema;
+}
+function calcMACDData(c) {
+  var ema12 = calcEMA(c, 12), ema26 = calcEMA(c, 26);
+  var dif = ema12.map(function(v, i) { return v - ema26[i]; });
+  var dea = calcEMA(dif, 9);
+  var macd = dif.map(function(v, i) { return 2 * (v - dea[i]); });
+  return { dif: dif, dea: dea, macd: macd };
+}
+function calcKDJData(h, l, c, n) {
+  n = n || 9;
+  var k = [], d = [], j = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i < n - 1) { k.push(50); d.push(50); j.push(50); continue; }
+    var hi = Math.max.apply(null, h.slice(i - n + 1, i + 1));
+    var lo = Math.min.apply(null, l.slice(i - n + 1, i + 1));
+    var rsv = ((c[i] - lo) / (hi - lo)) * 100 || 50;
+    k.push(i === n - 1 ? rsv : (2/3) * k[i-1] + (1/3) * rsv);
+    d.push(i === n - 1 ? k[i]  : (2/3) * d[i-1] + (1/3) * k[i]);
+    j.push(3 * k[i] - 2 * d[i]);
+  }
+  return { k: k, d: d, j: j };
+}
+function calcRSI(c, n) {
+  var gains = [], losses = [], rsi = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i === 0) { gains.push(0); losses.push(0); rsi.push(50); continue; }
+    var ch = c[i] - c[i-1];
+    gains.push(ch > 0 ? ch : 0);
+    losses.push(ch < 0 ? -ch : 0);
+    if (i < n) { rsi.push(50); continue; }
+    var ag = gains.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0) / n;
+    var al = losses.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0) / n;
+    rsi.push(al === 0 ? 100 : 100 - (100 / (1 + ag / al)));
+  }
+  return rsi;
+}
+function calcBOLL(c, n) {
+  n = n || 20;
+  var mid = [], upper = [], lower = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i < n - 1) { mid.push(null); upper.push(null); lower.push(null); continue; }
+    var slice = c.slice(i - n + 1, i + 1);
+    var avg = slice.reduce(function(a, b) { return a + b; }, 0) / n;
+    var std = Math.sqrt(slice.reduce(function(a, b) { return a + Math.pow(b - avg, 2); }, 0) / n);
+    mid.push(avg); upper.push(avg + 2 * std); lower.push(avg - 2 * std);
+  }
+  return { mid: mid, upper: upper, lower: lower };
+}
+
+var macdData = calcMACDData(closes);
+var kdjData = calcKDJData(highs, lows, closes);
+var rsi6 = calcRSI(closes, 6), rsi12 = calcRSI(closes, 12), rsi24 = calcRSI(closes, 24);
+var bollData = calcBOLL(closes);
+
+var klineChart, macdChart, kdjChart, rsiChart, bollChart;
+
+// K线图
+function renderKline() {
+  var el = document.getElementById('chart-kline-full');
+  if (!el) return;
+  if (klineChart) klineChart.dispose();
+  klineChart = echarts.init(el);
+  var c = getThemeColors();
+  var volData = volumes.map(function(v, i) {
+    return { value: v, itemStyle: { color: ohlc[i][1] >= ohlc[i][0] ? c.volUpColor : c.volDownColor } };
+  });
+  klineChart.setOption({
+    grid: [
+      { left: '8%', right: '5%', top: '8%',  height: '60%' },
+      { left: '8%', right: '5%', top: '76%', height: '14%' }
+    ],
+    xAxis: [
+      { type: 'category', data: dateLabels, gridIndex: 0,
+        axisLabel: { color: c.textMuted, fontSize: 9, interval: 5 },
+        axisLine: { lineStyle: { color: c.textMuted } }, splitLine: { show: false } },
+      { type: 'category', data: dateLabels, gridIndex: 1, show: false, splitLine: { show: false } }
+    ],
+    yAxis: [
+      { scale: true, gridIndex: 0, axisLabel: { color: c.textMuted, fontSize: 10 }, splitLine: { show: false } },
+      { scale: true, gridIndex: 1, axisLabel: { color: c.textMuted, fontSize: 10, formatter: '{value}%' }, splitLine: { show: false } }
+    ],
+    dataZoom: [{ type: 'inside', xAxisIndex: [0, 1] }],
+    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' },
+      formatter: function(ps) {
+        var k = ps.find(function(p) { return p.seriesName === 'K线'; });
+        var vol = ps.find(function(p) { return p.seriesName === '换手率'; });
+        if (!k) return '';
+        return k.axisValue + '<br/>开:' + k.data[0] + ' 收:' + k.data[1] + '<br/>低:' + k.data[2] + ' 高:' + k.data[3] + (vol ? '<br/>换手率:' + vol.data.value + '%' : '');
+      }
+    },
+    legend: { data: ['K线','MA5','MA20','MA60'], top: 0, textStyle: { color: c.textSecondary } },
+    series: [
+      { name: 'K线', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
+        itemStyle: { color: c.upColor, color0: c.downColor, borderColor: c.upColor, borderColor0: c.downColor },
+        markLine: { symbol: 'none',
+          lineStyle: { color: '#d4a853', width: 1.5, type: 'dashed' },
+          label: { position: 'end', fontSize: 10, color: '#d4a853' },
+          data: [{"yAxis": 12.2, "name": "\u538b\u529b", "label": {"formatter": "\u538b\u529b"}}, {"yAxis": 7.16, "name": "\u652f\u6491", "label": {"formatter": "\u652f\u6491"}}, {"yAxis": 9.23, "name": "\u6b62\u635f", "label": {"formatter": "\u6b62\u635f"}}]
+        },
+        markPoint: { symbol: 'pin', symbolSize: 50,
+          label: { fontSize: 11, color: '#fff', fontWeight: 'bold' },
+          data: [{"coord": [179, 9.93], "value": "\u73b0\u4ef7", "itemStyle": {"color": "#d4a853"}}, {"coord": [7, 21.77543548], "value": "\u9636\u6bb5\u9ad8", "itemStyle": {"color": "#f55656"}}, {"coord": [144, 7.53], "value": "\u9636\u6bb5\u4f4e", "itemStyle": {"color": "#28c75b"}}]
+        }
+      },
+      { name: 'MA5',  type: 'line', data: ma5,  smooth: true, lineStyle: { width: 1.5, color: c.ma5Color  }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: 'MA20', type: 'line', data: ma20, smooth: true, lineStyle: { width: 1.5, color: c.ma20Color }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: 'MA60', type: 'line', data: ma60, smooth: true, lineStyle: { width: 1.5, color: c.ma60Color }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: '换手率', type: 'bar', data: volData, xAxisIndex: 1, yAxisIndex: 1 }
+    ]
+  });
+}
+
+// 4 技术指标图
+function renderMACD() {
+  var el = document.getElementById('chart-macd');
+  if (!el) return;
+  if (macdChart) macdChart.dispose();
+  macdChart = echarts.init(el);
+  var c = getThemeColors();
+  macdChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'DIF', type: 'line', data: macdData.dif, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'DEA', type: 'line', data: macdData.dea, lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'MACD', type: 'bar', data: macdData.macd, itemStyle: {
+        color: function(p) { return p.value >= 0 ? 'rgba(245,86,86,0.5)' : 'rgba(40,199,91,0.5)'; }
+      } }
+    ],
+    legend: { data: ['DIF','DEA','MACD'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderKDJ() {
+  var el = document.getElementById('chart-kdj');
+  if (!el) return;
+  if (kdjChart) kdjChart.dispose();
+  kdjChart = echarts.init(el);
+  var c = getThemeColors();
+  kdjChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { min: 0, max: 100, axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'K', type: 'line', data: kdjData.k, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'D', type: 'line', data: kdjData.d, lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'J', type: 'line', data: kdjData.j, lineStyle: { color: '#f55656', width: 1 }, showSymbol: false }
+    ],
+    legend: { data: ['K','D','J'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderRSI() {
+  var el = document.getElementById('chart-rsi');
+  if (!el) return;
+  if (rsiChart) rsiChart.dispose();
+  rsiChart = echarts.init(el);
+  var c = getThemeColors();
+  rsiChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { min: 0, max: 100, axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'RSI6',  type: 'line', data: rsi6,  lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'RSI12', type: 'line', data: rsi12, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'RSI24', type: 'line', data: rsi24, lineStyle: { color: '#f55656', width: 1.2 }, showSymbol: false }
+    ],
+    legend: { data: ['RSI6','RSI12','RSI24'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderBOLL() {
+  var el = document.getElementById('chart-boll');
+  if (!el) return;
+  if (bollChart) bollChart.dispose();
+  bollChart = echarts.init(el);
+  var c = getThemeColors();
+  bollChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: '上轨',   type: 'line', data: bollData.upper, lineStyle: { color: 'rgba(245,86,86,0.4)', width: 1 }, showSymbol: false },
+      { name: '中轨',   type: 'line', data: bollData.mid,   lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: '下轨',   type: 'line', data: bollData.lower, lineStyle: { color: 'rgba(40,199,91,0.4)', width: 1 }, showSymbol: false, areaStyle: { color: 'rgba(212,168,83,0.05)' } },
+      { name: '收盘价', type: 'line', data: closes,         lineStyle: { color: '#4a90d9', width: 1.5 }, showSymbol: false }
+    ],
+    legend: { data: ['上轨','中轨','下轨','收盘价'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+
+function renderAll() { renderKline(); renderMACD(); renderKDJ(); renderRSI(); renderBOLL(); }
+
+// 主题切换时重渲染 (监听 v3-stock-report class 变化)
+var target = document.body;
+var v3root = document.querySelector('.v3-stock-report');
+if (v3root) target = v3root;
+if (window.MutationObserver) {
+  var obs = new MutationObserver(function() { renderAll(); });
+  obs.observe(target, { attributes: true, attributeFilter: ['class'] });
+}
+window.addEventListener('resize', function() {
+  klineChart && klineChart.resize();
+  macdChart && macdChart.resize();
+  kdjChart && kdjChart.resize();
+  rsiChart && rsiChart.resize();
+  bollChart && bollChart.resize();
+});
+
+// 首次渲染
+if (document.readyState === 'complete') renderAll();
+else window.addEventListener('load', renderAll);
+})();
+</script>
+</body></html>

@@ -1,0 +1,236 @@
+{
+  "started_at": "2026-09-20T11:14:17+08:00",
+  "finished_at": "2026-09-20T11:16:00+08:00",
+  "total_sec": 103.1,
+  "sources": {
+    "行情": "ok, 1038ms",
+    "估值一致预期": "ok, 3360ms",
+    "概念板块": "fallback:接口返回0条(可能风控), 2447ms",
+    "当日资金流": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 2290ms",
+    "估值历史分位": "ok, 3421ms",
+    "解禁日历": "ok, 1111ms",
+    "龙虎榜": "ok, 2117ms",
+    "宏观底色": "ok, 2918ms",
+    "筹码K线": "ok, 756ms",
+    "申万分类": "error:申万表加载失败, 0ms",
+    "公告": "ok:eastmoney, 1803ms",
+    "财务摘要": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 2535ms",
+    "研报观点": "ok:ths, 2842ms",
+    "新闻舆情": "ok:sina_stock_news, 8411ms",
+    "irm": "ok, 2529ms",
+    "holders": "error: holders 调用超时(35s)",
+    "dividend": "ok, 7036ms",
+    "board": "ok, 4647ms",
+    "dragon_market": "ok, 4584ms",
+    "融资融券": "ok:eastmoney-datacenter, 760ms"
+  },
+  "source_meta": {
+    "行情": {
+      "ms": 1038,
+      "at": "11:14:18",
+      "status": "ok, 1038ms",
+      "detail": "腾讯实时行情 qt.gtimg.cn"
+    },
+    "估值一致预期": {
+      "ms": 3360,
+      "at": "11:14:22",
+      "status": "ok, 3360ms",
+      "detail": "同花顺一致预期 basic.10jqka.com.cn"
+    },
+    "概念板块": {
+      "ms": 2447,
+      "at": "11:14:24",
+      "status": "fallback:接口返回0条(可能风控), 2447ms",
+      "detail": "东财概念板块 slist"
+    },
+    "当日资金流": {
+      "ms": 2290,
+      "at": "11:14:26",
+      "status": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 2290ms",
+      "detail": "东财当日分钟资金流 fflow"
+    },
+    "估值历史分位": {
+      "ms": 3421,
+      "at": "11:14:30",
+      "status": "ok, 3421ms",
+      "detail": "baostock 估值历史(近3年)"
+    },
+    "解禁日历": {
+      "ms": 1111,
+      "at": "11:14:31",
+      "status": "ok, 1111ms",
+      "detail": "东财数据中心 RPT_LIFT_STAGE"
+    },
+    "龙虎榜": {
+      "ms": 2117,
+      "at": "11:14:33",
+      "status": "ok, 2117ms",
+      "detail": "东财数据中心 RPT_DAILYBILLBOARD_DETAILSNEW"
+    },
+    "宏观底色": {
+      "ms": 2918,
+      "at": "11:14:36",
+      "status": "ok, 2918ms",
+      "detail": "同花顺北向 + 东财行业 + 同花顺强势股"
+    },
+    "筹码K线": {
+      "ms": 756,
+      "at": "11:14:37",
+      "status": "ok, 756ms",
+      "detail": "baostock 前复权日K(筹码计算用)"
+    },
+    "申万分类": {
+      "ms": 0,
+      "at": "11:14:37",
+      "status": "error:申万表加载失败, 0ms",
+      "detail": "申万行业分类表 swsresearch",
+      "tls_recommendation": "pip install -U certifi"
+    },
+    "公告": {
+      "ms": 1803,
+      "status": "ok:eastmoney, 1803ms",
+      "detail": "东财公告 / 巨潮 cninfo",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "财务摘要": {
+      "ms": 2535,
+      "status": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 2535ms",
+      "detail": "东财数据中心 RPT_F10_FINANCE_MAINFINADATA",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "研报观点": {
+      "ms": 2842,
+      "status": "ok:ths, 2842ms",
+      "detail": "东财研报 reportapi / 同花顺降级",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "新闻舆情": {
+      "ms": 8411,
+      "status": "ok:sina_stock_news, 8411ms",
+      "detail": "新浪 sina_stock_news (退避 0.8+1.2×attempt)",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "irm": {
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "holders": {
+      "timeout_sec": 35.0,
+      "timed_out": true
+    },
+    "dividend": {
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "board": {
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "dragon_market": {
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "融资融券": {
+      "ms": 760,
+      "at": "11:15:48",
+      "status": "ok:eastmoney-datacenter, 760ms",
+      "detail": "东财数据中心 RPTA_WEB_RZRQ_GGMX",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "资金面-5日主力": {
+      "at": "11:15:57",
+      "ms": 9051,
+      "status": "ok, 9051ms",
+      "detail": "东财 push2his fflow daykline (5日主力 + 收盘价)",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "两融历史": {
+      "at": "11:15:59",
+      "ms": 2120,
+      "status": "ok, 2120ms",
+      "detail": "东财数据中心 RPTA_WEB_RZRQ_GGMX 历史",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    },
+    "同业对比": {
+      "at": "11:16:00",
+      "ms": 1503,
+      "status": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1503ms",
+      "detail": "东财概念板块 clist f37(ROE)+f105(5日涨跌)",
+      "timeout_sec": 20.0,
+      "timed_out": false
+    }
+  },
+  "guard": {
+    "status": "N/A 单票流程不用池CSV",
+    "kline_freshness": "last_bar=2026-09-18 vs 最新交易日=2026-09-18 -> ok (K线最后交易日 2026-09-18 已到最新交易日, 新鲜)"
+  },
+  "fallback_chain": [
+    "申万分类: SSL 直连失败 (申万表加载失败) — 不再 verify=False 兜底 (§5); 修复: pip install -U certifi  (申万行业因子按 v2 默认中性计)",
+    "概念板块: fallback:接口返回0条(可能风控), 2447ms",
+    "当日资金流: error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 2290ms",
+    "申万分类: error:申万表加载失败, 0ms",
+    "holders: holders 调用超时(35s)"
+  ],
+  "fatal": null,
+  "tls_recommendations": [
+    {
+      "host": "swsresearch.com",
+      "fix": "pip install -U certifi",
+      "applies_to": [
+        "申万分类"
+      ]
+    }
+  ],
+  "sections_count": 4,
+  "supplements": {
+    "资金面-5日主力": "ok, 9051ms",
+    "两融历史": "ok, 2120ms",
+    "同业对比": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1503ms"
+  },
+  "artifacts": {
+    "md": "600693-东百集团-1116.md",
+    "html": "600693-东百集团-v3-20260920-1116.html",
+    "docx": "600693-东百集团-1116.docx",
+    "pdf": null,
+    "result_json": "result_v3-1116.json",
+    "md_status": "ok",
+    "html_status": "ok",
+    "docx_status": "ok",
+    "pdf_status": "error:TimeoutExpired: Command '['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '--headless', '--no-sandbo",
+    "pdf_renderer": null,
+    "pdf_fallback_status": "error:FileNotFoundError: 未找到 LibreOffice/soffice",
+    "result_json_status": "ok",
+    "html_ms": 60055,
+    "docx_ms": 109,
+    "sizes_bytes": {
+      "md": 5017,
+      "html": 97696,
+      "docx": 44293,
+      "result_json": 131745,
+      "pdf": null,
+      "run_log": 6850
+    },
+    "run_log_status": "ok",
+    "deliverable_status": "partial",
+    "required_failed": [],
+    "optional_failed": [
+      "pdf"
+    ],
+    "required_ok": [
+      "md",
+      "result_json",
+      "run_log"
+    ],
+    "optional_ok": [
+      "html",
+      "docx"
+    ]
+  }
+}

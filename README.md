@@ -96,6 +96,8 @@ pip install mootdx requests beautifulsoup4 lxml baostock python-docx openpyxl
 启动 Claude Code（或 Codex / OpenClaw / Cursor 等），说一句「帮我看看 688017 的估值」，自动激活。
 
 > **Codex / OpenClaw / Cursor / Hermes / WorkBuddy / Doubao / Coze 用户：** 把 SKILL.md 的内容贴入你的系统 prompt 或项目上下文文件即可，内嵌的 Python 代码可直接执行。
+>
+> **维护者注意：** 单文件 SKILL.md 是构建产物，编辑入口是 `skill-src/`（按层拆分的小文件），修改后运行 `python scripts/build_skill.py` 重新生成，CI 用 `--check` 校验同步。对外分发形态（单文件自包含）不变。详见 [SKILL 维护指南](docs/11-SKILL维护指南.md)。
 
 ---
 
@@ -404,6 +406,8 @@ V3.6.0 前研报层确实如此（reportapi 只认纯 6 位数字，带前缀静
 
 **Q: SKILL.md 这么大，agent 每次加载很费 token？**
 单文件自包含是本项目的**有意产品决策**——拷一个文件就能用、离线可携、便于分发，这个形态会长期保持，不做目录化拆分（相关讨论见 #21 / #22 / #29）。两个降耗建议：① v3.3.1 起 description 已收窄触发范围，无需取数的 A 股话题不会再误加载整个文件；② token 敏感的用户可以不把它装成自动触发 skill，改为放进项目目录、需要取数时让 agent 按需读取——文件按十一层组织、章节标题清晰，v3.4.0 起顶部还有「端点路由速查」总表（§→函数→用途→源），agent 按表定位后只读对应层，通常只花几 K token。
+
+**维护侧怎么办？** 已改为「分层源文件 + 构建脚本」模式：编辑入口是 `skill-src/`（一层一个文件），根目录 SKILL.md 由 `python scripts/build_skill.py` 拼合生成、内容严格一致——**分发用的仍是那个单文件，形态不变**，只是改端点/修 Bug 时不再需要翻 218KB 大文件，diff 也可读。CI 会跑 `python scripts/build_skill.py --check`，直接改 SKILL.md 会被拦下。详见 [docs/11-SKILL维护指南.md](docs/11-SKILL维护指南.md)。
 
 **Q: 东财接口 403 / 连接重置，是被封了怎么办？**
 东财系接口（datacenter/push2/push2ex/reportapi/search/np-weblist）共用同一套风控，IP 被封会成片失联。三步：① 停止请求等 30-60 分钟（IP 级临时封通常自动解除），或换网络（手机热点）立刻恢复；② 长批任务确认全部走 `em_get()` 并调大 `EM_MIN_INTERVAL`；③ 数据不能等 → 用 SKILL.md「备用源速查 & 降级策略」的独立备胎（交易所官方/新浪/同花顺，不同风控面）。

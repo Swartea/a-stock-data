@@ -1,0 +1,717 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>新中港 605162 · V3 报告</title><script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script><style>
+:root{
+  /* ================= §2.1 设计 token (docs/06-排版美化方案) ================= */
+  --bg:#fafaf9;            /* 中性底 (不纯黑纯白) */
+  --surface:#ffffff;
+  --zebra:#f5f5f4;         /* 表格斑马纹 (中性灰阶梯) */
+  --ink-1:#1c1917;         /* 主文字 (17.5:1) */
+  --ink-2:#57534e;         /* 次级文字 (7.6:1) */
+  --ink-3:#78716c;         /* 弱文字/注释 (4.8:1, AA) */
+  --accent:#2563eb;        /* 强调 (5.2:1) */
+  --warn:#d97706;          /* 警告/中性 */
+  --warn-bg:#fffbeb;
+  --danger:#dc2626;        /* 危险 (4.8:1) */
+  --good:#16a34a;          /* 正向 */
+  --hairline:#e7e5e4;      /* hairline 分隔线 */
+  /* ================= A股例外: 红涨绿跌 (覆盖国际惯例, 全篇一致) ================= */
+  /* 涨/利好 = 红系; 跌/利空 = 绿系; 风险警报区仍红警示 */
+  --up:#dc2626;            /* 涨/利好 = 危险红 (红系主色) */
+  --up-ink:#b91c1c;        /* 涨红 AA 文字档 6.5:1 */
+  --up-bg:#fef2f2;
+  --down:#16a34a;          /* 跌/利空 = 正向绿 (绿系主色) */
+  --down-ink:#15803d;      /* 跌绿 AA 文字档 5.0:1 */
+  --down-bg:#f0fdf4;
+  --neutral-ink:#b45309;   /* 中性琥珀 AA 文字档 5.0:1 */
+  --risk-ink:#b91c1c; --risk-bg:#fef2f2; --risk-line:#fecaca;
+  --ok-ink:#15803d; --ok-bg:#f0fdf4; --ok-line:#bbf7d0;
+  /* ================= §2.2 字体: CJK 栈 + 数字等宽 ================= */
+  --font-cjk:"PingFang SC","Source Han Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+  --font-num:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  /* ================= §2.3 8px 基线网格: 间距/圆角 = 8 的倍数 ================= */
+  --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px;
+  --radius:8px;            /* 圆角统一 8px */
+  --shadow:0 1px 2px rgba(28,25,23,.05),0 2px 8px rgba(28,25,23,.04);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font-cjk);background:var(--bg);color:var(--ink-1);
+     margin:0;font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums}
+.container{max-width:800px;margin:0 auto;padding:var(--sp-2) var(--sp-2) var(--sp-4)}
+.self-test-note{background:var(--warn-bg);border:1px dashed var(--warn);
+     color:var(--neutral-ink);padding:var(--sp-1) var(--sp-2);border-radius:var(--radius);
+     font-size:12px;margin-bottom:var(--sp-2)}
+.card{background:var(--surface);border-radius:var(--radius);padding:var(--sp-2);
+     margin-bottom:var(--sp-2);box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin:0 0 var(--sp-1);color:var(--ink-1);
+     display:flex;align-items:center;gap:var(--sp-1)}
+.card h2 .bar{width:4px;height:16px;border-radius:2px;background:var(--accent);
+     display:inline-block}
+.no-data{color:var(--ink-3);font-size:13px;padding:var(--sp-2);text-align:center;
+     background:var(--bg);border:1px dashed var(--hairline);border-radius:var(--radius)}
+.src-line{font-size:11.5px;color:var(--ink-3);margin:-4px 0 var(--sp-1);line-height:1.5}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1)}
+@media(min-width:600px){.mini-grid{grid-template-columns:repeat(3,1fr)}}
+.kpi{background:var(--bg);border-radius:var(--radius);padding:var(--sp-1) 12px}
+.kpi .l{color:var(--ink-3);font-size:11px}
+.kpi .v{font-size:17px;font-weight:600;margin-top:2px;font-family:var(--font-num)}
+table.v3-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+table.v3-tbl th,table.v3-tbl td{padding:var(--sp-1);text-align:left;vertical-align:top;
+     border-bottom:1px solid var(--hairline)}
+table.v3-tbl th{color:var(--ink-3);font-weight:500;font-size:11.5px;background:var(--bg);
+     white-space:nowrap}
+table.v3-tbl tbody tr:last-child td{border-bottom:none}
+table.v3-tbl tbody tr:nth-child(even){background:var(--zebra)}  /* zebra 斑马纹 */
+table.v3-tbl td.num,table.v3-tbl th.num{text-align:right;font-family:var(--font-num);
+     font-variant-numeric:tabular-nums}
+.tbl-wrap{max-height:360px;overflow:auto;border:1px solid var(--hairline);
+     border-radius:var(--radius);background:var(--surface)}
+.tbl-wrap table.v3-tbl thead th{position:sticky;top:0;z-index:2}  /* 长表 sticky 表头 */
+.up{color:var(--up-ink)}       /* A股: 涨 = 红系 */
+.down{color:var(--down-ink)}   /* A股: 跌 = 绿系 */
+a{color:var(--accent);text-decoration:none}
+.disc{color:var(--ink-3);font-size:11.5px}
+.mono{font-family:var(--font-num)}
+
+/* ---------- §2.4 顶部 masthead 条: 股票名 + 代码 + 报告日期 + 数据截止时点 ---------- */
+.masthead{background:var(--surface);border-bottom:1px solid var(--hairline);
+     padding:var(--sp-2);display:flex;justify-content:space-between;align-items:center;
+     gap:var(--sp-1);flex-wrap:wrap;box-shadow:var(--shadow)}
+.masthead .mh-name{font-size:24px;font-weight:700;letter-spacing:.5px;
+     display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap}
+.masthead .mh-code{font-family:var(--font-num);font-size:13px;font-weight:600;
+     color:var(--ink-1);background:var(--bg);border:1px solid var(--hairline);
+     border-radius:999px;padding:2px 10px}
+.masthead .mh-meta{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.masthead .mh-chip{font-size:11.5px;color:var(--ink-2);background:var(--bg);
+     border:1px solid var(--hairline);border-radius:999px;padding:3px 10px;
+     white-space:nowrap}
+/* ---------- §2.4 hero 行情区: 结论大字 + 评分大字 + 现价等宽 + 三价位显式卡片 ---------- */
+.hero{margin-bottom:var(--sp-2);padding:var(--sp-2);color:#fff;box-shadow:var(--shadow)}
+.hero-bull{background:linear-gradient(160deg,#991b1b 0%,#b91c1c 55%,#dc2626 100%)}
+.hero-bear{background:linear-gradient(160deg,#14532d 0%,#15803d 55%,#16a34a 100%)}
+.hero-neutral{background:linear-gradient(160deg,#92400e 0%,#b45309 55%,#d97706 100%)}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);
+     flex-wrap:wrap}
+.verdict{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
+.adv-dot{display:inline-flex;align-items:center;justify-content:center;min-width:40px;
+     height:40px;padding:0 6px;background:rgba(255,255,255,.96);border-radius:999px;
+     font-size:20px;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.18);white-space:nowrap}
+.hero .advice{font-size:30px;font-weight:800;letter-spacing:1px;line-height:1.2}
+.score-box{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
+.hero .score{font-family:var(--font-num);font-size:40px;font-weight:800;line-height:1;
+     font-variant-numeric:tabular-nums}
+.hero .score small{font-size:14px;font-weight:400;opacity:.85;font-family:var(--font-cjk)}
+.score-box .cap{font-size:11px;opacity:.85;letter-spacing:2px}
+.px-line{display:flex;align-items:center;gap:var(--sp-1);margin:var(--sp-2) 0 var(--sp-1);
+     flex-wrap:wrap}
+.hero .px{font-family:var(--font-num);font-size:32px;font-weight:700;line-height:1.1}
+.hero .px small{font-family:var(--font-cjk);font-size:13px;font-weight:400;opacity:.85}
+.chg-pill{font-family:var(--font-num);font-size:13.5px;font-weight:700;line-height:1;
+     background:rgba(255,255,255,.96);padding:6px 12px;border-radius:999px}
+.chg-pill.up{color:var(--up-ink)}       /* 涨 → 红系 */
+.chg-pill.down{color:var(--down-ink)}   /* 跌 → 绿系 */
+.price3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--sp-1);
+     margin:var(--sp-1) 0 var(--sp-2)}
+.price3 .p3{background:rgba(255,255,255,.14);border-radius:var(--radius);
+     padding:var(--sp-1) 10px;text-align:center;
+     box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.price3 .p3 .l{font-size:11px;opacity:.92}
+.price3 .p3 .v{font-size:17px;font-weight:700;margin-top:3px;font-family:var(--font-num);
+     line-height:1.35}
+.price3 .p3 .v .l{font-size:11px;font-weight:400;opacity:.92;margin-top:2px;
+     font-family:var(--font-cjk)}
+.hero .reason{margin-top:var(--sp-1);font-size:13px;padding:10px 12px;
+     border-radius:var(--radius);background:rgba(255,255,255,.16);line-height:1.65}
+.hero .reason-hint{font-size:11.5px;opacity:.92;margin-top:var(--sp-1);line-height:1.5}
+.grid-2-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:560px){.grid-2-wrap{grid-template-columns:1fr}}
+
+/* ---------- §2.4 操作检查清单 (色语义: 买点=红系做多, 止损=红系警示, 卖点=强调蓝) ---------- */
+.chk{display:flex;gap:var(--sp-1);padding:var(--sp-1) 10px;border-radius:var(--radius);
+     margin-bottom:var(--sp-1);background:var(--bg);border-left:4px solid var(--hairline);
+     font-size:13px}
+.chk .box{color:var(--accent);font-weight:800;flex:none}
+.chk .t{flex:1}
+.chk .grp{color:var(--ink-3);font-size:11px;margin:10px 0 2px;font-weight:600}
+.chk-buy{border-left-color:var(--up);background:var(--up-bg)}
+.chk-sell{border-left-color:var(--accent);background:var(--surface)}
+.chk-stop{border-left-color:var(--risk-ink);background:var(--risk-bg)}
+.chk-watch{border-left-color:var(--hairline)}
+/* ---------- §2.4 风险警报区 (红系警示不变) ---------- */
+.risk{background:var(--risk-bg);border:1px solid var(--risk-line);border-radius:var(--radius);
+     padding:12px 14px;margin-bottom:var(--sp-1)}
+.risk .h{color:var(--risk-ink);font-weight:700;font-size:14px;display:flex;
+     justify-content:space-between;gap:var(--sp-1)}
+.risk .h .d{font-weight:400;font-size:12px;color:var(--risk-ink)}
+.risk .b{font-size:12.5px;color:var(--risk-ink);margin-top:4px;line-height:1.55}
+.risk-ok{background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok-ink);
+     border-radius:var(--radius);padding:12px 14px;font-size:13.5px;font-weight:600}
+/* ---------- 图表卡片: hairline 分隔, 克制阴影 ---------- */
+.chart-card{margin-bottom:var(--sp-2)}
+.chart-head{display:flex;justify-content:space-between;align-items:center;
+     margin-bottom:var(--sp-1);flex-wrap:wrap;gap:4px}
+.chart-head .t{font-size:15px;font-weight:700;color:var(--ink-1)}
+.chart-head .tm{font-size:10.5px;color:var(--ink-3);background:var(--bg);
+     border:1px solid var(--hairline);padding:2px 10px;border-radius:999px;white-space:nowrap}
+.chart-body{text-align:center;overflow-x:auto;border:1px solid var(--hairline);
+     border-radius:var(--radius);padding:var(--sp-1) 2px 2px;background:var(--surface)}
+.chart-body svg{max-width:100%;height:auto}
+.chart-body.radar svg{max-width:340px;height:auto}
+.tag-row{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-1)}
+.v3-tag{padding:2px 10px;border-radius:999px;font-size:11.5px;font-weight:500;
+     white-space:nowrap}
+/* ---------- §2.4 页脚: 免责声明 + 数据来源 + 生成时间 ---------- */
+.foot{text-align:center;color:var(--ink-3);font-size:11.5px;padding:var(--sp-1) 0 var(--sp-3);
+     line-height:1.8}
+.dark-tbl td{font-size:12px}
+@media(max-width:460px){.hero .advice{font-size:24px}.hero .px{font-size:24px}
+     .container{padding:var(--sp-1)}.price3 .p3 .v{font-size:15px}
+     .masthead .mh-name{font-size:20px}}
+
+/* ── mingli30119 双主题 · 红涨绿跌 · 金棕强调 · 响应式 ── */
+.v3-stock-report{
+--bg:#0c0f15;--card-bg:#1a1c24;--card-bg-alt:#1e2029;--border:#2a2d3a;
+--text-primary:#e8e9ec;--text-secondary:#b0b3be;--text-muted:#7a7d8a;
+--red-up:#f55656;--green-down:#28c75b;--gold:#d4a853;--gold-light:#e3c26d;
+--blue-accent:#4a90d9;--orange-warn:#e8923a;
+--shadow:0 4px 20px rgba(0,0,0,.3);--radius:10px;
+--font-sans:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+--font-mono:"JetBrains Mono","SF Mono","Consolas",monospace;--transition:.2s ease;
+}
+.v3-stock-report, .v3-stock-report *{font-family:var(--font-sans)}
+.v3-stock-report.light-mode{
+--bg:#fdf8f0;--card-bg:#fffbf5;--card-bg-alt:#fef5e7;--border:#e2cfa2;
+--text-primary:#2a1f12;--text-secondary:#6b5634;--text-muted:#9c8b6e;
+--red-up:#dc2626;--green-down:#16a34a;--gold:#b38a3c;--gold-light:#d4a853;
+--blue-accent:#2563eb;--orange-warn:#c2410c;--shadow:0 4px 20px rgba(162,125,57,.08)
+}
+.v3-stock-report{background:var(--bg);color:var(--text-primary);line-height:1.7;font-size:14px;
+background-image:radial-gradient(circle at 15% 10%,rgba(212,168,83,.03) 0%,transparent 35%),
+radial-gradient(circle at 85% 70%,rgba(212,168,83,.03) 0%,transparent 35%);background-attachment:fixed;
+max-width:1300px;margin:0 auto;padding:24px 20px 40px}
+/* 顶部导航 */
+.v3-stock-report .top-nav{position:sticky;top:0;z-index:100;background:rgba(10,12,18,.92);
+backdrop-filter:blur(12px);border-bottom:2px solid var(--gold-light);padding:10px 28px;
+margin:-24px -20px 24px;display:flex;align-items:center;justify-content:space-between;
+flex-wrap:wrap;gap:12px}
+.v3-stock-report .top-nav .logo{display:flex;align-items:center;gap:10px;color:#fff}
+.v3-stock-report .top-nav .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#c0392b,#8b0000);
+border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#fff}
+.v3-stock-report .top-nav .stock-name{font-weight:700;font-size:17px;letter-spacing:.5px}
+.v3-stock-report .top-nav .stock-code{font-size:12px;opacity:.7;font-family:var(--font-mono)}
+.v3-stock-report .nav-links{display:flex;gap:8px;flex-wrap:wrap}
+.v3-stock-report .nav-links a{font-size:12px;padding:5px 14px;border-radius:16px;color:var(--gold-light);
+text-decoration:none;border:1px solid transparent;transition:var(--transition);font-weight:500;white-space:nowrap}
+.v3-stock-report .nav-links a:hover,.v3-stock-report .nav-links a.active{background:rgba(255,255,255,.08);
+color:#fff;border-color:var(--gold)}
+.v3-stock-report .theme-toggle{background:rgba(255,255,255,.08);border:1px solid var(--gold-light);
+color:var(--gold-light);padding:5px 14px;border-radius:16px;font-size:12px;cursor:pointer;
+transition:var(--transition);margin-left:12px}
+.v3-stock-report .theme-toggle:hover{background:rgba(255,255,255,.15)}
+/* Hero 行情卡片 */
+.v3-stock-report .hero{background:linear-gradient(105deg,#1c1010 0%,#2c1a1a 50%,#3d2424 100%);
+border-radius:var(--radius);padding:28px 32px;margin-bottom:24px;border:1px solid var(--gold-light);
+box-shadow:0 8px 28px rgba(100,55,55,.2);display:flex;flex-wrap:wrap;gap:24px;
+align-items:center;color:#fff;position:relative;overflow:hidden}
+.v3-stock-report .hero::after{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,.08) 0%,transparent 70%);pointer-events:none}
+.v3-stock-report .hero-price-block{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-price{font-size:56px;font-weight:900;line-height:1;font-family:var(--font-mono)}
+.v3-stock-report .hero-change{font-size:20px;font-weight:700;padding:4px 12px;border-radius:6px;
+background:rgba(245,86,86,.2);color:#f87171;font-family:var(--font-mono)}
+.v3-stock-report .hero-meta{display:flex;gap:28px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-meta-item{text-align:center}
+.v3-stock-report .hero-meta-item .val{font-size:22px;font-weight:700;font-family:var(--font-mono);color:var(--gold-light)}
+.v3-stock-report .hero-meta-item .label{font-size:11px;color:rgba(255,255,255,.7);letter-spacing:1px}
+.v3-stock-report .hero-tags{display:flex;gap:8px;flex-wrap:wrap;z-index:1}
+.v3-stock-report .hero-tag{background:rgba(255,255,255,.08);border:1px solid rgba(255,215,0,.3);
+color:var(--gold-light);padding:4px 9px;border-radius:20px;font-size:11px;font-weight:500}
+/* 结论置顶 */
+.v3-stock-report .conclusion-top{background:linear-gradient(135deg,#1e1a10 0%,#241f14 100%);
+border:2px solid var(--gold);border-radius:var(--radius);padding:22px 28px;margin-bottom:24px;position:relative}
+.v3-stock-report .conclusion-top::before{content:'核心结论';position:absolute;top:-13px;left:24px;
+background:var(--gold);color:#000;padding:3px 16px;border-radius:12px;font-weight:700;font-size:12px;letter-spacing:1px}
+.v3-stock-report .conclusion-top .big-verdict{font-weight:800;font-size:20px;color:#fff;margin-top:8px}
+.v3-stock-report .conclusion-top .verdict-detail{font-size:14px;color:var(--text-secondary);margin-top:8px;line-height:1.7}
+.v3-stock-report .conclusion-top .verdict-tags{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+/* 卡片 */
+.v3-stock-report .card{background:var(--card-bg);border:1px solid var(--border);
+border-radius:var(--radius);padding:22px 28px;margin-bottom:20px;box-shadow:var(--shadow);
+transition:var(--transition)}
+.v3-stock-report .card:hover{box-shadow:0 8px 30px rgba(0,0,0,.5);border-color:var(--gold)}
+.v3-stock-report .card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;
+padding-bottom:12px;border-bottom:2px solid var(--border)}
+.v3-stock-report .card-header .icon{width:32px;height:32px;border-radius:8px;
+background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;
+font-weight:700;font-size:16px;color:var(--gold)}
+.v3-stock-report .card-header h2{font-size:18px;font-weight:700;color:#fff;letter-spacing:.5px}
+.v3-stock-report .card-header .sub{margin-left:auto;font-size:11px;color:var(--text-muted)}
+/* 布局网格 */
+.v3-stock-report .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.v3-stock-report .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+/* 表格 */
+.v3-stock-report table.cons{width:100%;border-collapse:collapse;font-size:13px;
+background:var(--card-bg-alt);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:12px 0}
+.v3-stock-report table.cons thead th{background:linear-gradient(180deg,#2c1a1a 0%,#1c1010 100%);
+color:#fff;font-weight:600;padding:10px 12px;text-align:left;font-size:12px;letter-spacing:1px}
+.v3-stock-report table.cons tbody tr{border-bottom:1px dashed var(--border)}
+.v3-stock-report table.cons tbody tr:hover{background:rgba(255,255,255,.02)}
+.v3-stock-report table.cons tbody td{padding:9px 12px;vertical-align:middle;color:var(--text-secondary)}
+.v3-stock-report .val-up{color:var(--red-up);font-weight:600}
+.v3-stock-report .val-down{color:var(--green-down);font-weight:600}
+/* 标签 */
+.v3-stock-report .tag{display:inline-block;padding:3px 12px;border-radius:14px;font-size:11px;
+font-weight:600;background:rgba(212,168,83,.15);color:var(--gold-light);border:1px solid var(--gold);
+margin-right:6px;margin-bottom:4px}
+/* KPI 行 */
+.v3-stock-report .kpi-info-row{display:flex;justify-content:space-around;margin-top:18px;
+padding-top:14px;border-top:2px solid var(--border)}
+.v3-stock-report .kpi-info-item{text-align:center}
+.v3-stock-report .kpi-info-item .label{font-size:12px;color:var(--text-muted)}
+.v3-stock-report .kpi-info-item .value{font-size:20px;font-weight:700;color:var(--gold-light)}
+/* 浅色模式 */
+.v3-stock-report.light-mode .hero{background:linear-gradient(105deg,#fef5e7,#fffbf5);
+color:var(--text-primary);border-color:var(--gold)}
+.v3-stock-report.light-mode .hero-price{color:var(--text-primary)}
+.v3-stock-report.light-mode .hero-change{background:rgba(220,38,38,.1);color:var(--red-up)}
+.v3-stock-report.light-mode .hero-meta-item .val{color:var(--gold)}
+.v3-stock-report.light-mode .hero-meta-item .label{color:var(--text-muted)}
+.v3-stock-report.light-mode .hero-tag{background:rgba(212,168,83,.15);border-color:var(--gold);color:var(--gold)}
+.v3-stock-report.light-mode .conclusion-top{background:linear-gradient(135deg,#fff9f0,#fef5e7)}
+.v3-stock-report.light-mode .conclusion-top .big-verdict{color:var(--text-primary)}
+.v3-stock-report.light-mode .card-header h2{color:var(--text-primary)}
+.v3-stock-report.light-mode .tag{background:rgba(212,168,83,.15);color:var(--gold);border-color:var(--gold)}
+.v3-stock-report.light-mode .kpi-info-item .value{color:var(--gold)}
+.v3-stock-report.light-mode .top-nav .logo{color:var(--text-primary)}
+.v3-stock-report.light-mode .top-nav .logo-icon{color:var(--card-bg)}
+.v3-stock-report.light-mode .top-nav .stock-name{color:var(--text-primary)}
+.v3-stock-report.light-mode .theme-toggle{background:rgba(0,0,0,.05);border-color:var(--gold);color:var(--gold)}
+/* 响应式 */
+@media(max-width:850px){
+.v3-stock-report .grid-2,.v3-stock-report .grid-3{grid-template-columns:1fr}
+.v3-stock-report .hero{flex-direction:column;align-items:flex-start}
+.v3-stock-report .hero-price{font-size:40px}
+.v3-stock-report .top-nav{padding:10px 14px}
+}
+</style></head><body><div class="v3-stock-report"><nav class="top-nav"><div class="logo"><div class="logo-icon">新</div><span class="stock-name">新中港</span><span class="stock-code">605162</span></div><div class="nav-links"><span class="hero-tag">报告日期 2026-09-10</span><span class="hero-tag">行情截止 2026-09-10</span><span class="hero-tag">生成 2026-09-10 17:27</span></div><button class="theme-toggle" id="themeToggle">☀️ 浅色模式</button></nav><div class="hero hero-neutral">
+<div class="hero-top"><div class="verdict"><span class="adv-dot">🟡</span><span class="advice">中性偏空</span></div><div class="score-box"><span class="score">45<small>/100</small></span><span class="cap">综合评分</span></div></div>
+<div class="px-line"><span class="px">10.65<small> 元</small></span><span class="chg-pill down">-5.16%</span></div>
+<div class="price3">
+<div class="p3"><div class="l">支撑（分批进区）</div><div class="v">10.33 ~ 10.65</div></div>
+<div class="p3"><div class="l">压力（一档）</div><div class="v">11.72</div></div>
+<div class="p3"><div class="l">止损（纪律）</div><div class="v">9.90<div class="l" style="margin-top:2px">跌 7.0% 必走</div></div></div>
+</div>
+<div class="reason">💬 减仓观望，已有持仓设紧止损</div>
+<div class="reason-hint">仓位建议：不进场 / 已有持仓减仓 · 持仓周期：短线 1-2 周</div>
+</div><div class="card"><h2><span class="bar"></span>✅ 操作检查清单</h2><div class="src-line">触发条件、止损纪律与仓位建议 · 按 中性/震荡（45-54 分） 5 状态机给出</div><div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">操作口诀（5 状态机）</div><div class="t">【结论】综合评分 45 处于 45-55 区间，多空平衡、震荡格局 ｜ 【操作】区间操作 — 上沿 11.72 减仓、下沿 10.33 低吸、严格止损 9.9 ｜ 【风险】单边突破区间则按突破方向顺势操作，不预判方向</div></div></div>
+<div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">买入触发</div><div class="t">观望为主：放量站稳 10.65 元 上方再小仓试探，否则不动</div></div></div>
+<div class="chk chk-sell"><span class="box">☐</span><div class="grp" style="margin:0 0 2px">卖出触发</div><div class="t">已有持仓：反弹至 11.72 元 附近先减仓，落袋为安</div></div>
+<div class="chk chk-stop"><span class="box">☐</span><div class="grp" style="margin:0 0 2px">止损纪律</div><div class="t">持股底线 9.90 元（-约 7.0%），破位必走，不留恋</div></div>
+<div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">仓位建议</div><div class="t">不进场 / 已有持仓减仓 · 持仓周期 短线 1-2 周</div></div></div>
+<div class="src-line">操作清单由 trading_plan + signals 生成 · signals 数据源暂缺</div></div><div class="card"><h2><span class="bar"></span>🚨 风险警报</h2><div class="risk-ok">✅ 无临近风险事件<br><span style="font-weight:400;font-size:12px">近 90 日无解禁、无财报披露临近、无减持类公告</span></div></div><div class="grid-2-wrap"><div class="chart-card card"><div class="chart-head"><span class="t">📈 K 线 · 前复权</span><span class="tm">⏱ 数据截止 2026-09-10</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock 前复权日线 · 近 60 交易日</div><div class="chart-body"><svg width="720" height="240"><text x="50%" y="50%" text-anchor="middle" fill="#999" font-size="14">无 K 线数据</text></svg></div></div><div class="chart-card card"><div class="chart-head"><span class="t">🎰 筹码分布</span><span class="tm">⏱ 数据截止 2026-09-10</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock · 红=套牢 绿=获利</div><div class="no-data">📭 图表数据源暂缺<br><span style="font-size:11px">该模块尚未返回可用数据</span></div></div></div><div class="grid-2-wrap"><div class="chart-card card"><div class="chart-head"><span class="t">📊 PE (TTM) 走势</span><span class="tm">⏱ 数据截止 2026-09-10</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock · 3 年窗口取近 180 交易日</div><div class="no-data">📭 图表数据源暂缺<br><span style="font-size:11px">该模块尚未返回可用数据</span></div></div><div class="chart-card card"><div class="chart-head"><span class="t">🔬 10 因子雷达</span><span class="tm">⏱ 数据截止 2026-09-10</span></div><div class="src-line" style="margin:0 0 6px">来源本地 10 因子量化引擎 · 满分 100</div><div class="chart-body radar"><svg width="380" height="340" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<polygon points="190.0,146.0 204.1,150.6 212.8,162.6 212.8,177.4 204.1,189.4 190.0,194.0 175.9,189.4 167.2,177.4 167.2,162.6 175.9,150.6" fill="none" stroke="#eee"/>
+<polygon points="190.0,122.0 218.2,131.2 235.7,155.2 235.7,184.8 218.2,208.8 190.0,218.0 161.8,208.8 144.3,184.8 144.3,155.2 161.8,131.2" fill="none" stroke="#eee"/>
+<polygon points="190.0,98.0 232.3,111.8 258.5,147.8 258.5,192.2 232.3,228.2 190.0,242.0 147.7,228.2 121.5,192.2 121.5,147.8 147.7,111.8" fill="none" stroke="#eee"/>
+<polygon points="190.0,74.0 246.4,92.3 281.3,140.3 281.3,199.7 246.4,247.7 190.0,266.0 133.6,247.7 98.7,199.7 98.7,140.3 133.6,92.3" fill="none" stroke="#eee"/>
+<polygon points="190.0,50.0 260.5,72.9 304.1,132.9 304.1,207.1 260.5,267.1 190.0,290.0 119.5,267.1 75.9,207.1 75.9,132.9 119.5,72.9" fill="none" stroke="#eee"/>
+<line x1="190.0" y1="170.0" x2="190.0" y2="50.0" stroke="#eee"/>
+<text x="190.0" y="32.0" font-size="12" fill="#666" text-anchor="middle">趋势</text>
+<line x1="190.0" y1="170.0" x2="260.5" y2="72.9" stroke="#eee"/>
+<text x="273.5" y="59.1" font-size="12" fill="#666" text-anchor="middle">估值</text>
+<line x1="190.0" y1="170.0" x2="304.1" y2="132.9" stroke="#eee"/>
+<text x="325.1" y="130.1" font-size="12" fill="#666" text-anchor="middle">分位</text>
+<line x1="190.0" y1="170.0" x2="304.1" y2="207.1" stroke="#eee"/>
+<text x="325.1" y="217.9" font-size="12" fill="#666" text-anchor="middle">资金</text>
+<line x1="190.0" y1="170.0" x2="260.5" y2="267.1" stroke="#eee"/>
+<text x="273.5" y="288.9" font-size="12" fill="#666" text-anchor="middle">动量</text>
+<line x1="190.0" y1="170.0" x2="190.0" y2="290.0" stroke="#eee"/>
+<text x="190.0" y="316.0" font-size="12" fill="#666" text-anchor="middle">情绪</text>
+<line x1="190.0" y1="170.0" x2="119.5" y2="267.1" stroke="#eee"/>
+<text x="106.5" y="288.9" font-size="12" fill="#666" text-anchor="middle">风险</text>
+<line x1="190.0" y1="170.0" x2="75.9" y2="207.1" stroke="#eee"/>
+<text x="54.9" y="217.9" font-size="12" fill="#666" text-anchor="middle">筹码</text>
+<line x1="190.0" y1="170.0" x2="75.9" y2="132.9" stroke="#eee"/>
+<text x="54.9" y="130.1" font-size="12" fill="#666" text-anchor="middle">申万</text>
+<line x1="190.0" y1="170.0" x2="119.5" y2="72.9" stroke="#eee"/>
+<text x="106.5" y="59.1" font-size="12" fill="#666" text-anchor="middle">龙虎榜</text>
+<polygon points="190.0,160.0 227.6,118.2 247.1,151.5 243.3,187.3 216.5,206.4 190.0,230.0 154.7,218.5 132.9,188.5 94.9,139.1 161.8,131.2" fill="#2962ff" fill-opacity="0.35" stroke="#2962ff" stroke-width="2"/>
+<circle cx="190.0" cy="160.0" r="3" fill="#2962ff"/>
+<text x="190.0" y="153.0" font-size="9" fill="#2962ff" text-anchor="middle">1</text>
+<circle cx="227.6" cy="118.2" r="3" fill="#2962ff"/>
+<text x="227.6" y="111.2" font-size="9" fill="#2962ff" text-anchor="middle">8</text>
+<circle cx="247.1" cy="151.5" r="3" fill="#2962ff"/>
+<text x="247.1" y="144.5" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+<circle cx="243.3" cy="187.3" r="3" fill="#2962ff"/>
+<text x="243.3" y="180.3" font-size="9" fill="#2962ff" text-anchor="middle">7</text>
+<circle cx="216.5" cy="206.4" r="3" fill="#2962ff"/>
+<text x="216.5" y="199.4" font-size="9" fill="#2962ff" text-anchor="middle">3</text>
+<circle cx="190.0" cy="230.0" r="3" fill="#2962ff"/>
+<text x="190.0" y="223.0" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+<circle cx="154.7" cy="218.5" r="3" fill="#2962ff"/>
+<text x="154.7" y="211.5" font-size="9" fill="#2962ff" text-anchor="middle">5</text>
+<circle cx="132.9" cy="188.5" r="3" fill="#2962ff"/>
+<text x="132.9" y="181.5" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+<circle cx="94.9" cy="139.1" r="3" fill="#2962ff"/>
+<text x="94.9" y="132.1" font-size="9" fill="#2962ff" text-anchor="middle">5</text>
+<circle cx="161.8" cy="131.2" r="3" fill="#2962ff"/>
+<text x="161.8" y="124.2" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+</svg></div></div></div>
+<div class="chart-card card" id="echarts-tech-section">
+  <div class="chart-head">
+    <span class="t">📊 4 技术指标 · MACD / KDJ / RSI / BOLL</span>
+    <span class="tm">⏱ JS 实时计算 · 双主题自动切换</span>
+  </div>
+  <div class="src-line" style="margin:0 0 6px">MACD (DIF/DEA/柱) · KDJ (K/D/J 0-100) · RSI (6/12/24 0-100) · BOLL (上/中/下轨 + 收盘价)</div>
+  <div class="grid-2-wrap">
+    <div id="chart-macd" style="width:100%;height:280px;"></div>
+    <div id="chart-kdj" style="width:100%;height:280px;"></div>
+  </div>
+  <div class="grid-2-wrap" style="margin-top:12px;">
+    <div id="chart-rsi" style="width:100%;height:260px;"></div>
+    <div id="chart-boll" style="width:100%;height:260px;"></div>
+  </div>
+</div>
+<div class="card"><h2><span class="bar"></span>📚 研报观点</h2><div class="src-line">📡 数据源：eastmoney · 时点：2026-09-10T17:27:09+08:00</div><div class="tag-row"></div><span class="v3-tag" style="background:#eff6ff;color:#1d4ed8">近 30 日机构覆盖 0 家</span>
+<div class="no-data">📭 研报明细数据源暂缺</div></div><div class="card"><h2><span class="bar"></span>📢 公告速览</h2><div class="src-line">📡 数据源：eastmoney · 时点：2026-09-10T17:27:08.026820+08:00</div><div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-09-11</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202609101829227142.html" target="_blank" rel="noopener">新中港:2026年员工持股计划第一次持有人会议决议公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-09-11</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202609101829227143.html" target="_blank" rel="noopener">新中港:关于2026年半年度业绩说明会召开情况的公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-09-11</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202609101829227144.html" target="_blank" rel="noopener">新中港:2026年员工持股计划完成股票非交易过户的公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-09-02</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202609011828881409.html" target="_blank" rel="noopener">新中港:关于召开2026年半年度业绩说明会的公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-25</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202608241828362672.html" target="_blank" rel="noopener">新中港:2026年半年度报告摘要 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-25</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202608241828362674.html" target="_blank" rel="noopener">新中港:关于使用部分闲置自有资金进行委托理财的公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-25</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202608241828362676.html" target="_blank" rel="noopener">新中港:2026年半年度报告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-25</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202608241828362675.html" target="_blank" rel="noopener">新中港:委托理财管理制度(2026年8月) ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-25</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202608241828362679.html" target="_blank" rel="noopener">新中港:第三届董事会第二十二次会议决议公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-25</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/605162/AN202608241828362673.html" target="_blank" rel="noopener">新中港:关于2026年半年度募集资金存放、管理与实际使用情况的专项报告 ↗</a></div></div></div><div class="card"><h2><span class="bar"></span>🩺 财务体检</h2><div class="src-line">📡 数据源：datacenter RPT_F10_FINANCE_MAINFINADATA · 时点：2026-09-10T17:27:09+08:00</div><div class="mini-grid">
+<div class="kpi"><div class="l">最新营收(亿)</div><div class="v">3.3</div></div>
+<div class="kpi"><div class="l">营收同比</div><div class="v">-8.6%</div></div>
+<div class="kpi"><div class="l">最新净利(亿)</div><div class="v">0.4</div></div>
+<div class="kpi"><div class="l">净利同比</div><div class="v">-34.1%</div></div>
+<div class="kpi"><div class="l">ROE</div><div class="v">2.9%</div></div>
+<div class="kpi"><div class="l">毛利率</div><div class="v">26.9%</div></div>
+<div class="kpi"><div class="l">负债率</div><div class="v">8.3%</div></div>
+<div class="kpi"><div class="l">EPS</div><div class="v">0.10</div></div>
+</div>
+<div class="src-line" style="margin-top:8px">🩺 自动点评：营收净利同比双降，基本面承压，留意行业与订单风险。</div>
+<table class="v3-tbl" style="margin-top:var(--sp-1)"><thead><tr><th>报告期</th><th class="num">营收(亿)</th><th class="num">营收同比</th><th class="num">净利(亿)</th><th class="num">净利同比</th><th class="num">ROE</th></tr></thead><tbody><tr style='font-weight:600'><td>2026-06-30</td><td class="num">3.3</td><td class="num">-8.6%</td><td class="num">0.4</td><td class="num">-34.1%</td><td class="num">2.9%</td></tr><tr ><td>2026-03-31</td><td class="num">1.4</td><td class="num">-17.4%</td><td class="num">0.1</td><td class="num">-21.4%</td><td class="num">0.9%</td></tr><tr ><td>2025-12-31</td><td class="num">7.1</td><td class="num">-18.8%</td><td class="num">1.2</td><td class="num">-16.0%</td><td class="num">9.3%</td></tr><tr ><td>2025-09-30</td><td class="num">5.3</td><td class="num">-18.5%</td><td class="num">0.9</td><td class="num">2.5%</td><td class="num">6.8%</td></tr><tr ><td>2025-06-30</td><td class="num">3.6</td><td class="num">—</td><td class="num">0.6</td><td class="num">—</td><td class="num">4.6%</td></tr></tbody></table></div><div class="card"><h2><span class="bar"></span>🏭 同业对比 · 行业定位</h2><div class="src-line">📡 数据源：数据源暂缺 · 时点：数据源暂缺</div><div class="no-data">📭 同业对比数据源暂缺（sw_data / valuation_hist）</div></div><div class="card"><h2><span class="bar"></span>💰 资金面（融资融券）</h2><div class="src-line">📡 数据源：东财数据中心 · 时点：2026-09-10</div><div class="no-data">📭 两融数据源暂缺</div></div><div class="card"><h2><span class="bar"></span>📰 新闻舆情</h2><div class="src-line">📡 数据源：sina_stock_news · 时点：2026-09-10T09:27:23+00:00</div><div style="font-weight:600;font-size:13px;margin:6px 0 2px;color:#b91c1c">📈 利好 1 条</div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-25 12:31:00</span> <a href="https://finance.sina.com.cn/stock/aiassist/sdltgdbh/2026-08-25/doc-inipnyqu1689494.shtml" target="_blank" rel="noopener">新中港十大流通股东格局生变：摩根士丹利国际等新进，李南方等退出，高盛公司等增持 ↗</a></div>
+<div style="font-weight:600;font-size:13px;margin:6px 0 2px;color:#15803d">📉 利空 2 条</div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-25 15:04:00</span> <a href="https://finance.sina.com.cn/stock/relnews/cn/2026-08-25/doc-inippmes5484160.shtml" target="_blank" rel="noopener">新中港2026年半年报：用汽量下滑致营收利润双降，现金流承压 ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-24 17:25:00</span> <a href="https://finance.sina.com.cn/stock/aigc/stockfs/2026-08-24/doc-inipmhfq1969251.shtml" target="_blank" rel="noopener">新中港2026年半年度财报解读：经营现金流大降77.97%、扣非净利润下滑38.01% 多重压力凸显经营风险 ↗</a></div>
+<div class="src-line" style="margin-top:4px">🧭 舆情倾向：负面略多（利好 1 / 利空 2），消息面偏谨慎</div></div><section class="section-irm"><h2>📞 投资者互动问答</h2><p class="warn">⚠️ 互动易无数据</p></section><section class="section-holders"><h2>📊 股东户数变化</h2><p class="warn">⚠️ 暂无股东户数数据（v2 端点 fetch_holder_num_change 未实现）</p></section><section class="section-dividend"><h2>💰 分红送转</h2><p class="warn">⚠️ 暂无分红数据（v2 端点 fetch_dividend_history 未实现）</p></section><section class="section-board"><h2>🎰 打板情绪</h2><p class="interpretation">💡 数据不足，无法判断打板情绪</p><h3>当日涨停 Top 10</h3><table class="board-table"><thead><tr><th>名称</th><th>连板</th><th>封板时间</th><th>封板资金</th><th>行业</th></tr></thead><tbody><tr><td>桂林旅游 000978</td><td>4</td><td>092500</td><td>0.70亿</td><td>旅游及景</td></tr><tr><td>瑞尔特 002790</td><td>3</td><td>092500</td><td>3.73亿</td><td>家居用品</td></tr><tr><td>云煤能源 600792</td><td>3</td><td>093042</td><td>0.33亿</td><td>焦炭Ⅱ</td></tr><tr><td>闽东电力 000993</td><td>2</td><td>093351</td><td>1.22亿</td><td>电力</td></tr><tr><td>国创高新 002377</td><td>2</td><td>093000</td><td>1.04亿</td><td>炼化及贸</td></tr><tr><td>鼎信通讯 603421</td><td>2</td><td>094136</td><td>0.65亿</td><td>通信设备</td></tr><tr><td>渝三峡Ａ 000565</td><td>2</td><td>094139</td><td>0.49亿</td><td>化学制品</td></tr><tr><td>新农开发 600359</td><td>2</td><td>092503</td><td>0.43亿</td><td>种植业</td></tr><tr><td>长城电工 600192</td><td>2</td><td>093045</td><td>0.39亿</td><td>电网设备</td></tr><tr><td>太极实业 600667</td><td>1</td><td>093622</td><td>5.42亿</td><td>工程咨询</td></tr></tbody></table><h3>跌停池样本（Top 5 封单额）</h3><table class="board-table"><thead><tr><th>名称</th><th>跌幅%</th><th>连跌</th><th>封单资金</th></tr></thead><tbody><tr><td>深中华A 000017</td><td>-10.043196678161621</td><td>1</td><td>1.31亿</td></tr><tr><td>中粮糖业 600737</td><td>-10.0</td><td>1</td><td>1.28亿</td></tr><tr><td>楚天龙 003040</td><td>-10.0</td><td>1</td><td>0.87亿</td></tr><tr><td>捷荣技术 002855</td><td>-9.969969749450684</td><td>2</td><td>0.56亿</td></tr><tr><td>海南橡胶 601118</td><td>-9.938650131225586</td><td>1</td><td>0.45亿</td></tr></tbody></table><p class="source">📡 数据来源: 东方财富 push2ex 四池 + 同花顺涨停揭秘（§8.1-8.3）</p></section><section class="section-dragon-market"><h2>🐉 龙虎榜动向（市场）</h2><p class="summary">📊 当日全市场共 <strong>64</strong> 条龙虎榜记录，Top 20 净买总额: <strong>18.98亿</strong></p><p class="interpretation">💡 Top 20 净买总额 18.98亿，主力大幅介入，市场情绪偏多</p><h3>Top 20 净买额个股</h3><table class="dragon-market-table"><thead><tr><th>名称</th><th>净买额</th><th>上榜原因</th><th>涨跌幅%</th></tr></thead><tbody><tr><td>金安国纪 002636</td><td>5.49亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>电科思仪 301689</td><td>3.05亿</td><td>无价格涨跌幅限制的证券</td><td></td></tr><tr><td>华银电力 600744</td><td>2.22亿</td><td>有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券</td><td></td></tr><tr><td>游族网络 002174</td><td>1.56亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>超声电子 000823</td><td>0.92亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>渝三峡A 000565</td><td>0.80亿</td><td>连续三个交易日内，涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>逸豪新材 301176</td><td>0.72亿</td><td>日涨幅达到15%的前5只证券</td><td></td></tr><tr><td>津药药业 600488</td><td>0.68亿</td><td>有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券</td><td></td></tr><tr><td>闽东电力 000993</td><td>0.62亿</td><td>连续三个交易日内，涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>新农开发 600359</td><td>0.59亿</td><td>非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>国创高新 002377</td><td>0.50亿</td><td>连续三个交易日内，涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>金牛化工 600722</td><td>0.40亿</td><td>有价格涨跌幅限制的日价格振幅达到15%的前五只证券</td><td></td></tr><tr><td>渝三峡A 000565</td><td>0.31亿</td><td>日振幅值达到15%的前5只证券</td><td></td></tr><tr><td>新力金融 600318</td><td>0.26亿</td><td>有价格涨跌幅限制的日收盘价格涨幅偏离值达到7%的前五只证券</td><td></td></tr><tr><td>ST荣科 300290</td><td>0.26亿</td><td>连续三个交易日内，涨幅偏离值累计达到30%的证券</td><td></td></tr><tr><td>长城电工 600192</td><td>0.22亿</td><td>非S证券连续三个交易日内收盘价格涨幅偏离值累计达到20%的证券</td><td></td></tr><tr><td>捷荣技术 002855</td><td>0.12亿</td><td>日跌幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>万邦医药 301520</td><td>0.11亿</td><td>日换手率达到30%的前5只证券</td><td></td></tr><tr><td>闽东电力 000993</td><td>0.09亿</td><td>日涨幅偏离值达到7%的前5只证券</td><td></td></tr><tr><td>捷荣技术 002855</td><td>0.06亿</td><td>连续三个交易日内，跌幅偏离值累计达到20%的证券</td><td></td></tr></tbody></table><p class="source">📡 数据来源: 东方财富 datacenter-web RPT_DAILYBILLBOARD_DETAILSNEW（§3.9）</p></section><div class="card"><h2><span class="bar"></span>🧭 数据源清单</h2><div class="tbl-wrap"><table class="v3-tbl dark-tbl"><thead><tr><th>模块</th><th>状态</th><th>时点 / 备注</th></tr></thead><tbody>
+<tr><td>行情</td><td></td><td></td></tr>
+<tr><td>估值一致预期</td><td></td><td></td></tr>
+<tr><td>概念板块</td><td></td><td></td></tr>
+<tr><td>当日资金流</td><td></td><td></td></tr>
+<tr><td>估值历史分位</td><td></td><td></td></tr>
+<tr><td>解禁日历</td><td></td><td></td></tr>
+<tr><td>龙虎榜</td><td></td><td></td></tr>
+<tr><td>宏观底色</td><td></td><td></td></tr>
+<tr><td>筹码K线</td><td></td><td></td></tr>
+<tr><td>申万分类</td><td></td><td></td></tr>
+<tr><td>公告</td><td></td><td></td></tr>
+<tr><td>财务摘要</td><td></td><td></td></tr>
+<tr><td>研报观点</td><td></td><td></td></tr>
+<tr><td>新闻舆情</td><td></td><td></td></tr>
+<tr><td>irm</td><td></td><td></td></tr>
+<tr><td>holders</td><td></td><td></td></tr>
+<tr><td>dividend</td><td></td><td></td></tr>
+<tr><td>board</td><td></td><td></td></tr>
+<tr><td>dragon_market</td><td></td><td></td></tr>
+<tr><td>融资融券</td><td></td><td></td></tr>
+</tbody></table></div>
+<div class="src-line" style="margin:4px 0 0">🛡 guard：{'status': 'N/A 单票流程不用池CSV', 'kline_freshness': 'last_bar=N/A vs 最新交易日=2026-09-10 -&gt; na (无K线(筹码模块失败: 无 K 线数据), 无法校验K线时点)'}</div>
+<div class="src-line">⏱ 2026-09-10T17:24:23+08:00 → 2026-09-10T17:27:50+08:00 · 耗时 206.3 秒</div><div class="foot">⚠️ 本报告由量化模型基于公开数据自动生成，仅供研究参考，不构成投资建议。市场随时变化，请独立判断。<br>数据来源：行情 · 估值一致预期 · 概念板块 · 当日资金流 · 估值历史分位 · 解禁日历 · 龙虎榜 · 宏观底色 · 筹码K线 · 申万分类 · 公告 · 财务摘要 · 研报观点 · 新闻舆情 · irm · holders · dividend · board · dragon_market · 融资融券（以各模块标注时点为准）<br>报告日 2026-09-10 · 行情数据截止 2026-09-10 · 生成 2026-09-10 17:27 · <span style="opacity:.6">a-stock-data V3 HTML</span></div></div>
+<script>
+(function() {
+  var KEY = 'v3-stock-report-theme';
+  var body = document.body;
+  var btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  // 初始化: localStorage > 默认 dark
+  var saved = localStorage.getItem(KEY);
+  if (saved === 'light') {
+    document.querySelector('.v3-stock-report').classList.add('light-mode');
+    btn.textContent = '🌙 深色模式';
+  } else {
+    btn.textContent = '☀️ 浅色模式';
+  }
+  // 切换
+  btn.addEventListener('click', function() {
+    var target = document.querySelector('.v3-stock-report');
+    target.classList.toggle('light-mode');
+    var isLight = target.classList.contains('light-mode');
+    btn.textContent = isLight ? '🌙 深色模式' : '☀️ 浅色模式';
+    try { localStorage.setItem(KEY, isLight ? 'light' : 'dark'); } catch(e) {}
+    // 触发 ECharts 主题重渲染 (如有)
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new Event('resize'));
+    }
+  });
+})();
+</script>
+
+<script>
+(function() {
+var rawData = [];
+
+// 数据处理
+var dates = [], ohlc = [], volumesRaw = [];
+rawData.forEach(function(d) {
+  dates.push(d[0]);
+  ohlc.push([d[1], d[4], d[3], d[2]]);
+  volumesRaw.push(d[5]);
+});
+var closes = ohlc.map(function(d) { return d[1]; });
+var highs = rawData.map(function(d) { return d[4]; });
+var lows = rawData.map(function(d) { return d[3]; });
+function calcMA(arr, n) {
+  return arr.map(function(_, i) {
+    if (i < n - 1) return null;
+    var sum = arr.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0);
+    return +(sum / n).toFixed(2);
+  });
+}
+var ma5 = calcMA(closes, 5), ma20 = calcMA(closes, 20), ma60 = calcMA(closes, 60);
+var volumes = volumesRaw.map(function(v) { return +(v / 10000).toFixed(2); });
+var dateLabels = dates.map(function(d) {
+  var parts = d.split('-');
+  return parts[1] + '-' + parts[2];
+});
+
+// 主题色 (跟随 v3-stock-report.light-mode)
+function getThemeColors() {
+  var isLight = document.body.classList.contains('light-mode') ||
+                (document.querySelector('.v3-stock-report') &&
+                 document.querySelector('.v3-stock-report').classList.contains('light-mode'));
+  return {
+    textColor:    isLight ? '#2a1f12' : '#e8e9ec',
+    textSecondary:isLight ? '#6b5634' : '#b0b3be',
+    textMuted:    isLight ? '#9c8b6e' : '#7a7d8a',
+    upColor:      isLight ? '#dc2626' : '#f55656',
+    downColor:    isLight ? '#16a34a' : '#28c75b',
+    ma5Color:     isLight ? '#2563eb' : '#4a90d9',
+    ma20Color:    isLight ? '#16a34a' : '#28c75b',
+    ma60Color:    isLight ? '#c2410c' : '#e8923a',
+    volUpColor:   isLight ? 'rgba(220,38,38,0.25)'  : 'rgba(245,86,86,0.35)',
+    volDownColor: isLight ? 'rgba(22,163,74,0.25)'  : 'rgba(40,199,91,0.35)',
+  };
+}
+
+// 技术指标计算
+function calcEMA(arr, n) {
+  var k = 2 / (n + 1);
+  var ema = [arr[0]];
+  for (var i = 1; i < arr.length; i++) ema.push(arr[i] * k + ema[i-1] * (1 - k));
+  return ema;
+}
+function calcMACDData(c) {
+  var ema12 = calcEMA(c, 12), ema26 = calcEMA(c, 26);
+  var dif = ema12.map(function(v, i) { return v - ema26[i]; });
+  var dea = calcEMA(dif, 9);
+  var macd = dif.map(function(v, i) { return 2 * (v - dea[i]); });
+  return { dif: dif, dea: dea, macd: macd };
+}
+function calcKDJData(h, l, c, n) {
+  n = n || 9;
+  var k = [], d = [], j = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i < n - 1) { k.push(50); d.push(50); j.push(50); continue; }
+    var hi = Math.max.apply(null, h.slice(i - n + 1, i + 1));
+    var lo = Math.min.apply(null, l.slice(i - n + 1, i + 1));
+    var rsv = ((c[i] - lo) / (hi - lo)) * 100 || 50;
+    k.push(i === n - 1 ? rsv : (2/3) * k[i-1] + (1/3) * rsv);
+    d.push(i === n - 1 ? k[i]  : (2/3) * d[i-1] + (1/3) * k[i]);
+    j.push(3 * k[i] - 2 * d[i]);
+  }
+  return { k: k, d: d, j: j };
+}
+function calcRSI(c, n) {
+  var gains = [], losses = [], rsi = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i === 0) { gains.push(0); losses.push(0); rsi.push(50); continue; }
+    var ch = c[i] - c[i-1];
+    gains.push(ch > 0 ? ch : 0);
+    losses.push(ch < 0 ? -ch : 0);
+    if (i < n) { rsi.push(50); continue; }
+    var ag = gains.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0) / n;
+    var al = losses.slice(i - n + 1, i + 1).reduce(function(a, b) { return a + b; }, 0) / n;
+    rsi.push(al === 0 ? 100 : 100 - (100 / (1 + ag / al)));
+  }
+  return rsi;
+}
+function calcBOLL(c, n) {
+  n = n || 20;
+  var mid = [], upper = [], lower = [];
+  for (var i = 0; i < c.length; i++) {
+    if (i < n - 1) { mid.push(null); upper.push(null); lower.push(null); continue; }
+    var slice = c.slice(i - n + 1, i + 1);
+    var avg = slice.reduce(function(a, b) { return a + b; }, 0) / n;
+    var std = Math.sqrt(slice.reduce(function(a, b) { return a + Math.pow(b - avg, 2); }, 0) / n);
+    mid.push(avg); upper.push(avg + 2 * std); lower.push(avg - 2 * std);
+  }
+  return { mid: mid, upper: upper, lower: lower };
+}
+
+var macdData = calcMACDData(closes);
+var kdjData = calcKDJData(highs, lows, closes);
+var rsi6 = calcRSI(closes, 6), rsi12 = calcRSI(closes, 12), rsi24 = calcRSI(closes, 24);
+var bollData = calcBOLL(closes);
+
+var klineChart, macdChart, kdjChart, rsiChart, bollChart;
+
+// K线图
+function renderKline() {
+  var el = document.getElementById('chart-kline-full');
+  if (!el) return;
+  if (klineChart) klineChart.dispose();
+  klineChart = echarts.init(el);
+  var c = getThemeColors();
+  var volData = volumes.map(function(v, i) {
+    return { value: v, itemStyle: { color: ohlc[i][1] >= ohlc[i][0] ? c.volUpColor : c.volDownColor } };
+  });
+  klineChart.setOption({
+    grid: [
+      { left: '8%', right: '5%', top: '8%',  height: '60%' },
+      { left: '8%', right: '5%', top: '76%', height: '14%' }
+    ],
+    xAxis: [
+      { type: 'category', data: dateLabels, gridIndex: 0,
+        axisLabel: { color: c.textMuted, fontSize: 9, interval: 5 },
+        axisLine: { lineStyle: { color: c.textMuted } }, splitLine: { show: false } },
+      { type: 'category', data: dateLabels, gridIndex: 1, show: false, splitLine: { show: false } }
+    ],
+    yAxis: [
+      { scale: true, gridIndex: 0, axisLabel: { color: c.textMuted, fontSize: 10 }, splitLine: { show: false } },
+      { scale: true, gridIndex: 1, axisLabel: { color: c.textMuted, fontSize: 10, formatter: '{value}%' }, splitLine: { show: false } }
+    ],
+    dataZoom: [{ type: 'inside', xAxisIndex: [0, 1] }],
+    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' },
+      formatter: function(ps) {
+        var k = ps.find(function(p) { return p.seriesName === 'K线'; });
+        var vol = ps.find(function(p) { return p.seriesName === '换手率'; });
+        if (!k) return '';
+        return k.axisValue + '<br/>开:' + k.data[0] + ' 收:' + k.data[1] + '<br/>低:' + k.data[2] + ' 高:' + k.data[3] + (vol ? '<br/>换手率:' + vol.data.value + '%' : '');
+      }
+    },
+    legend: { data: ['K线','MA5','MA20','MA60'], top: 0, textStyle: { color: c.textSecondary } },
+    series: [
+      { name: 'K线', type: 'candlestick', data: ohlc, xAxisIndex: 0, yAxisIndex: 0,
+        itemStyle: { color: c.upColor, color0: c.downColor, borderColor: c.upColor, borderColor0: c.downColor },
+        markLine: { symbol: 'none',
+          lineStyle: { color: '#d4a853', width: 1.5, type: 'dashed' },
+          label: { position: 'end', fontSize: 10, color: '#d4a853' },
+          data: []
+        },
+        markPoint: { symbol: 'pin', symbolSize: 50,
+          label: { fontSize: 11, color: '#fff', fontWeight: 'bold' },
+          data: []
+        }
+      },
+      { name: 'MA5',  type: 'line', data: ma5,  smooth: true, lineStyle: { width: 1.5, color: c.ma5Color  }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: 'MA20', type: 'line', data: ma20, smooth: true, lineStyle: { width: 1.5, color: c.ma20Color }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: 'MA60', type: 'line', data: ma60, smooth: true, lineStyle: { width: 1.5, color: c.ma60Color }, showSymbol: false, xAxisIndex: 0, yAxisIndex: 0 },
+      { name: '换手率', type: 'bar', data: volData, xAxisIndex: 1, yAxisIndex: 1 }
+    ]
+  });
+}
+
+// 4 技术指标图
+function renderMACD() {
+  var el = document.getElementById('chart-macd');
+  if (!el) return;
+  if (macdChart) macdChart.dispose();
+  macdChart = echarts.init(el);
+  var c = getThemeColors();
+  macdChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'DIF', type: 'line', data: macdData.dif, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'DEA', type: 'line', data: macdData.dea, lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'MACD', type: 'bar', data: macdData.macd, itemStyle: {
+        color: function(p) { return p.value >= 0 ? 'rgba(245,86,86,0.5)' : 'rgba(40,199,91,0.5)'; }
+      } }
+    ],
+    legend: { data: ['DIF','DEA','MACD'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderKDJ() {
+  var el = document.getElementById('chart-kdj');
+  if (!el) return;
+  if (kdjChart) kdjChart.dispose();
+  kdjChart = echarts.init(el);
+  var c = getThemeColors();
+  kdjChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { min: 0, max: 100, axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'K', type: 'line', data: kdjData.k, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'D', type: 'line', data: kdjData.d, lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'J', type: 'line', data: kdjData.j, lineStyle: { color: '#f55656', width: 1 }, showSymbol: false }
+    ],
+    legend: { data: ['K','D','J'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderRSI() {
+  var el = document.getElementById('chart-rsi');
+  if (!el) return;
+  if (rsiChart) rsiChart.dispose();
+  rsiChart = echarts.init(el);
+  var c = getThemeColors();
+  rsiChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { min: 0, max: 100, axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: 'RSI6',  type: 'line', data: rsi6,  lineStyle: { color: '#4a90d9', width: 1.2 }, showSymbol: false },
+      { name: 'RSI12', type: 'line', data: rsi12, lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: 'RSI24', type: 'line', data: rsi24, lineStyle: { color: '#f55656', width: 1.2 }, showSymbol: false }
+    ],
+    legend: { data: ['RSI6','RSI12','RSI24'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+function renderBOLL() {
+  var el = document.getElementById('chart-boll');
+  if (!el) return;
+  if (bollChart) bollChart.dispose();
+  bollChart = echarts.init(el);
+  var c = getThemeColors();
+  bollChart.setOption({
+    grid: { left: '8%', right: '4%', top: '12%', height: '60%' },
+    xAxis: { data: dateLabels, axisLabel: { color: c.textMuted, fontSize: 8, interval: 8 } },
+    yAxis: { axisLabel: { color: c.textMuted, fontSize: 9 } },
+    series: [
+      { name: '上轨',   type: 'line', data: bollData.upper, lineStyle: { color: 'rgba(245,86,86,0.4)', width: 1 }, showSymbol: false },
+      { name: '中轨',   type: 'line', data: bollData.mid,   lineStyle: { color: '#e3c26d', width: 1.2 }, showSymbol: false },
+      { name: '下轨',   type: 'line', data: bollData.lower, lineStyle: { color: 'rgba(40,199,91,0.4)', width: 1 }, showSymbol: false, areaStyle: { color: 'rgba(212,168,83,0.05)' } },
+      { name: '收盘价', type: 'line', data: closes,         lineStyle: { color: '#4a90d9', width: 1.5 }, showSymbol: false }
+    ],
+    legend: { data: ['上轨','中轨','下轨','收盘价'], top: 0, textStyle: { color: c.textSecondary, fontSize: 10 } }
+  });
+}
+
+function renderAll() { renderKline(); renderMACD(); renderKDJ(); renderRSI(); renderBOLL(); }
+
+// 主题切换时重渲染 (监听 v3-stock-report class 变化)
+var target = document.body;
+var v3root = document.querySelector('.v3-stock-report');
+if (v3root) target = v3root;
+if (window.MutationObserver) {
+  var obs = new MutationObserver(function() { renderAll(); });
+  obs.observe(target, { attributes: true, attributeFilter: ['class'] });
+}
+window.addEventListener('resize', function() {
+  klineChart && klineChart.resize();
+  macdChart && macdChart.resize();
+  kdjChart && kdjChart.resize();
+  rsiChart && rsiChart.resize();
+  bollChart && bollChart.resize();
+});
+
+// 首次渲染
+if (document.readyState === 'complete') renderAll();
+else window.addEventListener('load', renderAll);
+})();
+</script>
+</body></html>

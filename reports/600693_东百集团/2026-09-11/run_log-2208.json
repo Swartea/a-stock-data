@@ -1,0 +1,177 @@
+{
+  "started_at": "2026-09-11T22:05:10+08:00",
+  "finished_at": "2026-09-11T22:08:43+08:00",
+  "total_sec": 213.2,
+  "sources": {
+    "行情": "ok, 9750ms",
+    "估值一致预期": "ok, 15979ms",
+    "概念板块": "fallback:接口返回0条(可能风控), 5717ms",
+    "当日资金流": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 5223ms",
+    "估值历史分位": "ok, 4392ms",
+    "解禁日历": "ok, 2254ms",
+    "龙虎榜": "ok, 2522ms",
+    "宏观底色": "ok, 10009ms",
+    "筹码K线": "ok, 1605ms",
+    "申万分类": "error:申万表加载失败, 0ms",
+    "公告": "ok:eastmoney, 3501ms",
+    "财务摘要": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 1733ms",
+    "研报观点": "ok:ths, 8334ms",
+    "新闻舆情": "ok:sina_stock_news, 18080ms",
+    "irm": "ok, 5480ms",
+    "holders": "ok, 40534ms",
+    "dividend": "ok, 4960ms",
+    "board": "ok, 12578ms",
+    "dragon_market": "ok, 24499ms",
+    "融资融券": "ok:eastmoney-datacenter, 3582ms"
+  },
+  "source_meta": {
+    "行情": {
+      "ms": 9750,
+      "at": "22:05:20",
+      "status": "ok, 9750ms",
+      "detail": "腾讯实时行情 qt.gtimg.cn"
+    },
+    "估值一致预期": {
+      "ms": 15979,
+      "at": "22:05:36",
+      "status": "ok, 15979ms",
+      "detail": "同花顺一致预期 basic.10jqka.com.cn"
+    },
+    "概念板块": {
+      "ms": 5717,
+      "at": "22:05:42",
+      "status": "fallback:接口返回0条(可能风控), 5717ms",
+      "detail": "东财概念板块 slist"
+    },
+    "当日资金流": {
+      "ms": 5223,
+      "at": "22:05:47",
+      "status": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 5223ms",
+      "detail": "东财当日分钟资金流 fflow"
+    },
+    "估值历史分位": {
+      "ms": 4392,
+      "at": "22:05:51",
+      "status": "ok, 4392ms",
+      "detail": "baostock 估值历史(近3年)"
+    },
+    "解禁日历": {
+      "ms": 2254,
+      "at": "22:05:53",
+      "status": "ok, 2254ms",
+      "detail": "东财数据中心 RPT_LIFT_STAGE"
+    },
+    "龙虎榜": {
+      "ms": 2522,
+      "at": "22:05:56",
+      "status": "ok, 2522ms",
+      "detail": "东财数据中心 RPT_DAILYBILLBOARD_DETAILSNEW"
+    },
+    "宏观底色": {
+      "ms": 10009,
+      "at": "22:06:06",
+      "status": "ok, 10009ms",
+      "detail": "同花顺北向 + 东财行业 + 同花顺强势股"
+    },
+    "筹码K线": {
+      "ms": 1605,
+      "at": "22:06:08",
+      "status": "ok, 1605ms",
+      "detail": "baostock 前复权日K(筹码计算用)"
+    },
+    "申万分类": {
+      "ms": 0,
+      "at": "22:06:09",
+      "status": "error:申万表加载失败, 0ms",
+      "detail": "申万行业分类表 swsresearch",
+      "tls_recommendation": "pip install -U certifi"
+    },
+    "公告": {
+      "ms": 3501,
+      "status": "ok:eastmoney, 3501ms",
+      "detail": "东财公告 / 巨潮 cninfo"
+    },
+    "财务摘要": {
+      "ms": 1733,
+      "status": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 1733ms",
+      "detail": "东财数据中心 RPT_F10_FINANCE_MAINFINADATA"
+    },
+    "研报观点": {
+      "ms": 8334,
+      "status": "ok:ths, 8334ms",
+      "detail": "东财研报 reportapi / 同花顺降级"
+    },
+    "新闻舆情": {
+      "ms": 18080,
+      "status": "ok:sina_stock_news, 18080ms",
+      "detail": "东财个股新闻"
+    },
+    "融资融券": {
+      "ms": 3582,
+      "at": "22:08:12",
+      "status": "ok:eastmoney-datacenter, 3582ms",
+      "detail": "东财数据中心 RPTA_WEB_RZRQ_GGMX"
+    },
+    "资金面-5日主力": {
+      "at": "22:08:39",
+      "ms": 26482,
+      "status": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceed, 26482ms",
+      "detail": "资金面-5日主力"
+    },
+    "两融历史": {
+      "at": "22:08:42",
+      "ms": 2980,
+      "status": "ok, 2980ms",
+      "detail": "两融历史"
+    },
+    "同业对比": {
+      "at": "22:08:43",
+      "ms": 1502,
+      "status": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1502ms",
+      "detail": "同业对比"
+    }
+  },
+  "guard": {
+    "status": "N/A 单票流程不用池CSV",
+    "kline_freshness": "last_bar=2026-09-11 vs 最新交易日=2026-09-11 -> ok (K线最后交易日 2026-09-11 已到最新交易日, 新鲜)"
+  },
+  "fallback_chain": [
+    "申万分类: SSL 直连失败 (申万表加载失败) — 不再 verify=False 兜底 (§5); 修复: pip install -U certifi  (申万行业因子按 v2 默认中性计)",
+    "概念板块: fallback:接口返回0条(可能风控), 5717ms",
+    "当日资金流: error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443), 5223ms",
+    "申万分类: error:申万表加载失败, 0ms"
+  ],
+  "fatal": null,
+  "tls_recommendations": [
+    {
+      "host": "swsresearch.com",
+      "fix": "pip install -U certifi",
+      "applies_to": [
+        "申万分类"
+      ]
+    }
+  ],
+  "sections_count": 5,
+  "supplements": {
+    "资金面-5日主力": "error:HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceed, 26482ms",
+    "两融历史": "ok, 2980ms",
+    "同业对比": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1502ms"
+  },
+  "artifacts": {
+    "md": "600693-东百集团-2208.md",
+    "html": "600693-东百集团-v3-20260911-2208.html",
+    "docx": "600693-东百集团-2208.docx",
+    "result_json": "result_v3-2208.json",
+    "html_status": "ok",
+    "html_ms": 10036,
+    "docx_status": "ok",
+    "docx_ms": 241,
+    "sizes_bytes": {
+      "600693-东百集团-2208.md": 21872,
+      "600693-东百集团-v3-20260911-2208.html": 97808,
+      "600693-东百集团-2208.docx": 57118,
+      "result_v3-2208.json": 131139,
+      "run_log-2208.json": null
+    }
+  }
+}

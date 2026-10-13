@@ -1,0 +1,161 @@
+{
+  "started_at": "2026-09-08T11:15:02+08:00",
+  "finished_at": "2026-09-08T11:16:25+08:00",
+  "total_sec": 83.6,
+  "sources": {
+    "行情": "ok, 1667ms",
+    "估值一致预期": "ok, 10363ms",
+    "概念板块": "fallback:接口返回0条(可能风控), 5745ms",
+    "当日资金流": "error:Expecting value: line 1 column 1 (char 0), 2193ms",
+    "估值历史分位": "ok, 2122ms",
+    "解禁日历": "ok, 1464ms",
+    "龙虎榜": "ok, 3049ms",
+    "宏观底色": "ok, 4200ms",
+    "筹码K线": "ok, 687ms",
+    "申万分类": "ok, 5836ms",
+    "公告": "ok:eastmoney, 5143ms",
+    "财务摘要": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 1896ms",
+    "研报观点": "ok:ths, 3503ms",
+    "新闻舆情": "ok:sina_stock_news, 24594ms",
+    "融资融券": "ok:eastmoney-datacenter, 962ms"
+  },
+  "source_meta": {
+    "行情": {
+      "ms": 1667,
+      "at": "11:15:03",
+      "status": "ok, 1667ms",
+      "detail": "腾讯实时行情 qt.gtimg.cn"
+    },
+    "估值一致预期": {
+      "ms": 10363,
+      "at": "11:15:14",
+      "status": "ok, 10363ms",
+      "detail": "同花顺一致预期 basic.10jqka.com.cn"
+    },
+    "概念板块": {
+      "ms": 5745,
+      "at": "11:15:20",
+      "status": "fallback:接口返回0条(可能风控), 5745ms",
+      "detail": "东财概念板块 slist"
+    },
+    "当日资金流": {
+      "ms": 2193,
+      "at": "11:15:22",
+      "status": "error:Expecting value: line 1 column 1 (char 0), 2193ms",
+      "detail": "东财当日分钟资金流 fflow"
+    },
+    "估值历史分位": {
+      "ms": 2122,
+      "at": "11:15:24",
+      "status": "ok, 2122ms",
+      "detail": "baostock 估值历史(近3年)"
+    },
+    "解禁日历": {
+      "ms": 1464,
+      "at": "11:15:25",
+      "status": "ok, 1464ms",
+      "detail": "东财数据中心 RPT_LIFT_STAGE"
+    },
+    "龙虎榜": {
+      "ms": 3049,
+      "at": "11:15:28",
+      "status": "ok, 3049ms",
+      "detail": "东财数据中心 RPT_DAILYBILLBOARD_DETAILSNEW"
+    },
+    "宏观底色": {
+      "ms": 4200,
+      "at": "11:15:33",
+      "status": "ok, 4200ms",
+      "detail": "同花顺北向 + 东财行业 + 同花顺强势股"
+    },
+    "筹码K线": {
+      "ms": 687,
+      "at": "11:15:33",
+      "status": "ok, 687ms",
+      "detail": "baostock 前复权日K(筹码计算用)"
+    },
+    "申万分类": {
+      "ms": 5836,
+      "at": "11:15:36",
+      "status": "ok, 5836ms",
+      "detail": "申万行业分类表 swsresearch"
+    },
+    "公告": {
+      "ms": 5143,
+      "status": "ok:eastmoney, 5143ms",
+      "detail": "东财公告 / 巨潮 cninfo"
+    },
+    "财务摘要": {
+      "ms": 1896,
+      "status": "ok:datacenter RPT_F10_FINANCE_MAINFINADATA, 1896ms",
+      "detail": "东财数据中心 RPT_F10_FINANCE_MAINFINADATA"
+    },
+    "研报观点": {
+      "ms": 3503,
+      "status": "ok:ths, 3503ms",
+      "detail": "东财研报 reportapi / 同花顺降级"
+    },
+    "新闻舆情": {
+      "ms": 24594,
+      "status": "ok:sina_stock_news, 24594ms",
+      "detail": "东财个股新闻"
+    },
+    "融资融券": {
+      "ms": 962,
+      "at": "11:16:17",
+      "status": "ok:eastmoney-datacenter, 962ms",
+      "detail": "东财数据中心 RPTA_WEB_RZRQ_GGMX"
+    },
+    "资金面-5日主力": {
+      "at": "11:16:22",
+      "ms": 4288,
+      "status": "error:Expecting value: line 1 column 1 (char 0), 4288ms",
+      "detail": "资金面-5日主力"
+    },
+    "两融历史": {
+      "at": "11:16:24",
+      "ms": 2125,
+      "status": "ok, 2125ms",
+      "detail": "两融历史"
+    },
+    "同业对比": {
+      "at": "11:16:25",
+      "ms": 1505,
+      "status": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1505ms",
+      "detail": "同业对比"
+    }
+  },
+  "guard": {
+    "status": "N/A 单票流程不用池CSV",
+    "kline_freshness": "last_bar=2026-09-07 vs 最新交易日=2026-09-08 -> warn (K线停在 2026-09-07, 最新交易日 2026-09-08 — 若为法定节假日/周末属正常, 否则需关注数据延迟)"
+  },
+  "fallback_chain": [
+    "申万分类: SSL直连失败(申万表加载失败) → verify=False 重试成功 (5836ms, 变更2次) [环境CA问题已绕过, 如实记录]",
+    "概念板块: fallback:接口返回0条(可能风控), 5745ms",
+    "当日资金流: error:Expecting value: line 1 column 1 (char 0), 2193ms",
+    "K线时点: K线停在 2026-09-07, 最新交易日 2026-09-08 — 若为法定节假日/周末属正常, 否则需关注数据延迟 [WARN]"
+  ],
+  "fatal": null,
+  "supplements": {
+    "资金面-5日主力": "error:Expecting value: line 1 column 1 (char 0), 4288ms",
+    "两融历史": "ok, 2125ms",
+    "同业对比": "error:概念板块列表为空(东财 slist 返回 0 条, 可能风控), 无法做同业对比, 1505ms"
+  },
+  "artifacts": {
+    "md": "600693-东百集团-1116.md",
+    "html": "600693-东百集团-v3-20260908-1116.html",
+    "docx": "600693-东百集团-1116.docx",
+    "result_json": "result_v3-1116.json",
+    "html_status": "ok",
+    "html_ms": 5,
+    "docx_status": "ok",
+    "docx_ms": 155,
+    "sizes_bytes": {
+      "600693-东百集团-1116.md": 14733,
+      "600693-东百集团-v3-20260908-1116.html": 48996,
+      "600693-东百集团-1116.docx": 48952,
+      "result_v3-1116.json": 106773,
+      "run_log-1116.json": null
+    }
+  }
+}

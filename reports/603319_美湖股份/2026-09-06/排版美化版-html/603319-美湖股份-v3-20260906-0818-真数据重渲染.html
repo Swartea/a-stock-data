@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>美湖股份 603319 · V3 报告</title>
+<style>
+
+:root{
+  /* ================= §2.1 设计 token (docs/06-排版美化方案) ================= */
+  --bg:#fafaf9;            /* 中性底 (不纯黑纯白) */
+  --surface:#ffffff;
+  --zebra:#f5f5f4;         /* 表格斑马纹 (中性灰阶梯) */
+  --ink-1:#1c1917;         /* 主文字 (17.5:1) */
+  --ink-2:#57534e;         /* 次级文字 (7.6:1) */
+  --ink-3:#78716c;         /* 弱文字/注释 (4.8:1, AA) */
+  --accent:#2563eb;        /* 强调 (5.2:1) */
+  --warn:#d97706;          /* 警告/中性 */
+  --warn-bg:#fffbeb;
+  --danger:#dc2626;        /* 危险 (4.8:1) */
+  --good:#16a34a;          /* 正向 */
+  --hairline:#e7e5e4;      /* hairline 分隔线 */
+  /* ================= A股例外: 红涨绿跌 (覆盖国际惯例, 全篇一致) ================= */
+  /* 涨/利好 = 红系; 跌/利空 = 绿系; 风险警报区仍红警示 */
+  --up:#dc2626;            /* 涨/利好 = 危险红 (红系主色) */
+  --up-ink:#b91c1c;        /* 涨红 AA 文字档 6.5:1 */
+  --up-bg:#fef2f2;
+  --down:#16a34a;          /* 跌/利空 = 正向绿 (绿系主色) */
+  --down-ink:#15803d;      /* 跌绿 AA 文字档 5.0:1 */
+  --down-bg:#f0fdf4;
+  --neutral-ink:#b45309;   /* 中性琥珀 AA 文字档 5.0:1 */
+  --risk-ink:#b91c1c; --risk-bg:#fef2f2; --risk-line:#fecaca;
+  --ok-ink:#15803d; --ok-bg:#f0fdf4; --ok-line:#bbf7d0;
+  /* ================= §2.2 字体: CJK 栈 + 数字等宽 ================= */
+  --font-cjk:"PingFang SC","Source Han Sans SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+  --font-num:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  /* ================= §2.3 8px 基线网格: 间距/圆角 = 8 的倍数 ================= */
+  --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px;
+  --radius:8px;            /* 圆角统一 8px */
+  --shadow:0 1px 2px rgba(28,25,23,.05),0 2px 8px rgba(28,25,23,.04);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font-cjk);background:var(--bg);color:var(--ink-1);
+     margin:0;font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums}
+.container{max-width:800px;margin:0 auto;padding:var(--sp-2) var(--sp-2) var(--sp-4)}
+.self-test-note{background:var(--warn-bg);border:1px dashed var(--warn);
+     color:var(--neutral-ink);padding:var(--sp-1) var(--sp-2);border-radius:var(--radius);
+     font-size:12px;margin-bottom:var(--sp-2)}
+.card{background:var(--surface);border-radius:var(--radius);padding:var(--sp-2);
+     margin-bottom:var(--sp-2);box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin:0 0 var(--sp-1);color:var(--ink-1);
+     display:flex;align-items:center;gap:var(--sp-1)}
+.card h2 .bar{width:4px;height:16px;border-radius:2px;background:var(--accent);
+     display:inline-block}
+.no-data{color:var(--ink-3);font-size:13px;padding:var(--sp-2);text-align:center;
+     background:var(--bg);border:1px dashed var(--hairline);border-radius:var(--radius)}
+.src-line{font-size:11.5px;color:var(--ink-3);margin:-4px 0 var(--sp-1);line-height:1.5}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1)}
+@media(min-width:600px){.mini-grid{grid-template-columns:repeat(3,1fr)}}
+.kpi{background:var(--bg);border-radius:var(--radius);padding:var(--sp-1) 12px}
+.kpi .l{color:var(--ink-3);font-size:11px}
+.kpi .v{font-size:17px;font-weight:600;margin-top:2px;font-family:var(--font-num)}
+table.v3-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+table.v3-tbl th,table.v3-tbl td{padding:var(--sp-1);text-align:left;vertical-align:top;
+     border-bottom:1px solid var(--hairline)}
+table.v3-tbl th{color:var(--ink-3);font-weight:500;font-size:11.5px;background:var(--bg);
+     white-space:nowrap}
+table.v3-tbl tbody tr:last-child td{border-bottom:none}
+table.v3-tbl tbody tr:nth-child(even){background:var(--zebra)}  /* zebra 斑马纹 */
+table.v3-tbl td.num,table.v3-tbl th.num{text-align:right;font-family:var(--font-num);
+     font-variant-numeric:tabular-nums}
+.tbl-wrap{max-height:360px;overflow:auto;border:1px solid var(--hairline);
+     border-radius:var(--radius);background:var(--surface)}
+.tbl-wrap table.v3-tbl thead th{position:sticky;top:0;z-index:2}  /* 长表 sticky 表头 */
+.up{color:var(--up-ink)}       /* A股: 涨 = 红系 */
+.down{color:var(--down-ink)}   /* A股: 跌 = 绿系 */
+a{color:var(--accent);text-decoration:none}
+.disc{color:var(--ink-3);font-size:11.5px}
+.mono{font-family:var(--font-num)}
+
+
+/* ---------- §2.4 顶部 masthead 条: 股票名 + 代码 + 报告日期 + 数据截止时点 ---------- */
+.masthead{background:var(--surface);border-bottom:1px solid var(--hairline);
+     padding:var(--sp-2);display:flex;justify-content:space-between;align-items:center;
+     gap:var(--sp-1);flex-wrap:wrap;box-shadow:var(--shadow)}
+.masthead .mh-name{font-size:24px;font-weight:700;letter-spacing:.5px;
+     display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap}
+.masthead .mh-code{font-family:var(--font-num);font-size:13px;font-weight:600;
+     color:var(--ink-1);background:var(--bg);border:1px solid var(--hairline);
+     border-radius:999px;padding:2px 10px}
+.masthead .mh-meta{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.masthead .mh-chip{font-size:11.5px;color:var(--ink-2);background:var(--bg);
+     border:1px solid var(--hairline);border-radius:999px;padding:3px 10px;
+     white-space:nowrap}
+/* ---------- §2.4 hero 行情区: 结论大字 + 评分大字 + 现价等宽 + 三价位显式卡片 ---------- */
+.hero{margin-bottom:var(--sp-2);padding:var(--sp-2);color:#fff;box-shadow:var(--shadow)}
+.hero-bull{background:linear-gradient(160deg,#991b1b 0%,#b91c1c 55%,#dc2626 100%)}
+.hero-bear{background:linear-gradient(160deg,#14532d 0%,#15803d 55%,#16a34a 100%)}
+.hero-neutral{background:linear-gradient(160deg,#92400e 0%,#b45309 55%,#d97706 100%)}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);
+     flex-wrap:wrap}
+.verdict{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
+.adv-dot{display:inline-flex;align-items:center;justify-content:center;min-width:40px;
+     height:40px;padding:0 6px;background:rgba(255,255,255,.96);border-radius:999px;
+     font-size:20px;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.18);white-space:nowrap}
+.hero .advice{font-size:30px;font-weight:800;letter-spacing:1px;line-height:1.2}
+.score-box{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
+.hero .score{font-family:var(--font-num);font-size:40px;font-weight:800;line-height:1;
+     font-variant-numeric:tabular-nums}
+.hero .score small{font-size:14px;font-weight:400;opacity:.85;font-family:var(--font-cjk)}
+.score-box .cap{font-size:11px;opacity:.85;letter-spacing:2px}
+.px-line{display:flex;align-items:center;gap:var(--sp-1);margin:var(--sp-2) 0 var(--sp-1);
+     flex-wrap:wrap}
+.hero .px{font-family:var(--font-num);font-size:32px;font-weight:700;line-height:1.1}
+.hero .px small{font-family:var(--font-cjk);font-size:13px;font-weight:400;opacity:.85}
+.chg-pill{font-family:var(--font-num);font-size:13.5px;font-weight:700;line-height:1;
+     background:rgba(255,255,255,.96);padding:6px 12px;border-radius:999px}
+.chg-pill.up{color:var(--up-ink)}       /* 涨 → 红系 */
+.chg-pill.down{color:var(--down-ink)}   /* 跌 → 绿系 */
+.price3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--sp-1);
+     margin:var(--sp-1) 0 var(--sp-2)}
+.price3 .p3{background:rgba(255,255,255,.14);border-radius:var(--radius);
+     padding:var(--sp-1) 10px;text-align:center;
+     box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.price3 .p3 .l{font-size:11px;opacity:.92}
+.price3 .p3 .v{font-size:17px;font-weight:700;margin-top:3px;font-family:var(--font-num);
+     line-height:1.35}
+.price3 .p3 .v .l{font-size:11px;font-weight:400;opacity:.92;margin-top:2px;
+     font-family:var(--font-cjk)}
+.hero .reason{margin-top:var(--sp-1);font-size:13px;padding:10px 12px;
+     border-radius:var(--radius);background:rgba(255,255,255,.16);line-height:1.65}
+.hero .reason-hint{font-size:11.5px;opacity:.92;margin-top:var(--sp-1);line-height:1.5}
+.grid-2-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:560px){.grid-2-wrap{grid-template-columns:1fr}}
+
+
+/* ---------- §2.4 操作检查清单 (色语义: 买点=红系做多, 止损=红系警示, 卖点=强调蓝) ---------- */
+.chk{display:flex;gap:var(--sp-1);padding:var(--sp-1) 10px;border-radius:var(--radius);
+     margin-bottom:var(--sp-1);background:var(--bg);border-left:4px solid var(--hairline);
+     font-size:13px}
+.chk .box{color:var(--accent);font-weight:800;flex:none}
+.chk .t{flex:1}
+.chk .grp{color:var(--ink-3);font-size:11px;margin:10px 0 2px;font-weight:600}
+.chk-buy{border-left-color:var(--up);background:var(--up-bg)}
+.chk-sell{border-left-color:var(--accent);background:var(--surface)}
+.chk-stop{border-left-color:var(--risk-ink);background:var(--risk-bg)}
+.chk-watch{border-left-color:var(--hairline)}
+/* ---------- §2.4 风险警报区 (红系警示不变) ---------- */
+.risk{background:var(--risk-bg);border:1px solid var(--risk-line);border-radius:var(--radius);
+     padding:12px 14px;margin-bottom:var(--sp-1)}
+.risk .h{color:var(--risk-ink);font-weight:700;font-size:14px;display:flex;
+     justify-content:space-between;gap:var(--sp-1)}
+.risk .h .d{font-weight:400;font-size:12px;color:var(--risk-ink)}
+.risk .b{font-size:12.5px;color:var(--risk-ink);margin-top:4px;line-height:1.55}
+.risk-ok{background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok-ink);
+     border-radius:var(--radius);padding:12px 14px;font-size:13.5px;font-weight:600}
+/* ---------- 图表卡片: hairline 分隔, 克制阴影 ---------- */
+.chart-card{margin-bottom:var(--sp-2)}
+.chart-head{display:flex;justify-content:space-between;align-items:center;
+     margin-bottom:var(--sp-1);flex-wrap:wrap;gap:4px}
+.chart-head .t{font-size:15px;font-weight:700;color:var(--ink-1)}
+.chart-head .tm{font-size:10.5px;color:var(--ink-3);background:var(--bg);
+     border:1px solid var(--hairline);padding:2px 10px;border-radius:999px;white-space:nowrap}
+.chart-body{text-align:center;overflow-x:auto;border:1px solid var(--hairline);
+     border-radius:var(--radius);padding:var(--sp-1) 2px 2px;background:var(--surface)}
+.chart-body svg{max-width:100%;height:auto}
+.chart-body.radar svg{max-width:340px;height:auto}
+.tag-row{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-1)}
+.v3-tag{padding:2px 10px;border-radius:999px;font-size:11.5px;font-weight:500;
+     white-space:nowrap}
+/* ---------- §2.4 页脚: 免责声明 + 数据来源 + 生成时间 ---------- */
+.foot{text-align:center;color:var(--ink-3);font-size:11.5px;padding:var(--sp-1) 0 var(--sp-3);
+     line-height:1.8}
+.dark-tbl td{font-size:12px}
+@media(max-width:460px){.hero .advice{font-size:24px}.hero .px{font-size:24px}
+     .container{padding:var(--sp-1)}.price3 .p3 .v{font-size:15px}
+     .masthead .mh-name{font-size:20px}}
+
+</style></head><body><div class="container">
+<header class="masthead"><div class="mh-name">美湖股份<span class="mh-code">603319</span></div><div class="mh-meta"><span class="mh-chip">报告日期 2026-09-06</span><span class="mh-chip">行情数据截止 2026-09-04</span><span class="mh-chip">生成 2026-09-06 08:18</span></div></header>
+<div class="hero hero-bear">
+<div class="hero-top"><div class="verdict"><span class="adv-dot">🟢</span><span class="advice">看空</span></div><div class="score-box"><span class="score">44<small>/100</small></span><span class="cap">综合评分</span></div></div>
+<div class="px-line"><span class="px">29.16<small> 元</small></span><span class="chg-pill down">-4.71%</span></div>
+<div class="price3">
+<div class="p3"><div class="l">支撑（分批进区）</div><div class="v">28.29 ~ 29.16</div></div>
+<div class="p3"><div class="l">压力（一档）</div><div class="v">32.08</div></div>
+<div class="p3"><div class="l">止损（纪律）</div><div class="v">27.00<div class="l" style="margin-top:2px">跌 7.4% 必走</div></div></div>
+</div>
+<div class="reason">💬 建议减仓至轻仓或清仓</div>
+<div class="reason-hint">仓位建议：清仓回避 · 持仓周期：中线 3-6 个月</div>
+</div>
+<div class="card"><h2><span class="bar"></span>✅ 操作检查清单</h2><div class="src-line">触发条件、止损纪律与仓位建议 · 按空（<45 分）三态给出</div>
+<div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">买入触发</div><div class="t">空头结构，不建议新开仓；等底部放量企稳再评估</div></div></div>
+<div class="chk chk-sell"><span class="box">☐</span><div class="grp" style="margin:0 0 2px">卖出触发</div><div class="t">已有持仓：逢反弹至 28.29 元 附近减仓/离场</div></div>
+<div class="chk chk-stop"><span class="box">☐</span><div class="grp" style="margin:0 0 2px">止损纪律</div><div class="t">跌破 27.00 元 清仓回避，不抄底、不接飞刀</div></div>
+<div class="chk chk-watch"><span class="box">☐</span><div><div class="grp" style="margin:0 0 2px">仓位建议</div><div class="t">清仓回避 · 持仓周期 中线 3-6 个月</div></div></div>
+<div class="src-line">操作清单由 trading_plan + signals 生成 · signals 数据源暂缺</div>
+</div>
+<div class="card"><h2><span class="bar"></span>🚨 风险警报</h2>
+<div class="risk-ok">✅ 无临近风险事件<br><span style="font-weight:400;font-size:12px">近 90 日无解禁、无财报披露临近、无减持类公告</span></div>
+</div>
+<div class="grid-2-wrap"><div class="chart-card card"><div class="chart-head"><span class="t">📈 K 线 · 前复权</span><span class="tm">⏱ 数据截止 2026-09-04</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock 前复权日线 · 近 60 交易日</div><div class="chart-body"><svg width="720" height="240" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<line x1="30" y1="20.0" x2="660" y2="20.0" stroke="#eee"/>
+<text x="665" y="24.0" font-size="10" fill="#999">38.24</text>
+<line x1="30" y1="67.5" x2="660" y2="67.5" stroke="#eee"/>
+<text x="665" y="71.5" font-size="10" fill="#999">33.69</text>
+<line x1="30" y1="115.0" x2="660" y2="115.0" stroke="#eee"/>
+<text x="665" y="119.0" font-size="10" fill="#999">29.14</text>
+<line x1="30" y1="162.5" x2="660" y2="162.5" stroke="#eee"/>
+<text x="665" y="166.5" font-size="10" fill="#999">24.60</text>
+<line x1="30" y1="210.0" x2="660" y2="210.0" stroke="#eee"/>
+<text x="665" y="214.0" font-size="10" fill="#999">20.05</text>
+<line x1="33.5" y1="28.6" x2="33.5" y2="50.6" stroke="#ef232a" stroke-width="1"/>
+<rect x="30.0" y="40.2" width="7.0" height="10.3" fill="#ef232a"/>
+<line x1="44.0" y1="36.3" x2="44.0" y2="65.4" stroke="#14b143" stroke-width="1"/>
+<rect x="40.5" y="43.4" width="7.0" height="7.3" fill="#14b143"/>
+<line x1="54.5" y1="29.2" x2="54.5" y2="52.9" stroke="#ef232a" stroke-width="1"/>
+<rect x="51.0" y="41.4" width="7.0" height="4.6" fill="#ef232a"/>
+<line x1="65.0" y1="38.1" x2="65.0" y2="48.8" stroke="#14b143" stroke-width="1"/>
+<rect x="61.5" y="44.5" width="7.0" height="1.7" fill="#14b143"/>
+<line x1="75.5" y1="43.5" x2="75.5" y2="60.3" stroke="#14b143" stroke-width="1"/>
+<rect x="72.0" y="46.1" width="7.0" height="9.6" fill="#14b143"/>
+<line x1="86.0" y1="55.4" x2="86.0" y2="73.5" stroke="#14b143" stroke-width="1"/>
+<rect x="82.5" y="59.0" width="7.0" height="6.8" fill="#14b143"/>
+<line x1="96.5" y1="44.8" x2="96.5" y2="67.4" stroke="#14b143" stroke-width="1"/>
+<rect x="93.0" y="58.3" width="7.0" height="8.0" fill="#14b143"/>
+<line x1="107.0" y1="64.5" x2="107.0" y2="78.9" stroke="#14b143" stroke-width="1"/>
+<rect x="103.5" y="66.4" width="7.0" height="2.3" fill="#14b143"/>
+<line x1="117.5" y1="45.5" x2="117.5" y2="72.1" stroke="#14b143" stroke-width="1"/>
+<rect x="114.0" y="66.5" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="128.0" y1="63.5" x2="128.0" y2="83.3" stroke="#14b143" stroke-width="1"/>
+<rect x="124.5" y="66.5" width="7.0" height="16.7" fill="#14b143"/>
+<line x1="138.5" y1="80.0" x2="138.5" y2="97.9" stroke="#14b143" stroke-width="1"/>
+<rect x="135.0" y="81.6" width="7.0" height="10.9" fill="#14b143"/>
+<line x1="149.0" y1="69.5" x2="149.0" y2="94.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="145.5" y="72.5" width="7.0" height="17.8" fill="#ef232a"/>
+<line x1="159.5" y1="57.0" x2="159.5" y2="72.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="156.0" y="68.1" width="7.0" height="2.9" fill="#ef232a"/>
+<line x1="170.0" y1="59.7" x2="170.0" y2="76.1" stroke="#14b143" stroke-width="1"/>
+<rect x="166.5" y="66.4" width="7.0" height="8.7" fill="#14b143"/>
+<line x1="180.5" y1="51.2" x2="180.5" y2="75.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="177.0" y="59.0" width="7.0" height="9.4" fill="#ef232a"/>
+<line x1="191.0" y1="50.2" x2="191.0" y2="64.3" stroke="#14b143" stroke-width="1"/>
+<rect x="187.5" y="60.3" width="7.0" height="2.8" fill="#14b143"/>
+<line x1="201.5" y1="39.0" x2="201.5" y2="68.1" stroke="#14b143" stroke-width="1"/>
+<rect x="198.0" y="64.2" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="212.0" y1="62.1" x2="212.0" y2="90.4" stroke="#14b143" stroke-width="1"/>
+<rect x="208.5" y="62.4" width="7.0" height="27.8" fill="#14b143"/>
+<line x1="222.5" y1="85.5" x2="222.5" y2="102.1" stroke="#14b143" stroke-width="1"/>
+<rect x="219.0" y="90.4" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="233.0" y1="75.9" x2="233.0" y2="92.9" stroke="#14b143" stroke-width="1"/>
+<rect x="229.5" y="90.8" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="243.5" y1="73.7" x2="243.5" y2="101.6" stroke="#14b143" stroke-width="1"/>
+<rect x="240.0" y="90.4" width="7.0" height="8.5" fill="#14b143"/>
+<line x1="254.0" y1="94.6" x2="254.0" y2="109.7" stroke="#14b143" stroke-width="1"/>
+<rect x="250.5" y="95.2" width="7.0" height="1.9" fill="#14b143"/>
+<line x1="264.5" y1="93.7" x2="264.5" y2="127.9" stroke="#14b143" stroke-width="1"/>
+<rect x="261.0" y="95.6" width="7.0" height="27.0" fill="#14b143"/>
+<line x1="275.0" y1="114.4" x2="275.0" y2="133.3" stroke="#14b143" stroke-width="1"/>
+<rect x="271.5" y="124.9" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="285.5" y1="123.8" x2="285.5" y2="154.0" stroke="#14b143" stroke-width="1"/>
+<rect x="282.0" y="127.0" width="7.0" height="24.7" fill="#14b143"/>
+<line x1="296.0" y1="143.2" x2="296.0" y2="168.8" stroke="#14b143" stroke-width="1"/>
+<rect x="292.5" y="147.9" width="7.0" height="16.6" fill="#14b143"/>
+<line x1="306.5" y1="156.6" x2="306.5" y2="179.0" stroke="#14b143" stroke-width="1"/>
+<rect x="303.0" y="160.1" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="317.0" y1="150.2" x2="317.0" y2="167.3" stroke="#ef232a" stroke-width="1"/>
+<rect x="313.5" y="160.0" width="7.0" height="1.0" fill="#ef232a"/>
+<line x1="327.5" y1="158.3" x2="327.5" y2="169.5" stroke="#14b143" stroke-width="1"/>
+<rect x="324.0" y="163.0" width="7.0" height="1.0" fill="#14b143"/>
+<line x1="338.0" y1="164.1" x2="338.0" y2="175.9" stroke="#14b143" stroke-width="1"/>
+<rect x="334.5" y="168.8" width="7.0" height="5.7" fill="#14b143"/>
+<line x1="348.5" y1="156.3" x2="348.5" y2="176.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="345.0" y="158.4" width="7.0" height="16.1" fill="#ef232a"/>
+<line x1="359.0" y1="162.5" x2="359.0" y2="180.7" stroke="#14b143" stroke-width="1"/>
+<rect x="355.5" y="162.7" width="7.0" height="16.5" fill="#14b143"/>
+<line x1="369.5" y1="175.3" x2="369.5" y2="188.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="366.0" y="177.3" width="7.0" height="1.9" fill="#ef232a"/>
+<line x1="380.0" y1="178.2" x2="380.0" y2="201.4" stroke="#14b143" stroke-width="1"/>
+<rect x="376.5" y="179.9" width="7.0" height="18.8" fill="#14b143"/>
+<line x1="390.5" y1="180.8" x2="390.5" y2="190.9" stroke="#ef232a" stroke-width="1"/>
+<rect x="387.0" y="188.9" width="7.0" height="1.0" fill="#ef232a"/>
+<line x1="401.0" y1="177.4" x2="401.0" y2="191.2" stroke="#ef232a" stroke-width="1"/>
+<rect x="397.5" y="181.5" width="7.0" height="5.2" fill="#ef232a"/>
+<line x1="411.5" y1="172.1" x2="411.5" y2="184.2" stroke="#ef232a" stroke-width="1"/>
+<rect x="408.0" y="174.0" width="7.0" height="5.4" fill="#ef232a"/>
+<line x1="422.0" y1="152.0" x2="422.0" y2="174.6" stroke="#ef232a" stroke-width="1"/>
+<rect x="418.5" y="157.8" width="7.0" height="15.3" fill="#ef232a"/>
+<line x1="432.5" y1="139.7" x2="432.5" y2="162.2" stroke="#ef232a" stroke-width="1"/>
+<rect x="429.0" y="143.7" width="7.0" height="16.7" fill="#ef232a"/>
+<line x1="443.0" y1="133.2" x2="443.0" y2="151.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="439.5" y="138.9" width="7.0" height="5.5" fill="#ef232a"/>
+<line x1="453.5" y1="131.4" x2="453.5" y2="147.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="450.0" y="134.1" width="7.0" height="3.9" fill="#ef232a"/>
+<line x1="464.0" y1="127.4" x2="464.0" y2="138.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="460.5" y="130.3" width="7.0" height="4.2" fill="#ef232a"/>
+<line x1="474.5" y1="124.7" x2="474.5" y2="133.7" stroke="#ef232a" stroke-width="1"/>
+<rect x="471.0" y="127.0" width="7.0" height="6.2" fill="#ef232a"/>
+<line x1="485.0" y1="120.6" x2="485.0" y2="133.0" stroke="#14b143" stroke-width="1"/>
+<rect x="481.5" y="121.0" width="7.0" height="11.4" fill="#14b143"/>
+<line x1="495.5" y1="129.1" x2="495.5" y2="137.8" stroke="#14b143" stroke-width="1"/>
+<rect x="492.0" y="130.9" width="7.0" height="1.3" fill="#14b143"/>
+<line x1="506.0" y1="124.5" x2="506.0" y2="132.6" stroke="#ef232a" stroke-width="1"/>
+<rect x="502.5" y="125.0" width="7.0" height="5.2" fill="#ef232a"/>
+<line x1="516.5" y1="117.6" x2="516.5" y2="126.4" stroke="#ef232a" stroke-width="1"/>
+<rect x="513.0" y="120.1" width="7.0" height="2.7" fill="#ef232a"/>
+<line x1="527.0" y1="122.8" x2="527.0" y2="150.1" stroke="#14b143" stroke-width="1"/>
+<rect x="523.5" y="123.8" width="7.0" height="26.2" fill="#14b143"/>
+<line x1="537.5" y1="152.5" x2="537.5" y2="165.1" stroke="#14b143" stroke-width="1"/>
+<rect x="534.0" y="152.7" width="7.0" height="9.7" fill="#14b143"/>
+<line x1="548.0" y1="143.2" x2="548.0" y2="171.5" stroke="#ef232a" stroke-width="1"/>
+<rect x="544.5" y="145.6" width="7.0" height="16.8" fill="#ef232a"/>
+<line x1="558.5" y1="139.0" x2="558.5" y2="156.4" stroke="#14b143" stroke-width="1"/>
+<rect x="555.0" y="145.7" width="7.0" height="7.9" fill="#14b143"/>
+<line x1="569.0" y1="144.1" x2="569.0" y2="163.9" stroke="#ef232a" stroke-width="1"/>
+<rect x="565.5" y="145.7" width="7.0" height="11.4" fill="#ef232a"/>
+<line x1="579.5" y1="133.3" x2="579.5" y2="146.0" stroke="#ef232a" stroke-width="1"/>
+<rect x="576.0" y="139.8" width="7.0" height="5.7" fill="#ef232a"/>
+<line x1="590.0" y1="111.8" x2="590.0" y2="139.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="586.5" y="111.8" width="7.0" height="28.0" fill="#ef232a"/>
+<line x1="600.5" y1="115.8" x2="600.5" y2="142.5" stroke="#14b143" stroke-width="1"/>
+<rect x="597.0" y="116.5" width="7.0" height="26.0" fill="#14b143"/>
+<line x1="611.0" y1="123.3" x2="611.0" y2="153.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="607.5" y="123.5" width="7.0" height="25.3" fill="#ef232a"/>
+<line x1="621.5" y1="109.7" x2="621.5" y2="125.9" stroke="#14b143" stroke-width="1"/>
+<rect x="618.0" y="116.5" width="7.0" height="1.7" fill="#14b143"/>
+<line x1="632.0" y1="107.3" x2="632.0" y2="123.8" stroke="#ef232a" stroke-width="1"/>
+<rect x="628.5" y="109.4" width="7.0" height="12.3" fill="#ef232a"/>
+<line x1="642.5" y1="93.1" x2="642.5" y2="105.1" stroke="#ef232a" stroke-width="1"/>
+<rect x="639.0" y="99.8" width="7.0" height="4.4" fill="#ef232a"/>
+<line x1="653.0" y1="96.6" x2="653.0" y2="117.4" stroke="#14b143" stroke-width="1"/>
+<rect x="649.5" y="103.0" width="7.0" height="11.8" fill="#14b143"/>
+<line x1="30" y1="114.8" x2="660" y2="114.8" stroke="#ff9800" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="665" y="118.8" font-size="10" fill="#ff9800">29.16</text>
+</svg></div></div><div class="chart-card card"><div class="chart-head"><span class="t">🎰 筹码分布</span><span class="tm">⏱ 数据截止 2026-09-04</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock · 红=套牢 绿=获利</div><div class="chart-body"><svg width="720" height="200" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<text x="50" y="16" font-size="11" fill="#666">筹码分布 (红=套牢 绿=获利)</text>
+<rect x="50.0" y="145.8" width="17.3" height="24.2" fill="#14b143" opacity="0.75"/>
+<text x="58.6" y="182.0" font-size="9" fill="#999" text-anchor="middle">23.0</text>
+<rect x="70.3" y="136.1" width="17.3" height="33.9" fill="#14b143" opacity="0.75"/>
+<rect x="90.7" y="126.5" width="17.3" height="43.5" fill="#14b143" opacity="0.75"/>
+<rect x="111.0" y="116.8" width="17.3" height="53.2" fill="#14b143" opacity="0.75"/>
+<rect x="131.3" y="107.2" width="17.3" height="62.8" fill="#14b143" opacity="0.75"/>
+<rect x="151.7" y="97.5" width="17.3" height="72.5" fill="#14b143" opacity="0.75"/>
+<text x="160.3" y="182.0" font-size="9" fill="#999" text-anchor="middle">25.0</text>
+<rect x="172.0" y="87.9" width="17.3" height="82.1" fill="#14b143" opacity="0.75"/>
+<rect x="192.3" y="78.2" width="17.3" height="91.8" fill="#14b143" opacity="0.75"/>
+<rect x="212.7" y="68.6" width="17.3" height="101.4" fill="#14b143" opacity="0.75"/>
+<rect x="233.0" y="58.9" width="17.3" height="111.1" fill="#14b143" opacity="0.75"/>
+<rect x="253.3" y="49.2" width="17.3" height="120.8" fill="#14b143" opacity="0.75"/>
+<text x="262.0" y="182.0" font-size="9" fill="#999" text-anchor="middle">27.0</text>
+<rect x="273.7" y="39.6" width="17.3" height="130.4" fill="#14b143" opacity="0.75"/>
+<rect x="294.0" y="30.1" width="17.3" height="139.9" fill="#14b143" opacity="0.75"/>
+<rect x="314.3" y="39.7" width="17.3" height="130.3" fill="#14b143" opacity="0.75"/>
+<rect x="334.7" y="49.4" width="17.3" height="120.6" fill="#14b143" opacity="0.75"/>
+<rect x="355.0" y="59.0" width="17.3" height="111.0" fill="#14b143" opacity="0.75"/>
+<text x="363.6" y="182.0" font-size="9" fill="#999" text-anchor="middle">29.0</text>
+<rect x="375.3" y="68.7" width="17.3" height="101.3" fill="#ef232a" opacity="0.75"/>
+<rect x="395.7" y="78.3" width="17.3" height="91.7" fill="#ef232a" opacity="0.75"/>
+<rect x="416.0" y="88.0" width="17.3" height="82.0" fill="#ef232a" opacity="0.75"/>
+<rect x="436.3" y="97.6" width="17.3" height="72.4" fill="#ef232a" opacity="0.75"/>
+<rect x="456.7" y="107.3" width="17.3" height="62.7" fill="#ef232a" opacity="0.75"/>
+<text x="465.3" y="182.0" font-size="9" fill="#999" text-anchor="middle">31.0</text>
+<rect x="477.0" y="117.0" width="17.3" height="53.0" fill="#ef232a" opacity="0.75"/>
+<rect x="497.3" y="126.6" width="17.3" height="43.4" fill="#ef232a" opacity="0.75"/>
+<rect x="517.7" y="136.3" width="17.3" height="33.7" fill="#ef232a" opacity="0.75"/>
+<rect x="538.0" y="145.9" width="17.3" height="24.1" fill="#ef232a" opacity="0.75"/>
+<rect x="558.3" y="155.6" width="17.3" height="14.4" fill="#ef232a" opacity="0.75"/>
+<text x="567.0" y="182.0" font-size="9" fill="#999" text-anchor="middle">33.1</text>
+<rect x="578.7" y="165.2" width="17.3" height="4.8" fill="#ef232a" opacity="0.75"/>
+<rect x="599.0" y="170.0" width="17.3" height="0.0" fill="#ef232a" opacity="0.75"/>
+<rect x="619.3" y="170.0" width="17.3" height="0.0" fill="#ef232a" opacity="0.75"/>
+<rect x="639.7" y="170.0" width="17.3" height="0.0" fill="#ef232a" opacity="0.75"/>
+<line x1="371.9" y1="30" x2="371.9" y2="170" stroke="#ff9800" stroke-width="2" stroke-dasharray="3,3"/>
+<text x="376.9" y="42.0" font-size="11" fill="#ff9800" font-weight="bold">现 29.16</text>
+<line x1="302.3" y1="30" x2="302.3" y2="170" stroke="#2962ff" stroke-width="2" stroke-dasharray="2,2"/>
+<text x="307.3" y="56.0" font-size="11" fill="#2962ff" font-weight="bold">峰 27.83</text>
+</svg></div></div></div><div class="grid-2-wrap"><div class="chart-card card"><div class="chart-head"><span class="t">📊 PE (TTM) 走势</span><span class="tm">⏱ 数据截止 2026-09-04</span></div><div class="src-line" style="margin:0 0 6px">来源 baostock · 3 年窗口取近 180 交易日</div><div class="chart-body"><svg width="720" height="200" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<text x="50" y="16" font-size="11" fill="#666">近 6 个月 PE (TTM) 走势 · 3 年分位 97.3%</text>
+<line x1="50" y1="30.0" x2="660" y2="30.0" stroke="#eee"/>
+<text x="45" y="34.0" font-size="10" fill="#999" text-anchor="end">222</text>
+<line x1="50" y1="65.0" x2="660" y2="65.0" stroke="#eee"/>
+<text x="45" y="69.0" font-size="10" fill="#999" text-anchor="end">180</text>
+<line x1="50" y1="100.0" x2="660" y2="100.0" stroke="#eee"/>
+<text x="45" y="104.0" font-size="10" fill="#999" text-anchor="end">138</text>
+<line x1="50" y1="135.0" x2="660" y2="135.0" stroke="#eee"/>
+<text x="45" y="139.0" font-size="10" fill="#999" text-anchor="end">96</text>
+<line x1="50" y1="170.0" x2="660" y2="170.0" stroke="#eee"/>
+<text x="45" y="174.0" font-size="10" fill="#999" text-anchor="end">54</text>
+<polyline points="50.0,140.6 53.4,143.1 56.8,143.6 60.2,146.8 63.6,149.9 66.9,148.9 70.3,148.4 73.7,147.3 77.1,147.5 80.5,149.2 83.9,145.4 87.3,145.1 90.7,145.4 94.1,145.4 97.4,143.2 100.8,146.4 104.2,148.1 107.6,148.7 111.0,150.4 114.4,150.5 117.8,149.1 121.2,149.8 124.6,144.3 127.9,146.7 131.3,145.0 134.7,143.1 138.1,141.1 141.5,144.2 144.9,143.9 148.3,144.9 151.7,142.4 155.1,142.6 158.4,137.8 161.8,141.4 165.2,144.7 168.6,144.4 172.0,146.9 175.4,146.2 178.8,147.0 182.2,144.6 185.6,145.8 188.9,144.0 192.3,144.8 195.7,143.1 199.1,142.1 202.5,142.7 205.9,142.7 209.3,143.3 212.7,143.8 216.1,144.5 219.4,147.2 222.8,148.5 226.2,148.9 229.6,148.9 233.0,147.7 236.4,149.8 239.8,144.6 243.2,145.5 246.6,147.3 249.9,148.1 253.3,148.7 256.7,149.3 260.1,147.4 263.5,149.5 266.9,149.3 270.3,150.0 273.7,151.5 277.1,151.6 280.4,153.9 283.8,155.3 287.2,158.2 290.6,158.3 294.0,155.2 297.4,156.1 300.8,157.4 304.2,158.0 307.6,154.7 310.9,154.2 314.3,152.6 317.7,151.3 321.1,149.3 324.5,149.9 327.9,150.0 331.3,149.5 334.7,151.4 338.1,73.6 341.4,72.0 344.8,66.3 348.2,67.3 351.6,67.2 355.0,73.4 358.4,66.5 361.8,64.3 365.2,64.3 368.6,57.2 371.9,56.7 375.3,60.4 378.7,75.6 382.1,83.1 385.5,90.8 388.9,86.9 392.3,89.1 395.7,89.3 399.1,95.9 402.4,85.4 405.8,89.3 409.2,90.4 412.6,82.5 416.0,84.0 419.4,81.9 422.8,72.2 426.2,66.6 429.6,62.2 432.9,47.0 436.3,41.7 439.7,44.7 443.1,51.3 446.5,67.9 449.9,82.6 453.3,80.9 456.7,71.8 460.1,75.8 463.4,72.3 466.8,74.1 470.2,77.7 473.6,81.5 477.0,81.7 480.4,82.6 483.8,81.8 487.2,88.1 490.6,91.6 493.9,84.1 497.3,82.4 500.7,85.0 504.1,79.0 507.5,80.5 510.9,81.0 514.3,90.7 517.7,91.0 521.1,91.2 524.4,94.0 527.8,93.3 531.2,103.0 534.6,104.0 538.0,114.0 541.4,118.8 544.8,117.3 548.2,117.1 551.6,118.7 554.9,122.6 558.3,116.5 561.7,124.4 565.1,123.7 568.5,131.8 571.9,128.1 575.3,125.3 578.7,122.4 582.1,116.3 585.4,111.0 588.8,109.1 592.2,107.3 595.6,105.9 599.0,104.6 602.4,106.7 605.8,106.6 609.2,103.9 612.6,102.0 615.9,113.4 619.3,118.0 622.7,111.7 626.1,114.7 629.5,111.7 632.9,109.5 636.3,98.9 639.7,85.0 643.1,76.0 646.4,73.5 649.8,69.4 653.2,64.9 656.6,72.0" fill="none" stroke="#2962ff" stroke-width="2"/>
+<circle cx="50.0" cy="140.6" r="3" fill="#14b143"/>
+<circle cx="656.6" cy="72.0" r="4" fill="#ff9800" stroke="#fff" stroke-width="2"/>
+</svg></div></div><div class="chart-card card"><div class="chart-head"><span class="t">🔬 10 因子雷达</span><span class="tm">⏱ 数据截止 2026-09-06</span></div><div class="src-line" style="margin:0 0 6px">来源本地 10 因子量化引擎 · 满分 100</div><div class="chart-body radar"><svg width="380" height="340" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border-radius:8px">
+<polygon points="190.0,146.0 204.1,150.6 212.8,162.6 212.8,177.4 204.1,189.4 190.0,194.0 175.9,189.4 167.2,177.4 167.2,162.6 175.9,150.6" fill="none" stroke="#eee"/>
+<polygon points="190.0,122.0 218.2,131.2 235.7,155.2 235.7,184.8 218.2,208.8 190.0,218.0 161.8,208.8 144.3,184.8 144.3,155.2 161.8,131.2" fill="none" stroke="#eee"/>
+<polygon points="190.0,98.0 232.3,111.8 258.5,147.8 258.5,192.2 232.3,228.2 190.0,242.0 147.7,228.2 121.5,192.2 121.5,147.8 147.7,111.8" fill="none" stroke="#eee"/>
+<polygon points="190.0,74.0 246.4,92.3 281.3,140.3 281.3,199.7 246.4,247.7 190.0,266.0 133.6,247.7 98.7,199.7 98.7,140.3 133.6,92.3" fill="none" stroke="#eee"/>
+<polygon points="190.0,50.0 260.5,72.9 304.1,132.9 304.1,207.1 260.5,267.1 190.0,290.0 119.5,267.1 75.9,207.1 75.9,132.9 119.5,72.9" fill="none" stroke="#eee"/>
+<line x1="190.0" y1="170.0" x2="190.0" y2="50.0" stroke="#eee"/>
+<text x="190.0" y="32.0" font-size="12" fill="#666" text-anchor="middle">趋势</text>
+<line x1="190.0" y1="170.0" x2="260.5" y2="72.9" stroke="#eee"/>
+<text x="273.5" y="59.1" font-size="12" fill="#666" text-anchor="middle">估值</text>
+<line x1="190.0" y1="170.0" x2="304.1" y2="132.9" stroke="#eee"/>
+<text x="325.1" y="130.1" font-size="12" fill="#666" text-anchor="middle">分位</text>
+<line x1="190.0" y1="170.0" x2="304.1" y2="207.1" stroke="#eee"/>
+<text x="325.1" y="217.9" font-size="12" fill="#666" text-anchor="middle">资金</text>
+<line x1="190.0" y1="170.0" x2="260.5" y2="267.1" stroke="#eee"/>
+<text x="273.5" y="288.9" font-size="12" fill="#666" text-anchor="middle">动量</text>
+<line x1="190.0" y1="170.0" x2="190.0" y2="290.0" stroke="#eee"/>
+<text x="190.0" y="316.0" font-size="12" fill="#666" text-anchor="middle">情绪</text>
+<line x1="190.0" y1="170.0" x2="119.5" y2="267.1" stroke="#eee"/>
+<text x="106.5" y="288.9" font-size="12" fill="#666" text-anchor="middle">风险</text>
+<line x1="190.0" y1="170.0" x2="75.9" y2="207.1" stroke="#eee"/>
+<text x="54.9" y="217.9" font-size="12" fill="#666" text-anchor="middle">筹码</text>
+<line x1="190.0" y1="170.0" x2="75.9" y2="132.9" stroke="#eee"/>
+<text x="54.9" y="130.1" font-size="12" fill="#666" text-anchor="middle">申万</text>
+<line x1="190.0" y1="170.0" x2="119.5" y2="72.9" stroke="#eee"/>
+<text x="106.5" y="59.1" font-size="12" fill="#666" text-anchor="middle">龙虎榜</text>
+<polygon points="190.0,140.0 213.5,137.6 204.3,165.4 243.3,187.3 234.1,230.7 190.0,230.0 161.8,208.8 104.4,197.8 75.9,132.9 168.8,140.9" fill="#2962ff" fill-opacity="0.35" stroke="#2962ff" stroke-width="2"/>
+<circle cx="190.0" cy="140.0" r="3" fill="#2962ff"/>
+<text x="190.0" y="133.0" font-size="9" fill="#2962ff" text-anchor="middle">3</text>
+<circle cx="213.5" cy="137.6" r="3" fill="#2962ff"/>
+<text x="213.5" y="130.6" font-size="9" fill="#2962ff" text-anchor="middle">5</text>
+<circle cx="204.3" cy="165.4" r="3" fill="#2962ff"/>
+<text x="204.3" y="158.4" font-size="9" fill="#2962ff" text-anchor="middle">1</text>
+<circle cx="243.3" cy="187.3" r="3" fill="#2962ff"/>
+<text x="243.3" y="180.3" font-size="9" fill="#2962ff" text-anchor="middle">7</text>
+<circle cx="234.1" cy="230.7" r="3" fill="#2962ff"/>
+<text x="234.1" y="223.7" font-size="9" fill="#2962ff" text-anchor="middle">5</text>
+<circle cx="190.0" cy="230.0" r="3" fill="#2962ff"/>
+<text x="190.0" y="223.0" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+<circle cx="161.8" cy="208.8" r="3" fill="#2962ff"/>
+<text x="161.8" y="201.8" font-size="9" fill="#2962ff" text-anchor="middle">4</text>
+<circle cx="104.4" cy="197.8" r="3" fill="#2962ff"/>
+<text x="104.4" y="190.8" font-size="9" fill="#2962ff" text-anchor="middle">6</text>
+<circle cx="75.9" cy="132.9" r="3" fill="#2962ff"/>
+<text x="75.9" y="125.9" font-size="9" fill="#2962ff" text-anchor="middle">6</text>
+<circle cx="168.8" cy="140.9" r="3" fill="#2962ff"/>
+<text x="168.8" y="133.9" font-size="9" fill="#2962ff" text-anchor="middle">3</text>
+</svg></div></div></div>
+<div class="card"><h2><span class="bar"></span>📚 研报观点</h2><div class="src-line">📡 数据源：ths · 时点：2026-09-06T00:50:45+08:00</div><div class="tag-row"><span class="v3-tag" style="color:#b91c1c;background:#b91c1c22">买入 2</span><span class="v3-tag" style="color:#b45309;background:#b4530922">增持 1</span></div> <span class="v3-tag" style="background:#eff6ff;color:#1d4ed8">近 30 日机构覆盖 3 家</span>
+
+<table class="v3-tbl"><thead><tr><th>日期</th><th>机构</th><th>观点</th><th>评级</th><th class="num">目标价</th></tr></thead><tbody><tr><td>2026-04-25</td><td>国盛证券</td><td>国盛证券：大规模投入短期压制利润，多点布局打开长期成长空间</td><td><span style="color:#b91c1c;font-weight:600">买入</span></td><td class="num">—</td></tr><tr><td>2026-04-23</td><td>财通证券</td><td>财通证券：2025年&amp;2026年Q1利润承压，人形机器人业务未来可期</td><td><span style="color:#b45309;font-weight:600">增持</span></td><td class="num">—</td></tr><tr><td>2026-03-15</td><td>国盛证券</td><td>国盛证券：泵类龙头主业扎实，积极布局机器人、智驾等新兴赛道</td><td><span style="color:#b91c1c;font-weight:600">买入</span></td><td class="num">—</td></tr></tbody></table></div>
+<div class="card"><h2><span class="bar"></span>📢 公告速览</h2><div class="src-line">📡 数据源：eastmoney · 时点：2026-09-06T00:50:36.089758+08:00</div><div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#b91c1c;background:#b91c1c22">利好</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552318.html" target="_blank" rel="noopener">美湖股份:湖南美湖智造股份有限公司2026年限制性股票激励计划(草案) ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552317.html" target="_blank" rel="noopener">美湖股份:关于参加2026年湖南辖区上市公司投资者网上集体接待日暨半年度业绩说明会活动的公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552311.html" target="_blank" rel="noopener">美湖股份:2026年半年度募集资金存放、管理与实际使用情况的专项报告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552309.html" target="_blank" rel="noopener">美湖股份:关于召开公司2026年第三次临时股东会的通知 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552313.html" target="_blank" rel="noopener">美湖股份:2026年半年度报告摘要 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552312.html" target="_blank" rel="noopener">美湖股份:2026年半年度报告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#b91c1c;background:#b91c1c22">利好</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552315.html" target="_blank" rel="noopener">美湖股份:2026年限制性股票激励计划(草案)摘要公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#b91c1c;background:#b91c1c22">利好</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552308.html" target="_blank" rel="noopener">美湖股份:董事会薪酬与考核委员会关于公司2026年限制性股票激励计划的核查意见 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#57534e;background:#57534e22">中性</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552310.html" target="_blank" rel="noopener">美湖股份:第十一届董事会第三十次会议决议公告 ↗</a></div></div>
+<div style="padding:7px 0;border-bottom:1px solid var(--hairline)"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="v3-tag" style="background:var(--bg);color:var(--ink-2)">2026-08-28</span><span class="v3-tag" style="color:#b91c1c;background:#b91c1c22">利好</span> <a href="https://data.eastmoney.com/notices/detail/603319/AN202608271828552307.html" target="_blank" rel="noopener">美湖股份:北京市康达律师事务所关于湖南美湖智造股份有限公司2026年限制性股票激励计划(草… ↗</a></div></div></div>
+<div class="card"><h2><span class="bar"></span>🩺 财务体检</h2><div class="src-line">📡 数据源：datacenter RPT_F10_FINANCE_MAINFINADATA · 时点：2026-09-06T00:50:45+08:00</div><div class="mini-grid">
+<div class="kpi"><div class="l">最新营收(亿)</div><div class="v">11.7</div></div>
+<div class="kpi"><div class="l">营收同比</div><div class="v">8.5%</div></div>
+<div class="kpi"><div class="l">最新净利(亿)</div><div class="v">0.6</div></div>
+<div class="kpi"><div class="l">净利同比</div><div class="v">-45.8%</div></div>
+<div class="kpi"><div class="l">ROE</div><div class="v">2.2%</div></div>
+<div class="kpi"><div class="l">毛利率</div><div class="v">21.6%</div></div>
+<div class="kpi"><div class="l">负债率</div><div class="v">41.2%</div></div>
+<div class="kpi"><div class="l">EPS</div><div class="v">0.16</div></div>
+</div>
+<div class="src-line" style="margin-top:8px">🩺 自动点评：净利同比下滑，需警惕盈利拐点风险。</div>
+<table class="v3-tbl" style="margin-top:var(--sp-1)"><thead><tr><th>报告期</th><th class="num">营收(亿)</th><th class="num">营收同比</th><th class="num">净利(亿)</th><th class="num">净利同比</th><th class="num">ROE</th></tr></thead><tbody><tr style='font-weight:600'><td>2026-06-30</td><td class="num">11.7</td><td class="num">8.5%</td><td class="num">0.6</td><td class="num">-45.8%</td><td class="num">2.2%</td></tr><tr ><td>2026-03-31</td><td class="num">5.4</td><td class="num">3.7%</td><td class="num">0.2</td><td class="num">-59.2%</td><td class="num">0.9%</td></tr><tr ><td>2025-12-31</td><td class="num">22.4</td><td class="num">13.5%</td><td class="num">1.0</td><td class="num">-35.8%</td><td class="num">4.3%</td></tr><tr ><td>2025-09-30</td><td class="num">16.2</td><td class="num">9.6%</td><td class="num">1.3</td><td class="num">-10.7%</td><td class="num">4.9%</td></tr><tr ><td>2025-06-30</td><td class="num">10.8</td><td class="num">—</td><td class="num">1.0</td><td class="num">—</td><td class="num">4.5%</td></tr></tbody></table></div>
+<div class="card"><h2><span class="bar"></span>🏭 同业对比 · 行业定位</h2><div class="src-line">📡 数据源：申万行业表 + baostock 估值历史 · 时点：2026-09-04</div><table class="v3-tbl"><thead><tr><th style="width:38%">定位项</th><th>数值 / 说明</th></tr></thead><tbody>
+<tr><td>申万行业</td><td class="num">280000 · 280200</td></tr>
+<tr><td>行业归属变迁</td><td>2 次（高于全市场中位 2 次，行业归属较活跃）</td></tr>
+<tr><td>当前行业自</td><td>2021-07-30 起</td></tr>
+<tr><td>PE 3 年分位（本票自身）</td><td>97.3%（相对本票过去 3 年）</td></tr>
+<tr><td>PB 3 年分位（本票自身）</td><td class="num">63.5%</td></tr>
+<tr><td>PE 中位数（本票 3 年）</td><td class="num">34.23</td></tr>
+<tr><td>流通市值</td><td>99 亿</td></tr>
+<tr><td>PE (TTM)</td><td class="num">171.7</td></tr>
+<tr><td>PB</td><td class="num">4.00</td></tr>
+</tbody></table></div>
+<div class="card"><h2><span class="bar"></span>💰 资金面（融资融券）</h2><div class="src-line">📡 数据源：东财数据中心 · 时点：2026-09-04</div><div class="mini-grid">
+<div class="kpi"><div class="l">融资余额(亿)</div><div class="v">12.40</div></div>
+<div class="kpi"><div class="l">当日融资买入(亿)</div><div class="v">1.14</div></div>
+<div class="kpi"><div class="l">当日融资偿还(亿)</div><div class="v">1.28</div></div>
+<div class="kpi"><div class="l">融券余额(亿)</div><div class="v">0.016</div></div>
+</div></div>
+<div class="card"><h2><span class="bar"></span>📰 新闻舆情</h2><div class="src-line">📡 数据源：sina_stock_news · 时点：2026-09-05T16:51:17+00:00</div><div style="font-weight:600;font-size:13px;margin:6px 0 2px;color:#b91c1c">📈 利好 3 条</div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-28 11:14:00</span> <a href="https://cj.sina.cn/articles/view/6372873842/17bda567202001lpru" target="_blank" rel="noopener">美湖股份2026年半年度营收11.66亿元，同比增长8.48% ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-28 08:48:00</span> <a href="https://finance.sina.com.cn/roll/2026-08-28/doc-inipvmnc5765867.shtml" target="_blank" rel="noopener">美湖股份：上半年营收同比增长8.48% 全球化布局与研发创新双轮驱动 ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-27 20:40:00</span> <a href="https://cj.sina.cn/articles/view/2311077472/89c03e6002002nf18" target="_blank" rel="noopener">美湖股份：2026年半年度营业收入同比增长8.48% ↗</a></div>
+<div style="font-weight:600;font-size:13px;margin:6px 0 2px;color:#15803d">📉 利空 3 条</div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-28 12:54:00</span> <a href="https://finance.sina.com.cn/stock/aiassist/sdltgdbh/2026-08-28/doc-inipvvzx5769168.shtml" target="_blank" rel="noopener">美湖股份十大流通股东格局生变：胜华欣业等新进，鹏华碳中和主题混合A等减持 ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-28 10:15:00</span> <a href="https://finance.sina.com.cn/jjxw/2026-08-28/doc-inipvrue0232294.shtml" target="_blank" rel="noopener">上半年归母净利下滑45.77%，美湖股份盘中跌近10% ↗</a></div>
+<div style="font-size:12.5px;padding:4px 0;color:var(--ink-2)"><span class="disc">2026-08-27 18:58:00</span> <a href="https://finance.sina.com.cn/stock/bxjj/2026-08-27/doc-inipucst5917962.shtml" target="_blank" rel="noopener">美湖股份(603319.SH)上半年净利润5483.37万元，同比下滑45.77% ↗</a></div>
+<div class="src-line" style="margin-top:4px">🧭 舆情倾向：中性（利好 3 / 利空 3）</div></div>
+<div class="card"><h2><span class="bar"></span>📋 详细数据（筹码 / 估值历史）</h2>
+<div class="tbl-wrap"><table class="v3-tbl dark-tbl"><thead><tr><th>筹码分布明细</th><th class="num"></th></tr></thead><tbody>
+<tr><td>获利比例</td><td class="num">67.3%</td></tr>
+<tr><td>平均成本</td><td class="num">28.28 元</td></tr>
+<tr><td>90% 成本区间</td><td class="num">23.01 ~ 34.66 元</td></tr>
+<tr><td>70% 成本区间</td><td class="num">24.96 ~ 30.83 元</td></tr>
+<tr><td>筹码峰</td><td class="num">27.83 元</td></tr>
+<tr><td>90% 集中度</td><td class="num">20.2%</td></tr>
+<tr><td>窗口累计换手</td><td class="num">947.5%</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap" style="margin-top:var(--sp-1)"><table class="v3-tbl dark-tbl"><thead><tr><th>估值历史（baostock）</th><th class="num"></th></tr></thead><tbody>
+<tr><td>数据范围</td><td class="num">2023-07-31 → 2026-09-04</td></tr>
+<tr><td>PE 当前 / 中位</td><td class="num">171.69 / 34.23</td></tr>
+<tr><td>PE 区间(min~max)</td><td class="num">10.70 ~ 208.01</td></tr>
+<tr><td>PE 3 年分位</td><td class="num">97.3%</td></tr>
+<tr><td>PB 当前 / 分位</td><td class="num">4.00 / 63.5%</td></tr>
+<tr><td>ST 剔除占比</td><td class="num">0.0%</td></tr>
+</tbody></table></div>
+</div>
+<div class="card"><h2><span class="bar"></span>🧭 数据源清单</h2><div class="tbl-wrap"><table class="v3-tbl dark-tbl"><thead><tr><th>模块</th><th>状态</th><th>时点 / 备注</th></tr></thead><tbody>
+<tr><td>行情</td><td></td><td></td></tr>
+<tr><td>估值一致预期</td><td></td><td></td></tr>
+<tr><td>概念板块</td><td></td><td></td></tr>
+<tr><td>当日资金流</td><td></td><td></td></tr>
+<tr><td>估值历史分位</td><td></td><td></td></tr>
+<tr><td>解禁日历</td><td></td><td></td></tr>
+<tr><td>龙虎榜</td><td></td><td></td></tr>
+<tr><td>宏观底色</td><td></td><td></td></tr>
+<tr><td>筹码K线</td><td></td><td></td></tr>
+<tr><td>申万分类</td><td></td><td></td></tr>
+<tr><td>公告</td><td></td><td></td></tr>
+<tr><td>财务摘要</td><td></td><td></td></tr>
+<tr><td>研报观点</td><td></td><td></td></tr>
+<tr><td>新闻舆情</td><td></td><td></td></tr>
+<tr><td>融资融券</td><td></td><td></td></tr>
+</tbody></table></div>
+<div class="src-line" style="margin:4px 0 0">🛡 guard：{'status': 'N/A 单票流程不用池CSV', 'kline_freshness': 'last_bar=2026-09-04 vs 最新交易日=2026-09-04 -&gt; ok (K线最后交易日 2026-09-04 已到最新交易日, 新鲜)'}</div>
+<div class="src-line">⏱ 2026-09-06T00:49:44+08:00 → 2026-09-06T00:51:29+08:00 · 耗时 105.1 秒</div>
+<div class="foot">⚠️ 本报告由量化模型基于公开数据自动生成，仅供研究参考，不构成投资建议。市场随时变化，请独立判断。<br>数据来源：行情 · 估值一致预期 · 概念板块 · 当日资金流 · 估值历史分位 · 解禁日历 · 龙虎榜 · 宏观底色 · 筹码K线 · 申万分类 · 公告 · 财务摘要 · 研报观点 · 新闻舆情 · 融资融券（以各模块标注时点为准）<br>报告日 2026-09-06 · 行情数据截止 2026-09-04 · 生成 2026-09-06 08:18 · <span style="opacity:.6">a-stock-data V3 HTML</span></div>
+</div></body></html>
