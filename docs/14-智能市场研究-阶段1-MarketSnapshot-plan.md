@@ -549,3 +549,58 @@ CI 矩阵（`.github/workflows/ci.yml:84-97` 实测）：`ubuntu-latest × py3.1
   （S0 已完成；S1 已合并、S2 在 PR #5 未合并（head `270b88d1fde1a913a00c2a2ec8311f90d5eec35f`）；当前本地分支已有 **S3 的两个子步 + S4 + S5**，四者均**只在本地分支、未合并、未推送**、待组合验收与合流；**S6 的 S6-A 盘点与 S6-B 投影亦只在本地分支**，其中 **S6-B 已本地实现并经主控验收接受，但 S6 整体未完成**（缺真实离线 fixture 与逐字段出处）；**S6 完成后的 S7 / S8 及界面、服务层工作尚未启动，也不在此预先宣布**）
 - 提交授权: **本任务已获授权做「小而聚焦的本地提交」**（不含 push / PR / merge）；其余各片提交仍逐片拍板
 - 审查安排: 全部由 MiniMax 独立只读验收; **不安排 Kimi**
+
+---
+
+## 十一、2026-10-13 S6-C 检查点（真实离线 fixture + 逐字段出处）
+
+> **追加的独立检查点**；§十 签字栏与 §九 各条历史结论**一字未改、追改无**。
+> 本条按**当前事实**更新状态，与上方 2026-10-08 S6-A/S6-B 记录并存。
+
+### 11.1 当前状态更新（PR #5 已合并）
+
+- ⚠️ **PR #5 已于 2026-10-09 合并进 `main`**，合并后 `main` = `24f0314e66fe807415787ca394d1e7d7ff2cd3f4`。
+  签字栏中"S2 仍在 PR #5 中 open / 未合并"**是历史时点记录，本次不改写其原文**；以本条为准。
+- **S1、S2 现已在 `main`**；**S3-A、S3-B、S4、S5、S6-B、S6-C 仍只存在于当前本地分支**，**未合并、未推送**，
+  待后续单独合流。**PR #2 与本线分离、未导入其任何实现。**
+
+### 11.2 S6-C 交付物（本分支新增）
+
+| 文件 | 性质 |
+|------|------|
+| `tests/fixtures/golden/market_snapshot-20261012.json` | **真实离线快照 fixture**（8 条证据，SHA-256 `c1b6521e…`） |
+| `market_snapshot-20261012-eastmoney-{1.000001,0.399001,0.399006,1.000300}.raw.json` | **逐字节未改**的归档响应原文（280/286/280/277 B，SHA-256 全校验通过） |
+| `tests/fixtures/golden/market_snapshot-20261012.provenance.json` | 机器可读**逐字段出处** |
+| `tests/fixtures/golden/market_snapshot_capture.py` | **离线确定性**生成器兼加载器（**零出网**） |
+| `tests/research/test_market_snapshot_golden.py` | 50 例离线测试 |
+| `tests/fixtures/golden/README.md` | **追加** S6 章节（既有 result_v3 章节未改写） |
+
+### 11.3 一次真实采集的边界
+
+- **来源**：Eastmoney 历史日 K 线 `push2his.eastmoney.com/api/qt/stock/kline/get`，
+  `klt=101, fqt=0, lmt=1, end=20261012, fields1=f1..f6, fields2=f51..f61`；**四次 HTTP 200、`rc` 均为 0**；
+  采集时钟 **2026-10-13T00:21:21+08:00**。
+- **只建立**：① 四份归档原文（字节数 + SHA-256 双重校验）；② **该一个交易日**的 symbol → index 映射；
+  ③ **八个标量**——四指数各自 `close` / `change_pct`
+  （上证 `3797.24` / `-0.43`；深成 `12384.87` / `-2.03`；创业板 `2963.82` / `-2.61`；沪深300 `4287.98` / `-0.68`）。
+- ⚠️ **不建立、不声称**：provider 跨时间**稳定性**、端点**可用性 / 可达性**、任何**生产数据源选择**、
+  任何**新鲜度裁决 / PIT 许可 / 交易日历裁决**、任何**盘中收盘时间戳**，以及这八个观测**以外**的任何指数数值。
+  **不适用于任何生产决策**，**不是可刷新的数据管道**。
+- **未编造项**：`data_as_of` 取 **K 线行日期**而非盘中时刻；`period_start` / `period_end` /
+  `published_at` / `effective_from` / `effective_to` **一律 `null`**；`freshness=unknown`、
+  `pit_status=unknown`、`decisions=[]`（**S4/S5 未针对真实交易日历运行，不造裁决**）；**无单位**（契约本无此字段）。
+- **唯一独立核对**：上证收盘 `3797.24` 经 <https://www.sse.com.cn/market/sseindex/overview/> 核对；
+  ⚠️ **只核对该一个标量**，其余七个观测**均未**在该来源核对。
+
+### 11.4 验证与状态判定
+
+- **本次实际新跑**：pytest **202 passed**（50 golden + 121 projection + 31 universe）、**出网 0**、
+  Ruff `All checks passed!`；均按要求使用 `-p no:cacheprovider` 与 `--no-cache`，工作树**无残留缓存文件**。
+- **既有资产未扰动**：`result_v3-*` fixture、`golden_fixtures.py`、报告、V3 代码、HTML 资产、
+  `docs/11` 与用户主检出**均未改动**。
+- ✅ **S6 在本分支完成**（真实 fixture + 测试已就位）。
+- 🚧 **S7 / S8 与产品阶段仍开放**；**S7 未启动**——§九 第 3 条**界面形态仍未定**，
+  按本计划口径**不预先宣布、不开工**。阶段 1 交付节奏待老板拍板形态后再定。
+- **完成度估计维持**：总体约 35%～40%，Market Snapshot 约 20%～30%（**均未调整**）。
+- **审查安排不变**：全部由 MiniMax 独立只读验收，**不安排 Kimi**；
+  下游 MiniMax 组合集成任务与 Codex 桌面终验为复核关卡。

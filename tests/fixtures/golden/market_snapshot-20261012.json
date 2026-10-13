@@ -1,0 +1,357 @@
+{
+  "evidence": [
+    {
+      "decisions": [],
+      "evidence_id": "csi.300.change_pct.1.000300",
+      "metric": "change_pct",
+      "observation": "-0.68",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "csi.300",
+        "local_code": "000300",
+        "publisher": "csi"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    },
+    {
+      "decisions": [],
+      "evidence_id": "csi.300.close.1.000300",
+      "metric": "close",
+      "observation": "4287.98",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "csi.300",
+        "local_code": "000300",
+        "publisher": "csi"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    },
+    {
+      "decisions": [],
+      "evidence_id": "sse.composite.change_pct.1.000001",
+      "metric": "change_pct",
+      "observation": "-0.43",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "sse.composite",
+        "local_code": "000001",
+        "publisher": "sse"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    },
+    {
+      "decisions": [],
+      "evidence_id": "sse.composite.close.1.000001",
+      "metric": "close",
+      "observation": "3797.24",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "sse.composite",
+        "local_code": "000001",
+        "publisher": "sse"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    },
+    {
+      "decisions": [],
+      "evidence_id": "szse.chinext.change_pct.0.399006",
+      "metric": "change_pct",
+      "observation": "-2.61",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "szse.chinext",
+        "local_code": "399006",
+        "publisher": "szse"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    },
+    {
+      "decisions": [],
+      "evidence_id": "szse.chinext.close.0.399006",
+      "metric": "close",
+      "observation": "2963.82",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "szse.chinext",
+        "local_code": "399006",
+        "publisher": "szse"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    },
+    {
+      "decisions": [],
+      "evidence_id": "szse.component.change_pct.0.399001",
+      "metric": "change_pct",
+      "observation": "-2.03",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "szse.component",
+        "local_code": "399001",
+        "publisher": "szse"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    },
+    {
+      "decisions": [],
+      "evidence_id": "szse.component.close.0.399001",
+      "metric": "close",
+      "observation": "12384.87",
+      "observation_type": "decimal",
+      "pit_status": "unknown",
+      "provider": {
+        "aliases": [
+          "em",
+          "东方财富"
+        ],
+        "display_name": "东方财富",
+        "provider_family": "eastmoney",
+        "provider_id": "eastmoney"
+      },
+      "quality": {
+        "completeness": "complete",
+        "degraded": false,
+        "freshness": "unknown",
+        "quality_flags": []
+      },
+      "status": "ok",
+      "subject": {
+        "index_id": "szse.component",
+        "local_code": "399001",
+        "publisher": "szse"
+      },
+      "time": {
+        "data_as_of": "2026-10-12",
+        "effective_from": null,
+        "effective_to": null,
+        "fetched_at": "2026-10-13T00:21:21+08:00",
+        "period_end": null,
+        "period_start": null,
+        "published_at": null
+      }
+    }
+  ],
+  "indexes": [
+    {
+      "index_id": "sse.composite",
+      "local_code": "000001",
+      "publisher": "sse"
+    },
+    {
+      "index_id": "szse.component",
+      "local_code": "399001",
+      "publisher": "szse"
+    },
+    {
+      "index_id": "szse.chinext",
+      "local_code": "399006",
+      "publisher": "szse"
+    },
+    {
+      "index_id": "csi.300",
+      "local_code": "000300",
+      "publisher": "csi"
+    }
+  ],
+  "provider_symbols": [
+    {
+      "index_id": "csi.300",
+      "provider_id": "eastmoney",
+      "provider_symbol": "1.000300"
+    },
+    {
+      "index_id": "sse.composite",
+      "provider_id": "eastmoney",
+      "provider_symbol": "1.000001"
+    },
+    {
+      "index_id": "szse.component",
+      "provider_id": "eastmoney",
+      "provider_symbol": "0.399001"
+    },
+    {
+      "index_id": "szse.chinext",
+      "provider_id": "eastmoney",
+      "provider_symbol": "0.399006"
+    }
+  ],
+  "schema_version": "s6.market_snapshot.v1",
+  "snapshot": {
+    "market": "a-share",
+    "snapshot_id": "a-share.market.2026-10-12"
+  }
+}

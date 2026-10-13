@@ -56,12 +56,37 @@ the official publisher/index-provider sources:
 Publisher assignments agree with :class:`~analysis.research.index_registry.IndexPublisher`
 and with the identity examples already used by the S1 contract fixtures.
 
-Provider aliases in this module are **repository contract examples** carried over
-from the S1 fixtures (see ``tests/research/test_market_snapshot.py``). They record
+Provider aliases in this module are **repository contract examples**. They record
 which mapping is explicit in this repository; they are *not* a claim of live
-provider availability, freshness, or a reachable endpoint. SZSE Component and
-ChiNext intentionally have no alias until a provider mapping is verified -- a
-guessed symbol would be worse than an honest empty tuple.
+provider availability, freshness, or a reachable endpoint.
+
+Two distinct provenances feed that tuple:
+
+* **Repository contract examples** carried over from the S1 fixtures (see
+  ``tests/research/test_market_snapshot.py``) -- SSE Composite under ``tencent``,
+  CSI 300 under ``eastmoney``.
+* **One-time capture-verified mappings** for the Eastmoney aliases added in this
+  slice. A single 2026-10-12 capture returned payloads whose ``data.code`` and
+  Chinese ``data.name`` matched the declared index exactly:
+
+  ===================  ============  =====================
+  index_id             provider_symbol  captured ``data.name``
+  ===================  ============  =====================
+  ``sse.composite``    ``1.000001``  上证指数
+  ``szse.component``   ``0.399001``  深证成指
+  ``szse.chinext``     ``0.399006``  创业板指
+  ``csi.300``          ``1.000300``  (S1 fixture example)
+  ===================  ============  =====================
+
+What that capture does and does not establish:
+
+* **Does** verify the symbol-to-index mapping for that one date.
+* **Does not** establish provider stability across time, endpoint availability or
+  reachability, or that Eastmoney is the production source chosen for any
+  consumer. Choosing a production source is a later, separate decision.
+
+Transport, fetching, fallback, and freshness policy remain deliberately absent
+from this module; a captured alias is still only an explicit declaration.
 """
 
 from __future__ import annotations
@@ -165,9 +190,21 @@ _CSI_300 = IndexIdentity("csi.300", IndexPublisher.CSI, "000300")
 
 # Declaration order follows docs/12: 上证指数、深证成指、创业板指、沪深 300.
 #
-# Only the two provider mappings already carried by the current-main S1 contract
-# fixtures are included. SZSE Component and ChiNext stay alias-free until verified;
-# provider_id is never assumed to equal provider_symbol.
+# Alias declaration order is: each index's existing S1 fixture alias first, then
+# the Eastmoney alias verified by the 2026-10-12 capture (see the module
+# docstring). All four Eastmoney symbols are distinct, so the registry's
+# (provider_id, provider_symbol) collision check stays satisfied.
+#
+# Provenance differs per alias and is not to be flattened:
+#   * sse.composite/tencent/sh000001  -- S1 contract fixture example, preserved.
+#   * csi.300/eastmoney/1.000300      -- S1 contract fixture example, preserved.
+#   * the three remaining eastmoney/*  -- one-time 2026-10-12 capture-verified.
+#
+# That capture verifies the symbol-to-index mapping for one date only. It is not
+# evidence of provider stability, of current availability, or of a production
+# source selection. provider_id is never assumed to equal provider_symbol, and no
+# symbol here is guessed: each is either a recorded fixture value or a captured
+# one.
 A_SHARE_CORE_UNIVERSE = MarketIndexUniverse(
     identities=(
         _SSE_COMPOSITE,
@@ -178,5 +215,8 @@ A_SHARE_CORE_UNIVERSE = MarketIndexUniverse(
     aliases=(
         IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
         IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300"),
+        IndexProviderSymbolAlias("sse.composite", "eastmoney", "1.000001"),
+        IndexProviderSymbolAlias("szse.component", "eastmoney", "0.399001"),
+        IndexProviderSymbolAlias("szse.chinext", "eastmoney", "0.399006"),
     ),
 )

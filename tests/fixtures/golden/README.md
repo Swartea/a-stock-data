@@ -124,3 +124,115 @@ python tests/fixtures/golden/golden_fixtures.py
   `reports/600693_东百集团/2026-09-13/result_v3-0914.json`。
 - `_latest_result_v3_for(code_name)` → golden 优先, 否则取 `reports/` 下最新一份。
   605162 无 golden, 仍走回落分支并 skip。
+
+---
+
+# S6 market snapshot golden (2026-10-12 real capture)
+
+`market_snapshot-20261012.json` 是**真实离线快照 fixture**（S6-C），由**四份归档的东方财富
+K 线响应原文**（`*.raw.json`）经项目既有契约离线重建，供
+`tests/research/test_market_snapshot_golden.py` 消费。
+
+## 一次性的真实采集，不是在线数据源
+
+本节全部内容来自**一次**采集：交易日 **2026-10-12** 的日线收盘数据，采集时钟
+**2026-10-13T00:21:21+08:00**。这次采集**建立了**什么：
+
+- 四份归档响应原文，**逐字节**（字节数 + SHA-256 双重校验）；
+- **这一个交易日**的 symbol → index 映射；
+- **这八个标量**：四个指数各自的 `close` 与 `change_pct`。
+
+这次采集**没有建立**（`provenance.capture_nature.does_not_establish` 逐条列明）：
+
+- **provider 跨时间的稳定性**；任何时点的端点**可用性 / 可达性**；
+- 任何 consumer 的**生产数据源选择**；
+- 任何**新鲜度裁决、PIT 许可、交易日历裁决**；
+- 任何**盘中收盘时间戳**；
+- 这八个观测**以外**的任何指数数值。
+
+⚠️ 这些数字**不适用于**任何生产决策，也不是可刷新的数据管道。刷新需要重新采集，
+而本目录只保留这一次。
+
+## 文件
+
+| 文件 | 性质 | 说明 |
+|------|------|------|
+| `market_snapshot-20261012-eastmoney-{1.000001,0.399001,0.399006,1.000300}.raw.json` | **capture** | 归档响应原文，**逐字节未改**，280 / 286 / 280 / 277 B |
+| `market_snapshot-20261012.json` | **projection** | S6 契约投影，8 条证据，SHA-256 `c1b6521e…` |
+| `market_snapshot-20261012.provenance.json` | **provenance** | 机器可读逐字段出处 |
+| `market_snapshot_capture.py` | — | 离线确定性生成器兼加载器 |
+
+## 采集源与请求
+
+端点 `https://push2his.eastmoney.com/api/qt/stock/kline/get`，参数
+`klt=101, fqt=0, lmt=1, end=20261012, fields1=f1,f2,f3,f4,f5,f6,
+fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61`；四个请求各自带
+`secid`。**四次 HTTP 状态均为 200，payload `rc` 均为 0。**
+
+K 线列序即 `f51..f61`：`f51`=日期、`f53`=收盘、`f59`=涨跌幅。本 fixture 只取
+`f53`（`close`）与 `f59`（`change_pct`）两列共 8 个标量，其余九列留在原文里不进 fixture。
+
+| index_id | secid | `data.name` | close | change_pct |
+|-----------|--------|-------------|-------|------------|
+| `sse.composite` | `1.000001` | 上证指数 | `3797.24` | `-0.43` |
+| `szse.component` | `0.399001` | 深证成指 | `12384.87` | `-2.03` |
+| `szse.chinext` | `0.399006` | 创业板指 | `2963.82` | `-2.61` |
+| `csi.300` | `1.000300` | 沪深300 | `4287.98` | `-0.68` |
+
+八个标量都用 `Decimal` 从原文**逐字**解析，保留 provider 的原始拼写，不经浮点往返。
+
+## 逐字段出处怎么读
+
+`market_snapshot-20261012.provenance.json` 里有三组追链条目：
+
+- **`observations`**（8 条）：每条给出 `index_id` + `metric` → 原文文件名、响应
+  SHA-256、请求 `secid`、响应 `data.code` / `data.name`、K 线行日期、字段码、列下标、
+  原始标量、归一化 `Decimal`。测试会**回原文按列下标复算**一遍，确认出处不是自说自话。
+- **`identity_provenance`**（4 条）：四个 `index_id` 的 `publisher` / `local_code` 追到
+  `analysis/research/market_index_universe.py` 里已记录的**官方发布方参考链接**（SSE / SZSE / 中证）。
+- **`alias_provenance`**（4 条）：四个 eastmoney alias 追到**本次请求与响应**。
+  腾讯 `sh000001` 的 SSE alias **仍在 universe 里但本次未使用**，记在
+  `unused_aliases` 而非静默丢弃。
+
+## 唯一一处独立核对
+
+上证指数 2026-10-12 收盘 `3797.24` 由上交所官方概览页**独立核对**：
+<https://www.sse.com.cn/market/sseindex/overview/>。
+
+⚠️ **只核对了这一个标量。** 其余七个观测、以及其它任何指数值，**都未**在该来源核对过。
+
+## 没有编造的字段（显式采集策略）
+
+| 字段 | 值 | 为什么 |
+|------|----|-------|
+| `fetched_at` | `2026-10-13T00:21:21+08:00` | 记录下来的采集时钟 |
+| `data_as_of` | `2026-10-12` | **K 线行日期**；不编造盘中收盘时刻 |
+| `period_start` / `period_end` | `null` | 请求只取单行（`lmt=1`），无测量区间 |
+| `published_at` | `null` | 该载荷无发布时间，也不推断 |
+| `effective_from` / `effective_to` | `null` | 成分 / 生效期不在本次采集范围 |
+| `status` | `ok` | 四次 200 且 `rc=0` |
+| `completeness` | `complete` | 采集在册的两个指标四个指数都有值；未采集的九列是**不在范围内**，不是缺失 |
+| `freshness` | `unknown` | 判新鲜度要 S4 + 真实交易日历，本次**没做** |
+| `pit_status` | `unknown` | **不授予**任何 PIT 许可：载荷无 `published_at` / 生效区间可查 |
+| `decisions` | `[]` | S4 / S5 未运行，**不造裁决** |
+| 单位 | 无 | S6 契约**没有**单位字段，故不声称任何单位 |
+
+## 重新生成与验证（零出网）
+
+```bash
+python tests/fixtures/golden/market_snapshot_capture.py
+```
+
+- 生成器**不联网**：文件内不 import 任何网络模块，测试用 AST 断言这一点；
+- 确定性：无时钟读取、无环境变量、无随地区设置变化的逻辑，**新进程复现同一 SHA-256**；
+- **fail loud**：原文缺失或 SHA-256 漂移即报错退出（`1`），**绝不回源重下**；
+- **只校验、不改写**：漂移时**不写盘**，既有基线原样保留，所以失败运行不可能悄悄认可新基线。
+
+## 测试如何消费
+
+`tests/research/test_market_snapshot_golden.py`（50 例）**只读**上面四份原文，**零出网**：
+校验四份原文的字节数与 SHA-256、逐标量断言八个 `Decimal`、断言投影行序符合项目排序语义、
+断言未上报的时钟是 `null` 且无裁决、断言出处可回原文复算、断言生成器无网络与时钟调用、
+断言**新进程**复现同一 SHA-256，并断言既有 `result_v3-*` fixture **未被扰动**。
+
+本次**未改动**既有 `result_v3` fixture、`golden_fixtures.py`、报告、V3 代码与 HTML 资产。

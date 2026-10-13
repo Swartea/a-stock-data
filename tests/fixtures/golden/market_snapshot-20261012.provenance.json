@@ -1,0 +1,396 @@
+{
+  "schema_version": "s6.market_snapshot.provenance.v1",
+  "fixture": "market_snapshot-20261012.json",
+  "capture_nature": {
+    "one_off": true,
+    "captured_at": "2026-10-13T00:21:21+08:00",
+    "trading_day": "2026-10-12",
+    "source": "Eastmoney historical daily K-line endpoint",
+    "endpoint": "https://push2his.eastmoney.com/api/qt/stock/kline/get",
+    "query_template": {
+      "klt": "101",
+      "fqt": "0",
+      "lmt": "1",
+      "end": "20261012",
+      "fields1": "f1,f2,f3,f4,f5,f6",
+      "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61"
+    },
+    "establishes": [
+      "the eight archived response bodies, byte for byte",
+      "the symbol-to-index mapping for this one trading day",
+      "the eight close / change_pct scalars for this one trading day"
+    ],
+    "does_not_establish": [
+      "provider stability across time",
+      "endpoint availability or reachability at any later time",
+      "any production source selection for any consumer",
+      "any freshness verdict, PIT allowance, or trading-calendar decision",
+      "any intraday close timestamp",
+      "any index value other than the eight listed observations"
+    ]
+  },
+  "captures": [
+    {
+      "secid": "1.000001",
+      "index_id": "sse.composite",
+      "raw_file": "market_snapshot-20261012-eastmoney-1.000001.raw.json",
+      "bytes": 280,
+      "sha256": "50459b308e146e66e7e4f2defea013eb6b9a87d43a9de9f7c9e17ca0eb429a6c",
+      "http_status": 200,
+      "payload_rc": 0,
+      "request_url": "https://push2his.eastmoney.com/api/qt/stock/kline/get",
+      "request_query": {
+        "end": "20261012",
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+        "fqt": "0",
+        "klt": "101",
+        "lmt": "1",
+        "secid": "1.000001"
+      },
+      "response_data_code": "000001",
+      "response_data_name": "上证指数",
+      "response_market": 1,
+      "response_decimal": 2,
+      "kline_row_date": "2026-10-12",
+      "kline_row_raw": "2026-10-12,3806.98,3797.24,3828.22,3791.00,461448981,714909910722.20,0.98,-0.43,-16.55,0.95",
+      "fetched_at": "2026-10-13T00:21:21+08:00"
+    },
+    {
+      "secid": "0.399001",
+      "index_id": "szse.component",
+      "raw_file": "market_snapshot-20261012-eastmoney-0.399001.raw.json",
+      "bytes": 286,
+      "sha256": "9100e54ec38961d67ffbac2dffb5ab9c44f436ad7ba70b00c4d0bbe25c10dcf9",
+      "http_status": 200,
+      "payload_rc": 0,
+      "request_url": "https://push2his.eastmoney.com/api/qt/stock/kline/get",
+      "request_query": {
+        "end": "20261012",
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+        "fqt": "0",
+        "klt": "101",
+        "lmt": "1",
+        "secid": "0.399001"
+      },
+      "response_data_code": "399001",
+      "response_data_name": "深证成指",
+      "response_market": 0,
+      "response_decimal": 2,
+      "kline_row_date": "2026-10-12",
+      "kline_row_raw": "2026-10-12,12586.96,12384.87,12656.69,12373.00,536100368,822921459018.44,2.24,-2.03,-256.99,2.17",
+      "fetched_at": "2026-10-13T00:21:21+08:00"
+    },
+    {
+      "secid": "0.399006",
+      "index_id": "szse.chinext",
+      "raw_file": "market_snapshot-20261012-eastmoney-0.399006.raw.json",
+      "bytes": 280,
+      "sha256": "dd5880fddeaf8983e788ee5da8a642f32ea6cce96827058a2da98a9614b2a075",
+      "http_status": 200,
+      "payload_rc": 0,
+      "request_url": "https://push2his.eastmoney.com/api/qt/stock/kline/get",
+      "request_query": {
+        "end": "20261012",
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+        "fqt": "0",
+        "klt": "101",
+        "lmt": "1",
+        "secid": "0.399006"
+      },
+      "response_data_code": "399006",
+      "response_data_name": "创业板指",
+      "response_market": 0,
+      "response_decimal": 2,
+      "kline_row_date": "2026-10-12",
+      "kline_row_raw": "2026-10-12,3023.51,2963.82,3049.34,2962.24,166226688,394480230843.77,2.86,-2.61,-79.51,2.92",
+      "fetched_at": "2026-10-13T00:21:21+08:00"
+    },
+    {
+      "secid": "1.000300",
+      "index_id": "csi.300",
+      "raw_file": "market_snapshot-20261012-eastmoney-1.000300.raw.json",
+      "bytes": 277,
+      "sha256": "5da3b3e6b3fcd348bc7baaecc7c0ed159296ae9aa064293dd7f3fff75a3e326f",
+      "http_status": 200,
+      "payload_rc": 0,
+      "request_url": "https://push2his.eastmoney.com/api/qt/stock/kline/get",
+      "request_query": {
+        "end": "20261012",
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+        "fqt": "0",
+        "klt": "101",
+        "lmt": "1",
+        "secid": "1.000300"
+      },
+      "response_data_code": "000300",
+      "response_data_name": "沪深300",
+      "response_market": 1,
+      "response_decimal": 2,
+      "kline_row_date": "2026-10-12",
+      "kline_row_raw": "2026-10-12,4305.91,4287.98,4334.29,4279.71,180717331,405573719315.50,1.26,-0.68,-29.27,0.54",
+      "fetched_at": "2026-10-13T00:21:21+08:00"
+    }
+  ],
+  "kline_date": "2026-10-12",
+  "data_as_of": "2026-10-12",
+  "fetched_at": "2026-10-13T00:21:21+08:00",
+  "observations": [
+    {
+      "index_id": "sse.composite",
+      "metric": "close",
+      "raw_file": "market_snapshot-20261012-eastmoney-1.000001.raw.json",
+      "response_sha256": "50459b308e146e66e7e4f2defea013eb6b9a87d43a9de9f7c9e17ca0eb429a6c",
+      "query_secid": "1.000001",
+      "response_data_code": "000001",
+      "response_data_name": "上证指数",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f53",
+      "column_index": 2,
+      "raw_scalar": "3797.24",
+      "normalized_decimal": "3797.24",
+      "evidence_id": "sse.composite.close.1.000001",
+      "observation_type": "decimal"
+    },
+    {
+      "index_id": "sse.composite",
+      "metric": "change_pct",
+      "raw_file": "market_snapshot-20261012-eastmoney-1.000001.raw.json",
+      "response_sha256": "50459b308e146e66e7e4f2defea013eb6b9a87d43a9de9f7c9e17ca0eb429a6c",
+      "query_secid": "1.000001",
+      "response_data_code": "000001",
+      "response_data_name": "上证指数",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f59",
+      "column_index": 8,
+      "raw_scalar": "-0.43",
+      "normalized_decimal": "-0.43",
+      "evidence_id": "sse.composite.change_pct.1.000001",
+      "observation_type": "decimal"
+    },
+    {
+      "index_id": "szse.component",
+      "metric": "close",
+      "raw_file": "market_snapshot-20261012-eastmoney-0.399001.raw.json",
+      "response_sha256": "9100e54ec38961d67ffbac2dffb5ab9c44f436ad7ba70b00c4d0bbe25c10dcf9",
+      "query_secid": "0.399001",
+      "response_data_code": "399001",
+      "response_data_name": "深证成指",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f53",
+      "column_index": 2,
+      "raw_scalar": "12384.87",
+      "normalized_decimal": "12384.87",
+      "evidence_id": "szse.component.close.0.399001",
+      "observation_type": "decimal"
+    },
+    {
+      "index_id": "szse.component",
+      "metric": "change_pct",
+      "raw_file": "market_snapshot-20261012-eastmoney-0.399001.raw.json",
+      "response_sha256": "9100e54ec38961d67ffbac2dffb5ab9c44f436ad7ba70b00c4d0bbe25c10dcf9",
+      "query_secid": "0.399001",
+      "response_data_code": "399001",
+      "response_data_name": "深证成指",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f59",
+      "column_index": 8,
+      "raw_scalar": "-2.03",
+      "normalized_decimal": "-2.03",
+      "evidence_id": "szse.component.change_pct.0.399001",
+      "observation_type": "decimal"
+    },
+    {
+      "index_id": "szse.chinext",
+      "metric": "close",
+      "raw_file": "market_snapshot-20261012-eastmoney-0.399006.raw.json",
+      "response_sha256": "dd5880fddeaf8983e788ee5da8a642f32ea6cce96827058a2da98a9614b2a075",
+      "query_secid": "0.399006",
+      "response_data_code": "399006",
+      "response_data_name": "创业板指",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f53",
+      "column_index": 2,
+      "raw_scalar": "2963.82",
+      "normalized_decimal": "2963.82",
+      "evidence_id": "szse.chinext.close.0.399006",
+      "observation_type": "decimal"
+    },
+    {
+      "index_id": "szse.chinext",
+      "metric": "change_pct",
+      "raw_file": "market_snapshot-20261012-eastmoney-0.399006.raw.json",
+      "response_sha256": "dd5880fddeaf8983e788ee5da8a642f32ea6cce96827058a2da98a9614b2a075",
+      "query_secid": "0.399006",
+      "response_data_code": "399006",
+      "response_data_name": "创业板指",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f59",
+      "column_index": 8,
+      "raw_scalar": "-2.61",
+      "normalized_decimal": "-2.61",
+      "evidence_id": "szse.chinext.change_pct.0.399006",
+      "observation_type": "decimal"
+    },
+    {
+      "index_id": "csi.300",
+      "metric": "close",
+      "raw_file": "market_snapshot-20261012-eastmoney-1.000300.raw.json",
+      "response_sha256": "5da3b3e6b3fcd348bc7baaecc7c0ed159296ae9aa064293dd7f3fff75a3e326f",
+      "query_secid": "1.000300",
+      "response_data_code": "000300",
+      "response_data_name": "沪深300",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f53",
+      "column_index": 2,
+      "raw_scalar": "4287.98",
+      "normalized_decimal": "4287.98",
+      "evidence_id": "csi.300.close.1.000300",
+      "observation_type": "decimal"
+    },
+    {
+      "index_id": "csi.300",
+      "metric": "change_pct",
+      "raw_file": "market_snapshot-20261012-eastmoney-1.000300.raw.json",
+      "response_sha256": "5da3b3e6b3fcd348bc7baaecc7c0ed159296ae9aa064293dd7f3fff75a3e326f",
+      "query_secid": "1.000300",
+      "response_data_code": "000300",
+      "response_data_name": "沪深300",
+      "kline_row_date": "2026-10-12",
+      "field_code": "f59",
+      "column_index": 8,
+      "raw_scalar": "-0.68",
+      "normalized_decimal": "-0.68",
+      "evidence_id": "csi.300.change_pct.1.000300",
+      "observation_type": "decimal"
+    }
+  ],
+  "identity_provenance": [
+    {
+      "index_id": "sse.composite",
+      "publisher": "sse",
+      "local_code": "000001",
+      "source_module": "analysis/research/market_index_universe.py",
+      "official_reference": "SSE official index list",
+      "reference_url": "https://www.sse.com.cn/market/sseindex/indexlist/index.shtml?classid=010202"
+    },
+    {
+      "index_id": "szse.component",
+      "publisher": "szse",
+      "local_code": "399001",
+      "source_module": "analysis/research/market_index_universe.py",
+      "official_reference": "SZSE component index methodology",
+      "reference_url": "https://www.szse.cn/marketServices/message/index/project/P020190201581531457526.pdf"
+    },
+    {
+      "index_id": "szse.chinext",
+      "publisher": "szse",
+      "local_code": "399006",
+      "source_module": "analysis/research/market_index_universe.py",
+      "official_reference": "SZSE ChiNext index description",
+      "reference_url": "https://investor.szse.cn/video/t20100707_538280.html"
+    },
+    {
+      "index_id": "csi.300",
+      "publisher": "csi",
+      "local_code": "000300",
+      "source_module": "analysis/research/market_index_universe.py",
+      "official_reference": "CSI 300 index methodology",
+      "reference_url": "https://oss-ch.csindex.com.cn/static/html/csindex/public/uploads/indices/detail/files/zh_CN/000300_Index_Methodology_cn.pdf"
+    }
+  ],
+  "alias_provenance": [
+    {
+      "index_id": "sse.composite",
+      "provider_id": "eastmoney",
+      "provider_symbol": "1.000001",
+      "provenance": "one_time_capture_verified",
+      "verified_by_raw_file": "market_snapshot-20261012-eastmoney-1.000001.raw.json",
+      "verified_by_response_sha256": "50459b308e146e66e7e4f2defea013eb6b9a87d43a9de9f7c9e17ca0eb429a6c",
+      "query_secid": "1.000001",
+      "response_data_code": "000001",
+      "response_data_name": "上证指数"
+    },
+    {
+      "index_id": "szse.component",
+      "provider_id": "eastmoney",
+      "provider_symbol": "0.399001",
+      "provenance": "one_time_capture_verified",
+      "verified_by_raw_file": "market_snapshot-20261012-eastmoney-0.399001.raw.json",
+      "verified_by_response_sha256": "9100e54ec38961d67ffbac2dffb5ab9c44f436ad7ba70b00c4d0bbe25c10dcf9",
+      "query_secid": "0.399001",
+      "response_data_code": "399001",
+      "response_data_name": "深证成指"
+    },
+    {
+      "index_id": "szse.chinext",
+      "provider_id": "eastmoney",
+      "provider_symbol": "0.399006",
+      "provenance": "one_time_capture_verified",
+      "verified_by_raw_file": "market_snapshot-20261012-eastmoney-0.399006.raw.json",
+      "verified_by_response_sha256": "dd5880fddeaf8983e788ee5da8a642f32ea6cce96827058a2da98a9614b2a075",
+      "query_secid": "0.399006",
+      "response_data_code": "399006",
+      "response_data_name": "创业板指"
+    },
+    {
+      "index_id": "csi.300",
+      "provider_id": "eastmoney",
+      "provider_symbol": "1.000300",
+      "provenance": "one_time_capture_verified_and_s1_contract_example",
+      "verified_by_raw_file": "market_snapshot-20261012-eastmoney-1.000300.raw.json",
+      "verified_by_response_sha256": "5da3b3e6b3fcd348bc7baaecc7c0ed159296ae9aa064293dd7f3fff75a3e326f",
+      "query_secid": "1.000300",
+      "response_data_code": "000300",
+      "response_data_name": "沪深300"
+    }
+  ],
+  "unused_aliases": [
+    {
+      "index_id": "sse.composite",
+      "provider_id": "tencent",
+      "provider_symbol": "sh000001",
+      "reason": "declared in A_SHARE_CORE_UNIVERSE as an S1 contract fixture example but not used by this capture"
+    }
+  ],
+  "independent_check": [
+    {
+      "index_id": "sse.composite",
+      "metric": "close",
+      "raw_scalar": "3797.24",
+      "check_url": "https://www.sse.com.cn/market/sseindex/overview/",
+      "scope": "this single scalar only",
+      "not_cross_checked": "the other seven observations, and every other index value, were not cross-checked at this source"
+    }
+  ],
+  "clock_policy": {
+    "fetched_at": "the recorded local capture clock 2026-10-13T00:21:21+08:00; when this system retrieved the payload",
+    "data_as_of": "the K-line row date 2026-10-12, the observation time the payload represents; no intraday close time is invented",
+    "period_start": "null - the capture requested a single daily row (lmt=1), so no measurement interval was reported",
+    "period_end": "null - same reason as period_start",
+    "published_at": "null - Eastmoney does not report a publication timestamp for this payload and none is inferred",
+    "effective_from": "null - index constituent/effective dating is outside this capture",
+    "effective_to": "null - same reason as effective_from"
+  },
+  "metadata_policy": {
+    "status": "ok - every captured response returned HTTP 200 and payload rc=0",
+    "completeness": "complete - both captured metrics resolved to a value for all four indexes; the nine uncaptured K-line columns are simply not in scope, not missing",
+    "freshness": "unknown - no freshness policy or verdict is asserted; deciding staleness requires S4 against a real trading calendar, which this capture did not do",
+    "pit_status": "unknown - no point-in-time allowance is granted; the payload carries no published_at or effective interval to check",
+    "trading_calendar": "no decision - the capture did not evaluate whether 2026-10-12 was a trading day for each index publisher",
+    "decisions": "none - S4 market state and S5 availability were not run, so the fixture carries no decisions array content",
+    "units": "no unit metadata is projected - the S6 contract has no unit field, and the provider reports bare numbers, so no unit is claimed",
+    "pit_support": "not asserted - the capture establishes nothing about the source's point-in-time capability"
+  },
+  "projection": {
+    "sha256": "c1b6521ec9c8990c454ba7c64e23ebe65133e86b6ed86e44f2cbe5df6f6067d7",
+    "fixture_file": "market_snapshot-20261012.json",
+    "bytes": 8999
+  },
+  "generator": "tests/fixtures/golden/market_snapshot_capture.py",
+  "generator_network_access": "none - the generator imports no network module and reads only the four archived raw files",
+  "test_file": "tests/research/test_market_snapshot_golden.py"
+}

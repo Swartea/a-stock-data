@@ -3,6 +3,12 @@
 Everything here is offline: no clock, no calendar, no quote source, no network.
 The tests assert declaration facts -- order, identity, aliases, gating -- and
 never claim that a declared alias is live or reachable.
+
+Some aliases here are *capture-verified*: a one-time 2026-10-12 Eastmoney capture
+returned matching ``data.code`` and Chinese ``data.name`` values. Those tests
+pin the recorded symbol-to-index mapping for that date and nothing more. They
+make no claim about provider stability, current availability, or production
+source selection, and they never touch the network to check any of that.
 """
 
 import dataclasses
@@ -70,30 +76,136 @@ def test_require_index_returns_exact_identity_for_each_covered_index() -> None:
 
 
 def test_alias_relations_are_exact_and_verbatim() -> None:
+    """Every covered index has exactly the declared aliases, in declared order.
+
+    Provenance is mixed and is asserted as-is, not flattened:
+
+    * ``sse.composite``/tencent and ``csi.300``/eastmoney are the S1 contract
+      fixture examples that this module already carried;
+    * the three Eastmoney aliases below are the ones added from the 2026-10-12
+      capture (上证指数 / 深证成指 / 创业板指).
+
+    The capture pins the symbol-to-index mapping for that one date. It does not
+    establish provider stability, availability, or a production-source choice.
+    """
+
     universe = A_SHARE_CORE_UNIVERSE
 
+    assert universe.aliases_for("sse.composite") == (
+        IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
+        IndexProviderSymbolAlias("sse.composite", "eastmoney", "1.000001"),
+    )
+    assert universe.aliases_for("szse.component") == (
+        IndexProviderSymbolAlias("szse.component", "eastmoney", "0.399001"),
+    )
+    assert universe.aliases_for("szse.chinext") == (
+        IndexProviderSymbolAlias("szse.chinext", "eastmoney", "0.399006"),
+    )
     assert universe.aliases_for("csi.300") == (
         IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300"),
     )
-    assert universe.aliases_for("sse.composite") == (
-        IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
-    )
 
 
-def test_covered_index_without_verified_alias_returns_empty_tuple() -> None:
-    """Absence is an explicit state, never a guessed symbol."""
+def test_capture_verified_aliases_are_recorded_verbatim() -> None:
+    """The 2026-10-12 capture mapping, pinned as exact strings.
+
+    Read as provenance, not as availability: these are the recorded values whose
+    payloads returned matching ``data.code`` and Chinese ``data.name``. No test
+    here re-fetches anything to confirm they still resolve.
+    """
+
+    captured = {
+        alias.index_id: alias.provider_symbol
+        for alias in A_SHARE_CORE_UNIVERSE.aliases
+        if alias.provider_id == "eastmoney"
+    }
+
+    assert captured == {
+        "sse.composite": "1.000001",
+        "szse.component": "0.399001",
+        "szse.chinext": "0.399006",
+        "csi.300": "1.000300",
+    }
+
+
+def test_preserved_fixture_aliases_are_unchanged() -> None:
+    """The pre-existing SSE Tencent and CSI 300 Eastmoney aliases survive."""
 
     universe = A_SHARE_CORE_UNIVERSE
 
-    assert universe.aliases_for("szse.component") == ()
-    assert universe.aliases_for("szse.chinext") == ()
+    assert IndexProviderSymbolAlias(
+        "sse.composite", "tencent", "sh000001"
+    ) in universe.aliases
+    assert IndexProviderSymbolAlias(
+        "csi.300", "eastmoney", "1.000300"
+    ) in universe.aliases
+
+
+def test_universe_alias_tuple_order_is_declared_order() -> None:
+    """The whole aliases tuple is order-meaningful and pinned exactly."""
+
+    assert A_SHARE_CORE_UNIVERSE.aliases == (
+        IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
+        IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300"),
+        IndexProviderSymbolAlias("sse.composite", "eastmoney", "1.000001"),
+        IndexProviderSymbolAlias("szse.component", "eastmoney", "0.399001"),
+        IndexProviderSymbolAlias("szse.chinext", "eastmoney", "0.399006"),
+    )
+
+
+def test_index_declaration_order_is_unaffected_by_new_aliases() -> None:
+    """Adding aliases must not reorder the four identities."""
+
+    assert A_SHARE_CORE_UNIVERSE.index_ids == (
+        "sse.composite",
+        "szse.component",
+        "szse.chinext",
+        "csi.300",
+    )
+
+
+def test_alias_declaration_order_does_not_drive_identity_order() -> None:
+    """aliases_for() returns declaration order within an index, not universe order.
+
+    ``sse.composite`` is declared first in the alias tuple but holds two
+    aliases; ordering inside one index's result stays stable regardless.
+    """
+
+    first = A_SHARE_CORE_UNIVERSE.aliases_for("sse.composite")
+    again = A_SHARE_CORE_UNIVERSE.aliases_for("sse.composite")
+
+    assert first == again
+    assert [alias.provider_symbol for alias in first] == ["sh000001", "1.000001"]
+
+
+def test_covered_index_without_any_alias_returns_empty_tuple() -> None:
+    """Absence is an explicit state, never a guessed symbol.
+
+    Now that all four A-share indexes carry aliases, this checks the general
+    contract on a caller-supplied universe instead of on the core one.
+    """
+
+    universe = MarketIndexUniverse(
+        identities=(
+            IndexIdentity("sample.bare", IndexPublisher.CSI, "SBB1"),
+        )
+    )
+
+    assert universe.aliases_for("sample.bare") == ()
+    assert universe.aliases == ()
 
 
 def test_no_extra_aliases_are_prepopulated() -> None:
     aliased_ids = {alias.index_id for alias in A_SHARE_CORE_UNIVERSE.aliases}
 
-    assert aliased_ids == {"sse.composite", "csi.300"}
-    assert len(A_SHARE_CORE_UNIVERSE.aliases) == 2
+    assert aliased_ids == {
+        "sse.composite",
+        "szse.component",
+        "szse.chinext",
+        "csi.300",
+    }
+    assert len(A_SHARE_CORE_UNIVERSE.aliases) == 5
+    assert len(aliased_ids) == 4
 
 
 def test_alias_order_is_preserved() -> None:
