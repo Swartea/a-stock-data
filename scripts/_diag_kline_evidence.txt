@@ -1,0 +1,43 @@
+=== 600693 K线当日证据病根诊断 (2026-09-07 12:02) ===
+
+# 1) 时间状态
+当前本地时间: 2026-09-07 12:02:30 (周一)
+- 上午盘: 09:30-11:30 (已收) → 11:30 是上午收盘，腾讯此时已拉当日价
+- 午间休市: 11:30-13:00 ← 现在处在这段
+- 下午盘: 13:00-15:00
+- baostock 日线只在 15:00 收盘后才更新当日 bar
+
+# 2) V3 主脚本 line 26 注释 (硬约束原文)
+"  - K 线当日证据: last_bar 与最新交易日比对, 非当日(且非周末节假日)记 WARN 进 run_log。"
+
+# 3) V3 主脚本 line 221-239 实测判据 (实际查 quant_analyzer_v3.py 拿到)
+def _check_kline_freshness(...):
+    last_bar = str(klines[-1].get("date", ""))[:10]   # 取 K 线最后一根
+    if last_bar >= exp:
+        return level="ok"  # 当日
+    return level="warn"    # 非当日 (注：此函数不阻断，跑完写进 run_log)
+
+# 4) K 线源 (quant_analyzer_v2.py line 572-617 fetch_chip_distribution)
+- 唯一源: baostock.query_history_k_data_plus frequency="d"
+- 无 moo tdx 兜底 / 无腾讯兜底
+- baostock 日线收盘后才更新，11:39 上午盘阶段拉到的是 9-4 (周五)
+
+# 5) 腾讯层是否真拉到当日价 (反过来证明数据源可行)
+- quant_analyzer_v2.fetch_tencent_quote / fetch_full_valuation 拉 qt.gtimg.cn
+- parts[3] = 当日现价, parts[4] = 昨收, parts[5] = 开盘, parts[33/34] = 高低, parts[37] = 成交额(万)
+- 600693 上午报告现价 11.61 (涨+6.22%) = 腾讯层当日价已拉到 → 数据层完全 OK
+
+# 6) 修复路径二选一
+- 路径 A: 改 fetch_chip_distribution, baostock 拉到 N-1 时再用 fetch_tencent_quote 补一根 9-7 bar
+  - 开/收 = 现价 (或 用今开 if 拿到)
+  - 高 = max(昨收, 今价), 低 = min(昨收, 今价)
+  - turn = 估算 (成交额(万) → volume_shou)
+  - tradestatus = "1"
+  - 改动: < 30 行, 在 fetch_chip_distribution return 前补一次腾讯拉 + 拼 bar
+  - 优点: 一次改完长期复用, 不依赖等收盘
+- 路径 B: 等 15:00 收盘后重跑 (3 小时)
+  - 缺点: 浪费 3 小时 + 老板已交代 "等 600693 真跑出来"
+
+# 7) 字段对应
+- run_log.sources["K线"] / run_log.sources["筹码"] / run_log.kline_freshness
+- 实际是 level="warn", text="K线停在 9-4, 最新交易日 9-7 — 若为法定节假日/周末属正常"

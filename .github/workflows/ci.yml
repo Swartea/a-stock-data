@@ -13,6 +13,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  skill-sync:
+    name: SKILL.md 与 skill-src/ 同步检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 构建脚本是纯标准库，不需要安装项目依赖。
+      # 防止直接改 SKILL.md 导致构建产物与 skill-src/ 源文件漂移。
+      - name: build_skill.py --check
+        run: python scripts/build_skill.py --check
+
   lint:
     name: Lint gate
     runs-on: ubuntu-latest
