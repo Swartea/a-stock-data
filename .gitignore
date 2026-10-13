@@ -37,3 +37,6 @@ MANIFEST
 # reports/ 下生成的归档无需 git 追踪（按需放开）
 # reports/**/*.html
 # reports/**/*.docx
+
+# Mimosa 本地扫描状态
+.mimosa/
