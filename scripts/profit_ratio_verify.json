@@ -1,0 +1,194 @@
+[
+  {
+    "code": "002014",
+    "name": "永新股份",
+    "profit_ratio_pct": 84.32,
+    "avg_cost": 10.84,
+    "cost_70": [
+      10.3,
+      11.56
+    ],
+    "peak_price": 10.98,
+    "in_30_70": false,
+    "verdict": "淘汰",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 11.54
+  },
+  {
+    "code": "002120",
+    "name": "韵达股份",
+    "profit_ratio_pct": 66.32,
+    "avg_cost": 6.89,
+    "cost_70": [
+      6.58,
+      7.37
+    ],
+    "peak_price": 6.72,
+    "in_30_70": true,
+    "verdict": "存活",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 6.87
+  },
+  {
+    "code": "002191",
+    "name": "劲嘉股份",
+    "profit_ratio_pct": 5.27,
+    "avg_cost": 3.92,
+    "cost_70": [
+      3.68,
+      4.14
+    ],
+    "peak_price": 3.75,
+    "in_30_70": false,
+    "verdict": "淘汰",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 3.64
+  },
+  {
+    "code": "002216",
+    "name": "三全食品",
+    "profit_ratio_pct": 30.17,
+    "avg_cost": 12.34,
+    "cost_70": [
+      11.51,
+      13.12
+    ],
+    "peak_price": 11.94,
+    "in_30_70": true,
+    "verdict": "存活",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 11.95
+  },
+  {
+    "code": "002332",
+    "name": "仙琚制药",
+    "profit_ratio_pct": 51.96,
+    "avg_cost": 8.77,
+    "cost_70": [
+      8.37,
+      9.1
+    ],
+    "peak_price": 8.59,
+    "in_30_70": true,
+    "verdict": "存活",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 8.68
+  },
+  {
+    "code": "002603",
+    "name": "以岭药业",
+    "profit_ratio_pct": 17.21,
+    "avg_cost": 16.6,
+    "cost_70": [
+      15.73,
+      17.22
+    ],
+    "peak_price": 16.91,
+    "in_30_70": false,
+    "verdict": "淘汰",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 15.87
+  },
+  {
+    "code": "002606",
+    "name": "大连电瓷",
+    "profit_ratio_pct": 24.46,
+    "avg_cost": 13.85,
+    "cost_70": [
+      12.99,
+      14.66
+    ],
+    "peak_price": 13.02,
+    "in_30_70": false,
+    "verdict": "淘汰",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 13.14
+  },
+  {
+    "code": "002737",
+    "name": "葵花药业",
+    "profit_ratio_pct": 7.43,
+    "avg_cost": 13.6,
+    "cost_70": [
+      12.12,
+      15.01
+    ],
+    "peak_price": 13.5,
+    "in_30_70": false,
+    "verdict": "淘汰",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 11.83
+  },
+  {
+    "code": "002901",
+    "name": "大博医疗",
+    "profit_ratio_pct": 16.29,
+    "avg_cost": 45.58,
+    "cost_70": [
+      41.0,
+      50.82
+    ],
+    "peak_price": 44.11,
+    "in_30_70": false,
+    "verdict": "淘汰",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 41.22
+  },
+  {
+    "code": "600109",
+    "name": "国金证券",
+    "profit_ratio_pct": 48.12,
+    "avg_cost": 8.88,
+    "cost_70": [
+      8.46,
+      9.4
+    ],
+    "peak_price": 8.74,
+    "in_30_70": true,
+    "verdict": "存活",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 8.74
+  },
+  {
+    "code": "600483",
+    "name": "福能股份",
+    "profit_ratio_pct": 85.0,
+    "avg_cost": 10.24,
+    "cost_70": [
+      9.37,
+      11.1
+    ],
+    "peak_price": 9.87,
+    "in_30_70": false,
+    "verdict": "淘汰",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 11.12
+  },
+  {
+    "code": "603128",
+    "name": "华贸物流",
+    "profit_ratio_pct": 54.99,
+    "avg_cost": 5.52,
+    "cost_70": [
+      5.12,
+      5.87
+    ],
+    "peak_price": 5.31,
+    "in_30_70": true,
+    "verdict": "存活",
+    "window_rows": 649,
+    "last_date": "2026-09-04",
+    "last_price": 5.6
+  }
+]

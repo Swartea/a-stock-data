@@ -1,0 +1,18 @@
+{
+  "snapshot_time_iso": null,
+  "snapshot_date": null,
+  "snapshot_timezone": "Asia/Shanghai",
+  "row_count": 1980,
+  "file_mtime_iso": "2026-09-04T13:45:00+0800",
+  "status": "DEPRECATED_NO_TIMESTAMP",
+  "deprecated_reason": "债 4 修法 ① 拍板：此 screener_pool.csv 为任务 4 海选阶段生成的旧池（13:45 写盘），无 price_snapshot_time 列，禁止用于老板点票出报告流程的三价位计算。梁大锋 17:20 拍板：补打时戳 = 给旧价伪造证据，正是原翻车病根，故只标记不补。",
+  "snapshot_warn": "此 CSV 时点不可考，禁止用于三价位计算。点票出报告必须走 v2 + 实时行情（mootdx/腾讯），由 snapshot_guard.check_last_bar_today() 强约束。",
+  "regenerate_command": "若需重建带时戳的池，请执行: bash scripts/run_in_venv.sh scripts/screener_pool_v4.py（约 30 分钟）",
+  "sources": {
+    "industry_list": "swresearch.com (SwClass2021)",
+    "quote": "tencent (qt.gtimg.cn)",
+    "kline_history": "baostock (adjustflag=3, T+1)"
+  },
+  "block_for_three_levels": true,
+  "block_message": "三价位计算必须用 v2 analyze_single() 实时拉取，禁止读此 CSV 的现价列"
+}
