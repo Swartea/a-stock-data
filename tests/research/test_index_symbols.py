@@ -10,7 +10,7 @@ from analysis.research.index_symbols import (
 
 def _alias(
     *,
-    index_id: str = "cn.index.csi.000300",
+    index_id: str = "cn.index.csi300",
     provider_id: str = "csi",
     provider_symbol: str = "000300",
 ) -> IndexProviderSymbolAlias:
@@ -46,8 +46,8 @@ def test_alias_is_immutable() -> None:
     ("field_name", "value"),
     (
         ("index_id", ""),
-        ("index_id", "CN.INDEX.CSI.000300"),
-        ("index_id", " cn.index.csi.000300"),
+        ("index_id", "CN.INDEX.CSI300"),
+        ("index_id", " cn.index.csi300"),
         ("provider_id", ""),
         ("provider_id", "EastMoney"),
         ("provider_id", " eastmoney"),
@@ -61,7 +61,7 @@ def test_alias_rejects_noncanonical_or_blank_fields(
     value: str,
 ) -> None:
     kwargs = {
-        "index_id": "cn.index.csi.000300",
+        "index_id": "cn.index.csi300",
         "provider_id": "eastmoney",
         "provider_symbol": "1.000300",
     }
@@ -84,7 +84,7 @@ def test_alias_rejects_non_string_fields(
     value: object,
 ) -> None:
     kwargs: dict[str, object] = {
-        "index_id": "cn.index.csi.000300",
+        "index_id": "cn.index.csi300",
         "provider_id": "eastmoney",
         "provider_symbol": "1.000300",
     }
@@ -103,9 +103,9 @@ def test_registry_resolves_multiple_provider_symbols_to_same_index() -> None:
         )
     )
 
-    assert registry.resolve("csi", "000300") == "cn.index.csi.000300"
-    assert registry.resolve("eastmoney", "1.000300") == "cn.index.csi.000300"
-    assert registry.resolve("sina", "sh000300") == "cn.index.csi.000300"
+    assert registry.resolve("csi", "000300") == "cn.index.csi300"
+    assert registry.resolve("eastmoney", "1.000300") == "cn.index.csi300"
+    assert registry.resolve("sina", "sh000300") == "cn.index.csi300"
 
 
 def test_unknown_symbol_stays_unknown_instead_of_being_guessed() -> None:
@@ -122,7 +122,7 @@ def test_lookup_is_exact_and_does_not_case_normalize_provider_symbol() -> None:
         (_alias(provider_id="sina", provider_symbol="sh000300"),)
     )
 
-    assert registry.resolve("sina", "sh000300") == "cn.index.csi.000300"
+    assert registry.resolve("sina", "sh000300") == "cn.index.csi300"
     assert registry.resolve("sina", "SH000300") is None
 
 
@@ -131,7 +131,7 @@ def test_provider_id_lookup_requires_canonical_id() -> None:
         (_alias(provider_id="eastmoney", provider_symbol="1.000300"),)
     )
 
-    assert registry.resolve("eastmoney", "1.000300") == "cn.index.csi.000300"
+    assert registry.resolve("eastmoney", "1.000300") == "cn.index.csi300"
     with pytest.raises(ValueError):
         registry.resolve("EastMoney", "1.000300")
 
@@ -151,7 +151,7 @@ def test_provider_symbol_collision_cannot_point_to_different_index() -> None:
     with pytest.raises(ValueError, match="provider index symbol collision"):
         registry.register(
             _alias(
-                index_id="cn.index.csi.000905",
+                index_id="cn.index.csi905",
                 provider_id="eastmoney",
                 provider_symbol="1.000300",
             )
@@ -166,8 +166,8 @@ def test_same_index_can_have_multiple_aliases_within_one_provider() -> None:
         )
     )
 
-    assert registry.resolve("eastmoney", "1.000300") == "cn.index.csi.000300"
-    assert registry.resolve("eastmoney", "SH000300") == "cn.index.csi.000300"
+    assert registry.resolve("eastmoney", "1.000300") == "cn.index.csi300"
+    assert registry.resolve("eastmoney", "SH000300") == "cn.index.csi300"
 
 
 def test_aliases_for_returns_registration_order_tuple() -> None:
@@ -175,14 +175,14 @@ def test_aliases_for_returns_registration_order_tuple() -> None:
     second = _alias(provider_id="eastmoney", provider_symbol="1.000300")
     registry = IndexProviderSymbolRegistry((first, second))
 
-    assert registry.aliases_for("cn.index.csi.000300") == (first, second)
-    assert registry.aliases_for("cn.index.csi.000905") == ()
+    assert registry.aliases_for("cn.index.csi300") == (first, second)
+    assert registry.aliases_for("cn.index.csi905") == ()
 
 
 def test_require_fails_explicitly_for_unknown_symbol() -> None:
     registry = IndexProviderSymbolRegistry((_alias(),))
 
-    assert registry.require("csi", "000300") == "cn.index.csi.000300"
+    assert registry.require("csi", "000300") == "cn.index.csi300"
     with pytest.raises(KeyError, match="unknown provider index symbol"):
         registry.require("csi", "000905")
 

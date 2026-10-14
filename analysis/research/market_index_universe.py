@@ -11,7 +11,8 @@ Scope boundary for this slice
 :class:`MarketIndexUniverse` holds two immutable tuples and nothing else:
 
 * ``identities`` -- ordered :class:`IndexIdentity` values, in declaration order;
-* ``aliases`` -- ordered :class:`IndexProviderSymbolAlias` values.
+* ``aliases`` -- ordered provider mappings declared at the global index-spec
+  boundary and collected here for universe-level lookup.
 
 What this module deliberately does **not** do:
 
@@ -56,19 +57,20 @@ the official publisher/index-provider sources:
 Publisher assignments agree with :class:`~analysis.research.index_registry.IndexPublisher`
 and with the identity examples already used by the S1 contract fixtures.
 
-Provider aliases in this module are **repository contract examples** carried over
-from the S1 fixtures (see ``tests/research/test_market_snapshot.py``). They record
-which mapping is explicit in this repository; they are *not* a claim of live
-provider availability, freshness, or a reachable endpoint. SZSE Component and
-ChiNext intentionally have no alias until a provider mapping is verified -- a
-guessed symbol would be worse than an honest empty tuple.
+Provider aliases are declared once on the provider-facing
+``GlobalIndexSpec`` values and collected into this universe. They record an
+explicit repository mapping, not live availability, freshness, or reachability.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
 
-from analysis.research.index_registry import IndexIdentity, IndexPublisher
+from analysis.research.global_indices import list_global_indices
+from analysis.research.index_registry import (
+    A_SHARE_INDEX_IDENTITIES,
+    IndexIdentity,
+)
 from analysis.research.index_symbols import (
     IndexProviderSymbolAlias,
     IndexProviderSymbolRegistry,
@@ -155,28 +157,12 @@ class MarketIndexUniverse:
         return tuple(field.name for field in fields(cls))
 
 
-# Fixed stable ids and publisher-local codes. The index_id values are chosen
-# here and never derived from local_code (e.g. local_code "000001" belongs to the
-# SSE Composite, and its internal id "sse.composite" says so explicitly).
-_SSE_COMPOSITE = IndexIdentity("sse.composite", IndexPublisher.SSE, "000001")
-_SZSE_COMPONENT = IndexIdentity("szse.component", IndexPublisher.SZSE, "399001")
-_SZSE_CHINEXT = IndexIdentity("szse.chinext", IndexPublisher.SZSE, "399006")
-_CSI_300 = IndexIdentity("csi.300", IndexPublisher.CSI, "000300")
-
-# Declaration order follows docs/12: 上证指数、深证成指、创业板指、沪深 300.
-#
-# Only the two provider mappings already carried by the current-main S1 contract
-# fixtures are included. SZSE Component and ChiNext stay alias-free until verified;
-# provider_id is never assumed to equal provider_symbol.
+# The canonical identity objects come from index_registry. Provider aliases are
+# owned by the provider-facing GlobalIndexSpec declarations.
+_A_SHARE_SPECS = tuple(
+    spec for spec in list_global_indices() if spec.market == "cn"
+)
 A_SHARE_CORE_UNIVERSE = MarketIndexUniverse(
-    identities=(
-        _SSE_COMPOSITE,
-        _SZSE_COMPONENT,
-        _SZSE_CHINEXT,
-        _CSI_300,
-    ),
-    aliases=(
-        IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
-        IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300"),
-    ),
+    identities=A_SHARE_INDEX_IDENTITIES,
+    aliases=tuple(alias for spec in _A_SHARE_SPECS for alias in spec.provider_aliases),
 )

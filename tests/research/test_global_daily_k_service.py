@@ -26,7 +26,7 @@ from analysis.research.global_daily_k_service import (
 )
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
-INDEX_ID = "cn.index.csi.000300"
+INDEX_ID = "cn.index.csi300"
 START = "2026-09-01"
 END = "2026-09-25"
 
@@ -192,6 +192,37 @@ def test_default_invocation_with_no_transport_uses_v1_default(monkeypatch: Any) 
     assert result["provider_status"] == "ok"
     assert result["source_used"] == TENCENT_PROVIDER_ID
     assert calls == [TENCENT_DAILY_K_URL]
+
+
+def test_daily_bar_service_result_is_confirmed_daily_state_not_realtime_quote(
+    monkeypatch: Any,
+) -> None:
+    """Daily-K bars carry daily-state semantics, never quote semantics."""
+    response = mock.Mock()
+    response.raise_for_status = mock.Mock()
+    response.json.return_value = {
+        "code": 0,
+        "msg": "",
+        "data": {"sh000300": {"day": [
+            ["2026-09-01", 100.0, 105.0, 110.0, 95.0, 0]
+        ]}},
+    }
+    monkeypatch.setattr(requests, "get", lambda *_a, **_kw: response)
+
+    result = fetch_global_daily_k_service(INDEX_ID, START, END, now=NOW)
+
+    assert "Phase 1 recent confirmed daily state" in (service.__doc__ or "")
+    assert "``index.quote``" in (service.__doc__ or "")
+    assert "realtime/intraday" in (service.__doc__ or "")
+    assert result["source"] == TENCENT_SOURCE
+    assert result["source"].endswith(".daily_k")
+    assert result["data"][0]["date"] == "2026-09-01"
+    assert "capability" not in result
+    assert not any(
+        token in str(key).lower()
+        for key in result
+        for token in ("realtime", "intraday", "quote")
+    )
 
 
 def test_explicit_non_callable_transport_returns_validation() -> None:
@@ -658,7 +689,7 @@ def test_invalid_index_id_never_calls_any_provider() -> None:
         DailyKProvider(name="tencent", source=TENCENT_SOURCE, fetch=_fetch),
     )
     result = fetch_global_daily_k_service(
-        "CN.INDEX.CSI.000300", START, END, now=NOW, providers=providers
+        "CN.INDEX.CSI300", START, END, now=NOW, providers=providers
     )
     assert result["status"] == fetcher_contract.STATUS_ERROR
     assert result["error"]["code"] == fetcher_contract.ERR_VALIDATION

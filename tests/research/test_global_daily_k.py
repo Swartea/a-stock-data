@@ -76,10 +76,10 @@ _NEW_YORK_TZ = ZoneInfo("America/New_York")
 # The controller-decided V1 table: index_id, publisher value, local_code,
 # market, display name, currency, timezone, Tencent provider symbol.
 V1_TABLE: tuple[tuple[str, str, str, str, str, str, str, str], ...] = (
-    ("cn.index.sse.000001", "sse", "000001", "cn", "上证指数", "CNY", "Asia/Shanghai", "sh000001"),
-    ("cn.index.szse.399001", "szse", "399001", "cn", "深证成指", "CNY", "Asia/Shanghai", "sz399001"),
-    ("cn.index.szse.399006", "szse", "399006", "cn", "创业板指", "CNY", "Asia/Shanghai", "sz399006"),
-    ("cn.index.csi.000300", "csi", "000300", "cn", "沪深300", "CNY", "Asia/Shanghai", "sh000300"),
+    ("cn.index.sh_comp", "sse", "000001", "cn", "上证指数", "CNY", "Asia/Shanghai", "sh000001"),
+    ("cn.index.sz_component", "szse", "399001", "cn", "深证成指", "CNY", "Asia/Shanghai", "sz399001"),
+    ("cn.index.chinext", "szse", "399006", "cn", "创业板指", "CNY", "Asia/Shanghai", "sz399006"),
+    ("cn.index.csi300", "csi", "000300", "cn", "沪深300", "CNY", "Asia/Shanghai", "sh000300"),
     ("hk.index.hang_seng.hsi", "hang_seng", "HSI", "hk", "恒生指数", "HKD", "Asia/Hong_Kong", "hkHSI"),
     ("hk.index.hang_seng.hstech", "hang_seng", "HSTECH", "hk", "恒生科技指数", "HKD", "Asia/Hong_Kong", "hkHSTECH"),
     ("us.index.sp_dji.sp500", "sp_dji", "SP500", "us", "S&P 500", "USD", "America/New_York", "us.INX"),
@@ -259,8 +259,9 @@ def test_global_index_spec_is_frozen_with_exact_contract_fields() -> None:
         "currency",
         "timezone",
         "provider_symbol",
+        "aliases",
     )
-    spec = get_global_index("cn.index.csi.000300")
+    spec = get_global_index("cn.index.csi300")
     with pytest.raises(FrozenInstanceError):
         spec.market = "mutated"  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
@@ -269,7 +270,7 @@ def test_global_index_spec_is_frozen_with_exact_contract_fields() -> None:
 
 def test_global_index_spec_rejects_noncanonical_context() -> None:
     identity = IndexIdentity(
-        index_id="cn.index.csi.000300",
+        index_id="cn.index.csi300",
         publisher=IndexPublisher.CSI,
         local_code="000300",
     )
@@ -316,7 +317,7 @@ def test_get_global_index_unknown_and_nikkei_raise_keyerror() -> None:
         "jp.index.nikkei.n225",
         "jp.index.nikkei.nikkei225",
         "de.index.dax.dax",
-        "cn.index.csi.999999",
+        "cn.index.csi999",
         "us.index.nasdaq.nasdaq100",
     ):
         with pytest.raises(KeyError):
@@ -327,18 +328,20 @@ def test_get_global_index_bad_shape_raises_explicitly() -> None:
     with pytest.raises(TypeError):
         get_global_index(None)  # type: ignore[arg-type]
     with pytest.raises(ValueError):
-        get_global_index("CN.INDEX.CSI.000300")
+        get_global_index("CN.INDEX.CSI300")
     with pytest.raises(ValueError):
-        get_global_index("Cn.Index.Csi.000300")
+        get_global_index("Cn.Index.Csi300")
 
 
 def test_symbol_registry_resolves_exact_tencent_aliases_only() -> None:
     registry = build_global_index_symbol_registry()
     for index_id, _publisher, _code, _market, _name, _cur, _tz, symbol in V1_TABLE:
         assert registry.resolve(TENCENT_PROVIDER_ID, symbol) == index_id
-        aliases = registry.aliases_for(index_id)
+        aliases = tuple(
+            alias for alias in registry.aliases_for(index_id)
+            if alias.provider_id == "tencent"
+        )
         assert len(aliases) == 1
-        assert aliases[0].provider_id == "tencent"
         assert aliases[0].provider_symbol == symbol
     # No heuristic bare-code inference: bare local codes and bare market
     # prefixes must never resolve.
@@ -368,7 +371,7 @@ def test_capability_spec_index_daily_k_is_registered() -> None:
         "hsi",
         "nk225",
         "jp.index.nikkei.n225",
-        "cn.index.csi.999999",
+        "cn.index.csi999",
         "us.index.nasdaq.nasdaq100",
         "hkHSI",
         "us.INX",
@@ -419,7 +422,7 @@ def test_exact_unadjusted_request_param_for_every_supported_index(
 
 
 def test_exactly_one_request_per_fetch_even_for_empty_result() -> None:
-    result, transport = _fetch_ok("cn.index.csi.000300", rows=[])
+    result, transport = _fetch_ok("cn.index.csi300", rows=[])
     assert fetcher_contract.is_empty(result)
     assert transport.call_count == 1
 
@@ -439,14 +442,14 @@ def test_default_transport_is_the_requests_json_transport() -> None:
 
 
 def test_record_keys_exact_set_and_order() -> None:
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=[_row("2026-09-01", 1, 2, 3, 0.5)])
+    result, _ = _fetch_ok("cn.index.csi300", rows=[_row("2026-09-01", 1, 2, 3, 0.5)])
     assert fetcher_contract.is_ok(result)
     (record,) = result["data"]
     assert list(record.keys()) == _RECORD_KEYS
 
 
 def test_envelope_carries_all_fetcher_contract_fields() -> None:
-    result, _ = _fetch_ok("cn.index.csi.000300")
+    result, _ = _fetch_ok("cn.index.csi300")
     assert set(result.keys()) == _ENVELOPE_KEYS
     assert result["scope"] == "market"
     assert result["source"] == "tencent.daily_k"
@@ -457,7 +460,7 @@ def test_envelope_carries_all_fetcher_contract_fields() -> None:
 @pytest.mark.parametrize(
     ("index_id", "market", "local_code", "name", "currency", "tz", "provider_symbol"),
     [
-        ("cn.index.sse.000001", "cn", "000001", "上证指数", "CNY", "Asia/Shanghai", "sh000001"),
+        ("cn.index.sh_comp", "cn", "000001", "上证指数", "CNY", "Asia/Shanghai", "sh000001"),
         ("hk.index.hang_seng.hsi", "hk", "HSI", "恒生指数", "HKD", "Asia/Hong_Kong", "hkHSI"),
         ("hk.index.hang_seng.hstech", "hk", "HSTECH", "恒生科技指数", "HKD", "Asia/Hong_Kong", "hkHSTECH"),
         ("us.index.sp_dji.sp500", "us", "SP500", "S&P 500", "USD", "America/New_York", "us.INX"),
@@ -553,7 +556,7 @@ def test_output_is_chronological_ascending_with_unique_dates() -> None:
         _row_ohlc("2026-09-05"),
         _row_ohlc("2026-09-02"),
     ]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     assert fetcher_contract.is_ok(result)
     dates = [record["date"] for record in result["data"]]
     assert dates == sorted(dates)
@@ -568,13 +571,13 @@ def test_inclusive_window_keeps_both_boundary_dates() -> None:
         _row_ohlc("2026-09-25"),
         _row_ohlc("2026-09-26"),
     ]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     assert [record["date"] for record in result["data"]] == ["2026-09-01", "2026-09-25"]
 
 
 def test_out_of_window_rows_are_dropped_on_both_sides() -> None:
     rows = [_row_ohlc("2026-08-01"), _row_ohlc("2026-10-01")]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows, now=_FAR_FUTURE_NOW)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows, now=_FAR_FUTURE_NOW)
     assert fetcher_contract.is_empty(result)
     assert result["as_of"] is None
 
@@ -587,7 +590,7 @@ def test_non_trading_gaps_are_not_forward_filled() -> None:
         _row_ohlc("2026-09-28"),
     ]
     result, _ = _fetch_ok(
-        "cn.index.csi.000300", "2026-09-21", "2026-09-28", rows=rows, now=_FAR_FUTURE_NOW
+        "cn.index.csi300", "2026-09-21", "2026-09-28", rows=rows, now=_FAR_FUTURE_NOW
     )
     assert fetcher_contract.is_ok(result)
     # No synthesized sessions for 09-23 / 09-25-27; no holiday inference.
@@ -604,7 +607,7 @@ def test_non_trading_day_only_window_returns_empty_not_error() -> None:
 
     rows = [_row_ohlc("2026-09-21"), _row_ohlc("2026-09-25")]
     result, _ = _fetch_ok(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-26",
         "2026-09-27",
         rows=rows,
@@ -616,7 +619,7 @@ def test_non_trading_day_only_window_returns_empty_not_error() -> None:
 
 
 def test_explicit_empty_day_list_is_a_valid_empty_result() -> None:
-    result, transport = _fetch_ok("cn.index.csi.000300", rows=[])
+    result, transport = _fetch_ok("cn.index.csi300", rows=[])
     assert fetcher_contract.is_empty(result)
     assert result["data"] is None
     assert result["as_of"] is None
@@ -625,7 +628,7 @@ def test_explicit_empty_day_list_is_a_valid_empty_result() -> None:
 
 def test_single_day_window_is_valid() -> None:
     rows = [_row_ohlc("2026-09-10")]
-    result, _ = _fetch_ok("cn.index.csi.000300", "2026-09-10", "2026-09-10", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", "2026-09-10", "2026-09-10", rows=rows)
     assert fetcher_contract.is_ok(result)
     assert [record["date"] for record in result["data"]] == ["2026-09-10"]
     assert result["as_of"] == "2026-09-10"
@@ -633,7 +636,7 @@ def test_single_day_window_is_valid() -> None:
 
 def test_as_of_is_latest_returned_session_date() -> None:
     rows = [_row_ohlc("2026-09-02"), _row_ohlc("2026-09-20"), _row_ohlc("2026-09-05")]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     assert result["as_of"] == "2026-09-20"
 
 
@@ -649,7 +652,7 @@ def test_identical_duplicate_bars_coalesce_across_value_types() -> None:
         _row("2026-09-02", 100, 105, 110, 95, 0),
         _row("2026-09-02", 100.0, 105.0, 110.0, 95.0, 0),
     ]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     assert fetcher_contract.is_ok(result)
     assert [record["date"] for record in result["data"]] == ["2026-09-01", "2026-09-02"]
     assert result["data"][0]["open"] == 4250.0
@@ -662,7 +665,7 @@ def test_conflicting_duplicate_bars_are_error_not_silent_keeps() -> None:
         _row("2026-09-01", 4250.0, 4275.5, 4280.0, 4245.0),
         _row("2026-09-01", 4250.0, 4276.5, 4280.0, 4245.0),
     ]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
 
@@ -671,7 +674,7 @@ def test_conflicting_duplicate_outside_window_is_still_error() -> None:
         _row("2026-08-01", 100.0, 105.0, 110.0, 95.0),
         _row("2026-08-01", 100.0, 106.0, 110.0, 95.0),
     ]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
 
@@ -707,7 +710,7 @@ def test_conflicting_duplicate_outside_window_is_still_error() -> None:
 )
 def test_bad_open_values_are_parse_errors(bad_open: Any) -> None:
     rows = [["2026-09-01", bad_open, 110.0, 115.0, 95.0, 0]]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
 
@@ -723,7 +726,7 @@ def test_bad_open_values_are_parse_errors(bad_open: Any) -> None:
     ],
 )
 def test_high_low_inversions_are_parse_errors(row: list[Any]) -> None:
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=[row])
+    result, _ = _fetch_ok("cn.index.csi300", rows=[row])
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
 
@@ -741,7 +744,7 @@ def test_high_low_inversions_are_parse_errors(row: list[Any]) -> None:
     ],
 )
 def test_malformed_row_containers_are_parse_errors(bad_row: Any) -> None:
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=[bad_row])
+    result, _ = _fetch_ok("cn.index.csi300", rows=[bad_row])
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
 
@@ -764,7 +767,7 @@ def test_malformed_row_containers_are_parse_errors(bad_row: Any) -> None:
 )
 def test_non_strict_or_invalid_row_dates_are_parse_errors(bad_day: Any) -> None:
     rows = [[bad_day, 100.0, 110.0, 115.0, 95.0, 0]]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
 
@@ -773,7 +776,7 @@ def test_int_and_decimal_string_ohlc_are_accepted() -> None:
         _row("2026-09-01", 4250, "4275.5", 4280, "4245.0"),
         _row("2026-09-02", "4300.25", 4310, "4320.5", "4295.75"),
     ]
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows)
     assert fetcher_contract.is_ok(result)
     first, second = result["data"]
     assert first["open"] == 4250.0
@@ -821,7 +824,7 @@ _GOOD_SECTION = {"day": [_row_ohlc("2026-09-01")]}
 def test_malformed_payload_structures_are_parse_errors(payload: Any) -> None:
     transport = RecordingTransport(payload=payload)
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
     assert transport.call_count == 1
@@ -831,7 +834,7 @@ def test_malformed_payload_structures_are_parse_errors(payload: Any) -> None:
 def test_nonzero_provider_code_is_error_not_empty(code: int) -> None:
     transport = RecordingTransport(code=code)
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
@@ -846,7 +849,7 @@ def test_adjusted_only_payload_is_rejected() -> None:
     }
     transport = RecordingTransport(payload=payload)
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
@@ -865,7 +868,7 @@ def test_unadjusted_day_preferred_and_extra_symbols_ignored() -> None:
     }
     transport = RecordingTransport(payload=payload)
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     assert fetcher_contract.is_ok(result)
     (record,) = result["data"]
@@ -927,7 +930,7 @@ def _http_error(status: int | None) -> requests.exceptions.HTTPError:
 def test_transport_exception_mapping(make_exc: Any, code: str, retryable: bool) -> None:
     transport = RecordingTransport(error=make_exc())
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, code, retryable)
     assert transport.call_count == 1
@@ -939,7 +942,7 @@ def test_json_decode_error_is_parse_not_unknown() -> None:
 
     transport = RecordingTransport(error=requests.exceptions.JSONDecodeError("bad json", "doc", 0))
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
@@ -947,7 +950,7 @@ def test_json_decode_error_is_parse_not_unknown() -> None:
 def test_plain_value_error_from_transport_is_parse() -> None:
     transport = RecordingTransport(error=ValueError("garbled"))
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
@@ -955,7 +958,7 @@ def test_plain_value_error_from_transport_is_parse() -> None:
 def test_runtime_error_from_transport_is_safe_unknown_and_does_not_escape() -> None:
     transport = RecordingTransport(error=RuntimeError("provider exploded: internal diagnostic detail"))
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_UNKNOWN, retryable=True)
     assert "provider exploded" not in result["error"]["message"]
@@ -965,7 +968,7 @@ def test_runtime_error_from_transport_is_safe_unknown_and_does_not_escape() -> N
 def test_ohlc_overflow_values_are_parse_errors_not_crashes() -> None:
     for bad in (10**1000, "1e1000", "-1e1000"):
         rows = [["2026-09-01", bad, 110.0, 115.0, 95.0, 0]]
-        result, _ = _fetch_ok("cn.index.csi.000300", rows=rows)
+        result, _ = _fetch_ok("cn.index.csi300", rows=rows)
         _assert_error_shape(result, fetcher_contract.ERR_PARSE, retryable=False)
 
 
@@ -991,7 +994,7 @@ def test_ohlc_overflow_values_are_parse_errors_not_crashes() -> None:
 def test_bad_start_dates_return_validation_without_transport(bad_start: Any) -> None:
     transport = _forbidden_transport()
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", bad_start, _WINDOW_END, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", bad_start, _WINDOW_END, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_VALIDATION, retryable=False)
     assert transport.calls == []
@@ -1004,7 +1007,7 @@ def test_bad_start_dates_return_validation_without_transport(bad_start: Any) -> 
 def test_bad_end_dates_return_validation_without_transport(bad_end: Any) -> None:
     transport = _forbidden_transport()
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, bad_end, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", _WINDOW_START, bad_end, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_VALIDATION, retryable=False)
     assert transport.calls == []
@@ -1013,7 +1016,7 @@ def test_bad_end_dates_return_validation_without_transport(bad_end: Any) -> None
 def test_start_after_end_returns_validation() -> None:
     transport = _forbidden_transport()
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", "2026-09-25", "2026-09-01", transport=transport, now=_NOW_UTC
+        "cn.index.csi300", "2026-09-25", "2026-09-01", transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_VALIDATION, retryable=False)
     assert transport.calls == []
@@ -1027,7 +1030,7 @@ def test_window_of_exactly_366_inclusive_days_is_accepted() -> None:
     start, end = "2025-09-26", "2026-09-26"
     assert _inclusive_span(start, end) == 366
     rows = [_row_ohlc("2026-09-01")]
-    result, transport = _fetch_ok("cn.index.csi.000300", start, end, rows=rows)
+    result, transport = _fetch_ok("cn.index.csi300", start, end, rows=rows)
     assert fetcher_contract.is_ok(result)
     assert transport.call_count == 1
 
@@ -1037,7 +1040,7 @@ def test_window_of_367_inclusive_days_is_rejected() -> None:
     assert _inclusive_span(start, end) == 367
     transport = _forbidden_transport()
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", start, end, transport=transport, now=_NOW_UTC
+        "cn.index.csi300", start, end, transport=transport, now=_NOW_UTC
     )
     _assert_error_shape(result, fetcher_contract.ERR_VALIDATION, retryable=False)
     assert transport.calls == []
@@ -1056,7 +1059,7 @@ def test_window_of_367_inclusive_days_is_rejected() -> None:
 def test_naive_or_non_datetime_now_returns_validation(bad_now: Any) -> None:
     transport = _forbidden_transport()
     result = fetch_global_daily_k(
-        "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, transport=transport, now=bad_now
+        "cn.index.csi300", _WINDOW_START, _WINDOW_END, transport=transport, now=bad_now
     )
     _assert_error_shape(result, fetcher_contract.ERR_VALIDATION, retryable=False)
     assert transport.calls == []
@@ -1065,7 +1068,7 @@ def test_naive_or_non_datetime_now_returns_validation(bad_now: Any) -> None:
 @pytest.mark.parametrize("bad_transport", [None, 123, "transport", object(), {}])
 def test_non_callable_transport_returns_validation(bad_transport: Any) -> None:
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         _WINDOW_START,
         _WINDOW_END,
         transport=bad_transport,
@@ -1080,8 +1083,8 @@ def test_non_callable_transport_returns_validation(bad_transport: Any) -> None:
         None,
         123,
         "",
-        "CN.INDEX.CSI.000300",
-        "Cn.Index.Csi.000300",
+        "CN.INDEX.CSI300",
+        "Cn.Index.Csi300",
     ],
 )
 def test_noncanonical_index_id_returns_validation_not_unsupported(bad_id: Any) -> None:
@@ -1096,7 +1099,7 @@ def test_noncanonical_index_id_returns_validation_not_unsupported(bad_id: Any) -
 def test_aware_now_with_fixed_offset_is_accepted() -> None:
     rows = [_row_ohlc("2026-09-01")]
     fixed_offset_now = datetime(2026, 9, 27, 20, 0, tzinfo=timezone(timedelta(hours=8)))
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=rows, now=fixed_offset_now)
+    result, _ = _fetch_ok("cn.index.csi300", rows=rows, now=fixed_offset_now)
     assert fetcher_contract.is_ok(result)
 
 
@@ -1114,7 +1117,7 @@ def test_cutoff_is_localized_per_market_for_the_same_utc_now() -> None:
     rows = [_row_ohlc("2026-09-25"), _row_ohlc("2026-09-26")]
 
     cn_result, _ = _fetch_ok(
-        "cn.index.csi.000300", "2026-09-24", "2026-09-27", rows=list(rows), now=now
+        "cn.index.csi300", "2026-09-24", "2026-09-27", rows=list(rows), now=now
     )
     assert [r["date"] for r in cn_result["data"]] == ["2026-09-25", "2026-09-26"]
 
@@ -1170,7 +1173,7 @@ def test_current_local_day_bar_excluded_even_after_close() -> None:
     cn_now = datetime(2026, 9, 27, 20, 0, tzinfo=_SHANGHAI_TZ)
     cn_rows = [_row_ohlc("2026-09-26"), _row_ohlc("2026-09-27")]
     cn_result, _ = _fetch_ok(
-        "cn.index.csi.000300", "2026-09-25", "2026-09-27", rows=cn_rows, now=cn_now
+        "cn.index.csi300", "2026-09-25", "2026-09-27", rows=cn_rows, now=cn_now
     )
     assert [r["date"] for r in cn_result["data"]] == ["2026-09-26"]
 
@@ -1186,7 +1189,7 @@ def test_current_local_day_bar_excluded_even_after_close() -> None:
 def test_fetched_at_is_the_real_retrieval_instant_not_injected_now() -> None:
     injected_now = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
     before = datetime.now(timezone.utc)
-    result, _ = _fetch_ok("cn.index.csi.000300", rows=[_row_ohlc("2026-09-25")], now=injected_now)
+    result, _ = _fetch_ok("cn.index.csi300", rows=[_row_ohlc("2026-09-25")], now=injected_now)
     after = datetime.now(timezone.utc)
 
     assert fetcher_contract.is_ok(result)
@@ -1201,7 +1204,7 @@ def test_fetched_at_is_the_real_retrieval_instant_not_injected_now() -> None:
 
 
 def test_time_metadata_adapter_accepts_fetcher_results() -> None:
-    ok_result, _ = _fetch_ok("cn.index.csi.000300", rows=[_row_ohlc("2026-09-25")])
+    ok_result, _ = _fetch_ok("cn.index.csi300", rows=[_row_ohlc("2026-09-25")])
     meta = time_metadata_from_fetcher_result(ok_result)
     assert meta.fetched_at == ok_result["fetched_at"]
     assert meta.data_as_of == "2026-09-25"
@@ -1209,21 +1212,21 @@ def test_time_metadata_adapter_accepts_fetcher_results() -> None:
     assert meta.period_start is None
     assert meta.effective_from is None
 
-    empty_result, _ = _fetch_ok("cn.index.csi.000300", rows=[])
+    empty_result, _ = _fetch_ok("cn.index.csi300", rows=[])
     empty_meta = time_metadata_from_fetcher_result(empty_result)
     assert empty_meta.data_as_of is None
     assert empty_meta.fetched_at  # retrieval instant is still present
 
 
 def test_empty_and_error_results_have_no_units_and_no_as_of() -> None:
-    empty_result, _ = _fetch_ok("cn.index.csi.000300", rows=[])
+    empty_result, _ = _fetch_ok("cn.index.csi300", rows=[])
     assert empty_result["units"] == {}
     assert empty_result["as_of"] is None
     assert empty_result["error"]["retryable"] is False
 
     error_transport = RecordingTransport(error=requests.exceptions.Timeout("t"))
     error_result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         _WINDOW_START,
         _WINDOW_END,
         transport=error_transport,
@@ -1289,7 +1292,7 @@ def test_default_transport_end_to_end_with_patched_requests_get() -> None:
 
     with mock.patch.object(global_daily_k.requests, "get", return_value=response) as get:
         result = fetch_global_daily_k(
-            "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, now=_NOW_UTC
+            "cn.index.csi300", _WINDOW_START, _WINDOW_END, now=_NOW_UTC
         )
 
     assert fetcher_contract.is_ok(result)
@@ -1304,7 +1307,7 @@ def test_default_transport_http_failure_maps_end_to_end() -> None:
     response.raise_for_status.side_effect = _http_error(404)
     with mock.patch.object(global_daily_k.requests, "get", return_value=response):
         result = fetch_global_daily_k(
-            "cn.index.csi.000300", _WINDOW_START, _WINDOW_END, now=_NOW_UTC
+            "cn.index.csi300", _WINDOW_START, _WINDOW_END, now=_NOW_UTC
         )
     _assert_error_shape(result, fetcher_contract.ERR_NET_4XX, retryable=False)
 
@@ -1315,12 +1318,12 @@ def test_default_transport_http_failure_maps_end_to_end() -> None:
 
 
 def test_fetcher_contract_status_helpers_classify_every_outcome() -> None:
-    ok_result, _ = _fetch_ok("cn.index.csi.000300")
-    empty_result, _ = _fetch_ok("cn.index.csi.000300", rows=[])
+    ok_result, _ = _fetch_ok("cn.index.csi300")
+    empty_result, _ = _fetch_ok("cn.index.csi300", rows=[])
     unsupported, _ = _fetch_ok("jp.index.nikkei.n225")
     error_transport = RecordingTransport(error=RuntimeError("x"))
     error_result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         _WINDOW_START,
         _WINDOW_END,
         transport=error_transport,

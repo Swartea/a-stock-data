@@ -67,7 +67,7 @@ def _capturing_transport(
     static_payload_provider_symbol = provider_symbol
     if static_payload_provider_symbol is None:
         static_payload_provider_symbol = GLOBAL_INDEX_PROVIDER_SYMBOLS[
-            "cn.index.csi.000300"
+            "cn.index.csi300"
         ]
     static_payload = _fixture(
         provider_symbol=static_payload_provider_symbol, rows=rows, code=code
@@ -96,10 +96,10 @@ def _make_row(date: str, o: float, c: float, h: float, lo: float) -> list[Any]:
 def test_supported_universe_is_fixed_at_nine_indices() -> None:
     spec_ids = tuple(spec.identity.index_id for spec in list_global_indices())
     assert spec_ids == (
-        "cn.index.sse.000001",
-        "cn.index.szse.399001",
-        "cn.index.szse.399006",
-        "cn.index.csi.000300",
+        "cn.index.sh_comp",
+        "cn.index.sz_component",
+        "cn.index.chinext",
+        "cn.index.csi300",
         "hk.index.hang_seng.hsi",
         "hk.index.hang_seng.hstech",
         "us.index.sp_dji.sp500",
@@ -117,7 +117,7 @@ def test_supported_index_returns_ok_records() -> None:
     transport, calls = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -135,12 +135,14 @@ def test_supported_index_returns_ok_records() -> None:
 
     assert len(result["data"]) == 3
     first = result["data"][0]
-    assert first["index_id"] == "cn.index.csi.000300"
+    assert first["index_id"] == "cn.index.csi300"
     assert first["market"] == "cn"
     assert first["symbol"] == "000300"
     assert first["currency"] == "CNY"
     assert first["timezone"] == "Asia/Shanghai"
     assert first["source"] == TENCENT_SOURCE
+    assert TENCENT_SOURCE == "tencent.daily_k"
+    assert "quote" not in first["source"]
     assert first["volume"] is None
     assert first["date"] == "2026-09-01"
     assert first["open"] == pytest.approx(4250.0)
@@ -173,7 +175,7 @@ def test_request_filters_to_inclusive_window_and_drops_same_local_day() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -189,7 +191,7 @@ def test_empty_filtered_window_returns_empty_status() -> None:
     transport, calls = _capturing_transport([])
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -210,7 +212,7 @@ def test_unknown_index_id_returns_unsupported_without_transport_call() -> None:
         raise AssertionError("transport must not be called for unknown index_id")
 
     result = fetch_global_daily_k(
-        "cn.index.csi.999999",
+        "cn.index.csi999",
         "2026-09-01",
         "2026-09-25",
         transport=_transport,
@@ -253,7 +255,7 @@ def test_invalid_date_window_returns_validation_error(start: str, end: str) -> N
         raise AssertionError("transport must not be called for invalid input")
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         start,
         end,
         transport=_transport,
@@ -274,7 +276,7 @@ def test_naive_now_returns_validation_error_without_transport_call() -> None:
         raise AssertionError("transport must not be called for naive now")
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=_transport,
@@ -289,7 +291,7 @@ def test_naive_now_returns_validation_error_without_transport_call() -> None:
 
 def test_non_callable_transport_returns_validation_error() -> None:
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport="not-callable",  # type: ignore[arg-type]
@@ -306,7 +308,7 @@ def test_provider_nonzero_code_returns_error_not_empty() -> None:
     transport, _ = _capturing_transport(rows, code=1)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -325,7 +327,7 @@ def test_provider_boolean_code_returns_error() -> None:
         "code": False,
         "msg": "",
         "data": {
-            GLOBAL_INDEX_PROVIDER_SYMBOLS["cn.index.csi.000300"]: {
+            GLOBAL_INDEX_PROVIDER_SYMBOLS["cn.index.csi300"]: {
                 "day": [_make_row("2026-09-01", 1.0, 1.0, 1.0, 1.0)],
             }
         },
@@ -335,7 +337,7 @@ def test_provider_boolean_code_returns_error() -> None:
         return payload
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=_transport,
@@ -357,7 +359,7 @@ def test_missing_symbol_section_returns_error() -> None:
         return payload
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=_transport,
@@ -376,7 +378,7 @@ def test_duplicate_session_with_identical_ohlc_coalesces() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -395,7 +397,7 @@ def test_duplicate_session_with_conflicting_ohlc_is_error() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -411,7 +413,7 @@ def test_malformed_ohlc_returns_parse_error() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -427,7 +429,7 @@ def test_high_low_inversion_returns_parse_error() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -474,7 +476,7 @@ def test_default_transport_actually_runs_without_crashing() -> None:
             "code": 0,
             "msg": "",
             "data": {
-                GLOBAL_INDEX_PROVIDER_SYMBOLS["cn.index.csi.000300"]: {
+                GLOBAL_INDEX_PROVIDER_SYMBOLS["cn.index.csi300"]: {
                     "day": [],
                 }
             },
@@ -483,7 +485,7 @@ def test_default_transport_actually_runs_without_crashing() -> None:
 
     with mock.patch.object(global_daily_k.requests, "get", side_effect=_fake_get):
         result = fetch_global_daily_k(
-            "cn.index.csi.000300",
+            "cn.index.csi300",
             "2026-09-01",
             "2026-09-25",
             now=_NOW,
@@ -504,7 +506,7 @@ def test_uppercase_index_id_returns_validation_not_crash() -> None:
         raise AssertionError("transport must not be called for invalid index_id")
 
     result = fetch_global_daily_k(
-        "CN.INDEX.CSI.000300",
+        "CN.INDEX.CSI300",
         "2026-09-01",
         "2026-09-25",
         transport=_transport,
@@ -540,7 +542,7 @@ def test_unqualified_raw_symbol_returns_unsupported(raw_symbol: str) -> None:
 
     Note the asymmetry with
     :func:`test_uppercase_index_id_returns_validation_not_crash`: an
-    uppercase *qualified* id (e.g. ``CN.INDEX.CSI.000300``) still maps
+    uppercase *qualified* id (e.g. ``CN.INDEX.CSI300``) still maps
     to ``VALIDATION`` because the caller was clearly addressing a known
     index but with the wrong casing. These seven, by contrast, are not
     in the V1 set at all.
@@ -583,7 +585,7 @@ def test_non_strict_input_date_returns_validation(compact: str) -> None:
         raise AssertionError("transport must not be called for bad date")
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         compact,
         "2026-09-25",
         transport=_transport,
@@ -603,7 +605,7 @@ def test_non_strict_row_date_returns_parse_error() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -625,7 +627,7 @@ def test_requests_json_decode_error_is_parse_not_unknown() -> None:
         raise requests.exceptions.JSONDecodeError("bad response", "x", 0)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=_transport,
@@ -651,7 +653,7 @@ def test_generic_transport_exception_returns_safe_unknown() -> None:
         raise RuntimeError("provider failure")
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=_transport,
@@ -677,7 +679,7 @@ def test_huge_number_in_ohlc_returns_parse_error() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,
@@ -699,7 +701,7 @@ def test_huge_number_as_string_in_ohlc_returns_parse_error() -> None:
     transport, _ = _capturing_transport(rows)
 
     result = fetch_global_daily_k(
-        "cn.index.csi.000300",
+        "cn.index.csi300",
         "2026-09-01",
         "2026-09-25",
         transport=transport,

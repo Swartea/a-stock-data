@@ -14,6 +14,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, fields
 from enum import Enum
+from types import MappingProxyType
+from typing import Mapping
 
 _INDEX_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 _LOCAL_CODE_RE = re.compile(r"^[A-Z0-9]+$")
@@ -75,3 +77,16 @@ class IndexIdentity:
         """Return the intentionally small B2 identity surface."""
 
         return tuple(field.name for field in fields(cls))
+
+
+# Shared A-share identities live here so universe and provider specifications
+# refer to the same canonical objects instead of maintaining parallel facts.
+A_SHARE_INDEX_IDENTITIES: tuple[IndexIdentity, ...] = (
+    IndexIdentity("cn.index.sh_comp", IndexPublisher.SSE, "000001"),
+    IndexIdentity("cn.index.sz_component", IndexPublisher.SZSE, "399001"),
+    IndexIdentity("cn.index.chinext", IndexPublisher.SZSE, "399006"),
+    IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),
+)
+A_SHARE_INDEX_BY_ID: Mapping[str, IndexIdentity] = MappingProxyType(
+    {identity.index_id: identity for identity in A_SHARE_INDEX_IDENTITIES}
+)

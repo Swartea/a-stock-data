@@ -1,5 +1,9 @@
 """V2 orchestration layer for the global-index daily-K fetcher.
 
+``index.daily_k`` represents Phase 1 recent confirmed daily state. The
+separate ``index.quote`` capability is reserved for future realtime/intraday
+semantics; a daily bar must never be presented as a realtime quote.
+
 This module sits on top of the V1 ``fetch_global_daily_k`` fetcher and adds:
 
 * a small ``DailyKProvider`` descriptor so callers/tests can inject ordered

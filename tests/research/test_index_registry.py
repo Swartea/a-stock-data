@@ -7,7 +7,7 @@ from analysis.research.index_registry import IndexIdentity, IndexPublisher
 
 def _identity(
     *,
-    index_id: str = "cn.index.csi.000300",
+    index_id: str = "cn.index.csi300",
     publisher: IndexPublisher = IndexPublisher.CSI,
     local_code: str = "000300",
 ) -> IndexIdentity:
@@ -36,11 +36,11 @@ def test_index_identity_contract_surface_is_exact() -> None:
 @pytest.mark.parametrize(
     ("index_id", "publisher", "local_code"),
     (
-        ("cn.index.csi.000300", IndexPublisher.CSI, "000300"),
-        ("cn.index.csi.000905", IndexPublisher.CSI, "000905"),
-        ("cn.index.csi.000852", IndexPublisher.CSI, "000852"),
-        ("cn.index.sse.000688", IndexPublisher.SSE, "000688"),
-        ("cn.index.szse.399006", IndexPublisher.SZSE, "399006"),
+        ("cn.index.csi300", IndexPublisher.CSI, "000300"),
+        ("cn.index.csi905", IndexPublisher.CSI, "000905"),
+        ("cn.index.csi852", IndexPublisher.CSI, "000852"),
+        ("cn.index.sse688", IndexPublisher.SSE, "000688"),
+        ("cn.index.chinext", IndexPublisher.SZSE, "399006"),
     ),
 )
 def test_representative_index_identities_are_explicit(
@@ -70,11 +70,11 @@ def test_index_identity_is_immutable() -> None:
     "index_id",
     (
         "",
-        "CN.INDEX.CSI.000300",
-        " cn.index.csi.000300",
-        "cn.index.csi.000300 ",
+        "CN.INDEX.CSI300",
+        " cn.index.csi300",
+        "cn.index.csi300 ",
         "cn index csi 000300",
-        ".cn.index.csi.000300",
+        ".cn.index.csi300",
     ),
 )
 def test_index_id_must_be_explicit_canonical_token(index_id: str) -> None:
@@ -92,7 +92,7 @@ def test_index_id_does_not_have_to_equal_local_code() -> None:
 def test_raw_publisher_string_is_not_coerced() -> None:
     with pytest.raises(TypeError, match="publisher must be IndexPublisher"):
         IndexIdentity(
-            index_id="cn.index.csi.000300",
+            index_id="cn.index.csi300",
             publisher="csi",  # type: ignore[arg-type]
             local_code="000300",
         )
@@ -139,7 +139,7 @@ def test_identity_rejects_wrong_field_types(
     value: object,
 ) -> None:
     kwargs: dict[str, object] = {
-        "index_id": "cn.index.csi.000300",
+        "index_id": "cn.index.csi300",
         "publisher": IndexPublisher.CSI,
         "local_code": "000300",
     }
