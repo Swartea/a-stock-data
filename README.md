@@ -1,4 +1,4 @@
-<p align="center"><b>简体中文</b> · <a href="README_en.md" title="English translation pending — PRs welcome">English</a></p>
+<p align="center"><b>简体中文</b> · <a href="README_en.md">English</a></p>
 
 <h1 align="center">a-stock-data</h1>
 
@@ -69,10 +69,10 @@ pip install -e .
 
 # 3. 一句话出报告
 da-a-analyze 002353
-# 报告目录: reports/002353_杰瑞股份/{timestamp}/
-#           ├── report.html          ← 浏览器直接打开
-#           ├── report.docx          ← Word 可编辑
-#           └── report.md            ← 源 markdown
+# 已检入样本: reports/002353_杰瑞股份/2026-09-09/
+#           ├── 002353-杰瑞股份-v3-20260909-1621.html
+#           ├── 002353-杰瑞股份-1621.docx
+#           └── 002353-杰瑞股份-1621.md
 ```
 
 4 只样本票（实盘验证）已存在 `reports/`，跑完后可直接对照：

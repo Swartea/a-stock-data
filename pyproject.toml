@@ -1,10 +1,10 @@
 [project]
 name = "da-a-data"
-version = "0.16.0"
+version = "0.17.0"
 description = "A 股多因子量化分析器 V3 — 报告主分析器 (V3.7.2 era 报告层升级)"
-readme = "docs/00-项目总览.md"
+readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "Apache-2.0"
 authors = [
     {name = "Swartea"}
 ]
