@@ -44,6 +44,8 @@ def test_snapshot_contract_surface_is_exact_and_small():
         "market",
         "indexes",
         "provider_symbols",
+        "observations",
+        "trading_day_status",
     )
 
 
@@ -58,7 +60,6 @@ def test_snapshot_contract_exposes_no_number_field():
         "change",
         "value",
         "price",
-        "observations",
         "quotes",
         "evidence",
     ):
