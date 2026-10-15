@@ -137,5 +137,3 @@ def test_scenarios_must_be_objects() -> None:
     record["scenarios"].append("not an object")
     with pytest.raises(ValueError, match="scenarios must contain only objects"):
         render_market_snapshot(record)
-
-
