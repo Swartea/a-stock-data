@@ -34,6 +34,23 @@ def test_missing_universe_mapping_is_unavailable_without_numeric_values():
     assert snapshot.observations[0].close is None
 
 
+def test_unknown_custom_identity_does_not_break_market_snapshot():
+    from analysis.research.index_registry import IndexIdentity, IndexPublisher
+    from analysis.research.market_index_universe import MarketIndexUniverse
+
+    identity = IndexIdentity("test.index.unregistered", IndexPublisher.CSI, "TEST")
+    snapshot = build_market_snapshot(
+        evaluation_time="2026-10-14T16:00:00+08:00",
+        start_date="2026-10-13",
+        end_date="2026-10-14",
+        calendar=TradingCalendar(),
+        max_age_policy=MaxAgePolicy(timedelta(days=1)),
+        universe=MarketIndexUniverse((identity,)),
+    )
+    assert snapshot.market == "unknown"
+    assert snapshot.observations[0].availability.value == "unavailable"
+
+
 def _provider(*, reverse=False, row_days=None, payload_name=None):
     from analysis import fetcher_contract
     from analysis.research.global_daily_k_service import DailyKProvider

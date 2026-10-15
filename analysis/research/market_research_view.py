@@ -83,7 +83,7 @@ function renderMeta(p){
 function renderTable(p){
   const bars=p.bars||[],showVol=bars.some(b=>b.volume!=null);
   $('#table').innerHTML='<table><thead><tr><th>日期</th><th>开</th><th>高</th><th>低</th><th>收</th>'+(showVol?'<th>量</th>':'')+'</tr></thead><tbody>'+bars.slice().reverse().map(b=>'<tr><td>'+esc(b.date)+'</td><td>'+fmt(b.open)+'</td><td>'+fmt(b.high)+'</td><td>'+fmt(b.low)+'</td><td>'+fmt(b.close)+'</td>'+(showVol?'<td>'+(b.volume==null?'—':fmt(b.volume,0))+'</td>':'')+'</tr>').join('')+'</tbody></table>';
-  $('#empty').hidden=bars.length>0;
+  $('#empty').hidden=p.status!=='empty';
 }
 function visible(){const bars=state.payload?.bars||[],span=Math.max(1,Math.ceil(bars.length/state.zoom));state.from=Math.max(0,Math.min(bars.length-span,state.from));return bars.slice(state.from,state.from+span);}
 function layout(){

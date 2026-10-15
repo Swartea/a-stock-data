@@ -49,7 +49,6 @@ from analysis.research.market_research_view import (
 API_PATH = "/api/daily-k"
 INDICES_PATH = "/api/indices"
 DEFAULT_WINDOW_DAYS = 30
-MAX_BARS_REPORTED = 0  # bars are never truncated silently
 
 
 def default_window(

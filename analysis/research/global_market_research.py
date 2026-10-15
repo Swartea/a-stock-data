@@ -90,6 +90,7 @@ _UNPROVEN_REASON = (
 )
 _EMPTY_REASON = "provider returned no daily bars for the requested window"
 _UNAVAILABLE_REASON = "no daily-K data available for the requested window"
+_DEFAULT_DAILY_K_MAX_AGE = timedelta(hours=72)
 
 
 @dataclass(frozen=True)
@@ -346,6 +347,15 @@ def _observation_lookup(
     return None
 
 
+def _safe_provider_error(envelope: Mapping[str, Any]) -> str:
+    """Summarize a provider error without forwarding its message text."""
+    error = envelope.get("error")
+    code = error.get("code") if isinstance(error, Mapping) else None
+    if isinstance(code, str) and code.isascii() and code.replace("_", "").isalnum():
+        return f"Daily-K provider error ({code})"
+    return "Daily-K provider request failed"
+
+
 def _default_snapshot_builder(
     *,
     index_id: str,
@@ -465,12 +475,12 @@ def build_global_market_research(
         if evaluation.tzinfo is None or evaluation.utcoffset() is None:
             raise ValueError("evaluation_time must include a timezone")
         evaluated_at = evaluation.isoformat()
-    except (AttributeError, TypeError, ValueError) as exc:
+    except (AttributeError, TypeError, ValueError):
         return _error_payload(
             spec,
             start_date=canonical_start,
             end_date=canonical_end,
-            failure_reason=f"VALIDATION: invalid evaluation_time ({exc})",
+            failure_reason="VALIDATION: evaluation_time must be a timezone-aware ISO timestamp",
         )
 
     if spec.identity.index_id not in PROVEN_INDEX_IDS:
@@ -509,7 +519,7 @@ def build_global_market_research(
         envelope = {
             "status": fetcher_contract.STATUS_ERROR,
             "data": None,
-            "error": {"message": f"{type(exc).__name__}: {exc}"},
+            "error": {"code": "UNKNOWN", "message": f"{type(exc).__name__}"},
             "source": None,
             "provider_status": "failed",
         }
@@ -527,7 +537,7 @@ def build_global_market_research(
                 max_age_policy=(
                     max_age_policy
                     if max_age_policy is not None
-                    else MaxAgePolicy(timedelta(hours=48))
+                    else MaxAgePolicy(_DEFAULT_DAILY_K_MAX_AGE)
                 ),
                 providers=providers,
                 transport=transport,
@@ -535,7 +545,7 @@ def build_global_market_research(
                 daily_k_results={spec.identity.index_id: envelope},
             )
         except Exception as exc:  # snapshot is advisory, never fatal
-            snapshot_error = f"{type(exc).__name__}: {exc}"
+            snapshot_error = type(exc).__name__
     observation = _observation_lookup(snapshot, spec.identity.index_id)
     snapshot_calendar_status = getattr(snapshot, "trading_day_status", None)
     snapshot_calendar_status = getattr(snapshot_calendar_status, "value", snapshot_calendar_status)
@@ -583,10 +593,7 @@ def build_global_market_research(
         )
 
     if envelope.get("status") != fetcher_contract.STATUS_OK:
-        error = envelope.get("error")
-        reason = envelope.get("failure_reason") or snapshot_error
-        if isinstance(error, Mapping):
-            reason = error.get("message") or reason
+        reason = _safe_provider_error(envelope) or snapshot_error
         return GlobalMarketResearch(
             status=STATUS_ERROR,
             availability=(
@@ -612,7 +619,7 @@ def build_global_market_research(
         else MarketAvailability.UNKNOWN
     )
     data_date = bars[-1].date if bars else None
-    failure_reason = envelope.get("failure_reason")
+    failure_reason = "fallback provider supplied the data" if envelope.get("degraded") else None
     if rejected:
         failure_reason = (
             f"{failure_reason}; skipped {rejected} malformed row(s)"
@@ -631,11 +638,3 @@ def build_global_market_research(
         unavailable_reason=None if bars else _EMPTY_REASON,
         **common,
     )
-
-
-def default_window(now: datetime | None = None, days: int = 30) -> tuple[str, str]:
-    """Return a canonical default ``(start_date, end_date)`` window."""
-
-    anchor = (now or datetime.now()).date()
-    start = anchor - timedelta(days=max(1, int(days)))
-    return start.isoformat(), anchor.isoformat()

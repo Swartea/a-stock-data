@@ -169,6 +169,11 @@ def test_page_renders_every_required_state():
     assert "数据日期" in page and "来源" in page  # data date + source
 
 
+def test_empty_banner_is_reserved_for_empty_results():
+    page = view.render_global_market_research_page()
+    assert "$('#empty').hidden=p.status!=='empty'" in page
+
+
 def test_page_escapes_json_and_stays_self_contained():
     page = view.render_global_market_research_page()
     assert "</script>" not in page.split("<script>")[1].split("</script>")[0].replace("<\\/script>", "")

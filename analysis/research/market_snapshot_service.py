@@ -279,8 +279,21 @@ def build_market_snapshot(
         and item.availability in (MarketAvailability.AVAILABLE, MarketAvailability.DELAYED)
     ]
     day_status = calendar.status_on(max(usable_days)) if usable_days else TradingDayStatus.UNKNOWN
-    markets = {get_global_index(identity.index_id).market for identity in universe.identities}
-    market = next(iter(markets)) if len(markets) == 1 else "multi"
+    markets: set[str] = set()
+    known_market_count = 0
+    for identity in universe.identities:
+        try:
+            markets.add(get_global_index(identity.index_id).market)
+        except (KeyError, ValueError):
+            continue
+        else:
+            known_market_count += 1
+    if not markets:
+        market = "unknown"
+    elif len(markets) == 1 and known_market_count == len(universe.identities):
+        market = next(iter(markets))
+    else:
+        market = "multi"
     return MarketSnapshot(snapshot_id, market, universe.identities, universe.aliases, frozen_observations, day_status)
 
 

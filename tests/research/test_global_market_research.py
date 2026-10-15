@@ -158,6 +158,19 @@ def test_service_composition_returns_normalized_bars():
     assert calls, "the daily-k service must have been called"
 
 
+def test_weekend_wall_clock_gap_does_not_mark_friday_bars_delayed():
+    friday_rows = [dict(_LABELED_CN_ROWS[-1], date="2026-09-25")]
+    result = gmr.build_global_market_research(
+        "cn.index.sh_comp",
+        "2026-09-25",
+        "2026-09-28",
+        evaluation_time="2026-09-28T10:00:00+08:00",
+        providers=[_stub_provider(_ok_envelope(friday_rows))],
+    )
+    assert result.freshness == "fresh"
+    assert result.availability is MarketAvailability.AVAILABLE
+
+
 def test_volume_is_reported_only_when_supplied():
     # V1 daily-K rows always carry volume=None, so the service path emits no
     # volume key at all. A labeled row that *does* supply one keeps it.
@@ -215,6 +228,7 @@ def test_provider_error_is_degraded_not_raised():
     assert result.status == gmr.STATUS_ERROR
     assert result.bar_count == 0
     assert result.failure_reason
+    assert "boom" not in result.failure_reason
 
 
 def test_invalid_dates_never_reach_a_provider():
@@ -316,7 +330,7 @@ def test_incomplete_exchange_calendar_keeps_state_unknown():
 
 def test_snapshot_failure_never_breaks_the_page():
     def exploding_builder(**kwargs):
-        raise RuntimeError("calendar unavailable")
+        raise RuntimeError("sensitive/path/token calendar unavailable")
 
     result = gmr.build_global_market_research(
         "cn.index.sh_comp",
@@ -330,6 +344,7 @@ def test_snapshot_failure_never_breaks_the_page():
     )
     assert result.status == gmr.STATUS_OK
     assert result.bar_count == 2
+    assert "sensitive/path/token" not in (result.failure_reason or "")
 
 
 # --- fixture isolation ------------------------------------------------------
