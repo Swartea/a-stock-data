@@ -99,6 +99,18 @@ pip install mootdx requests beautifulsoup4 lxml baostock python-docx openpyxl
 >
 > **维护者注意：** 单文件 SKILL.md 是构建产物，编辑入口是 `skill-src/`（按层拆分的小文件），修改后运行 `python scripts/build_skill.py` 重新生成，CI 用 `--check` 校验同步。对外分发形态（单文件自包含）不变。详见 [SKILL 维护指南](docs/11-SKILL维护指南.md)。
 
+### Swartee Market Research 全球市场终端 V1（本地 Release Candidate）
+
+V1 提供 9 个中、港、美指数的市场概览、日线 K 线、OHLC 指针提示、日期筛选和历史行情表。页面使用本地研究服务请求日线；最新收盘不代表实时行情。交易日状态缺少日历证据时显示为“未知”。
+
+安装项目依赖后，在仓库目录启动本机服务：
+
+```bash
+python scripts/market_research.py
+```
+
+然后打开 `http://127.0.0.1:8765/`。此 V1 仍处于本地 Release Candidate 验收阶段；GitHub CI 尚未验证，详见[总体进度与阶段验收](docs/12-智能市场研究系统-总体进度与阶段验收.md)。
+
 ---
 
 ## 实战演示
