@@ -50,9 +50,13 @@ def _parse_aware(value: str) -> datetime:
     return result
 
 
-def _date_timestamp(day: str) -> str:
-    """Treat date-only A-share bars as the 15:00 Asia/Shanghai session close."""
-    return datetime.combine(date.fromisoformat(day), time(15), _SHANGHAI).isoformat()
+def _date_timestamp(day: str, identity: Any) -> str:
+    """Represent date-only closes at 15:00 in the index's exchange timezone."""
+    try:
+        zone = ZoneInfo(get_global_index(identity.index_id).timezone)
+    except (KeyError, ValueError):
+        zone = _SHANGHAI
+    return datetime.combine(date.fromisoformat(day), time(15), zone).isoformat()
 
 
 def _name(identity: Any) -> str:
@@ -126,6 +130,7 @@ def build_market_snapshot(
     providers: Sequence[DailyKProvider] | None = None,
     transport: Any = None,
     provider_registry: ProviderRegistry | None = None,
+    daily_k_results: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> MarketSnapshot:
     """Fetch and assess each universe member independently.
 
@@ -137,6 +142,8 @@ def build_market_snapshot(
         raise TypeError("calendar must be TradingCalendar")
     if not isinstance(max_age_policy, MaxAgePolicy):
         raise TypeError("max_age_policy must be MaxAgePolicy")
+    if daily_k_results is not None and not isinstance(daily_k_results, Mapping):
+        raise TypeError("daily_k_results must be a mapping or None")
     for label, raw in (("start_date", start_date), ("end_date", end_date)):
         try:
             parsed = date.fromisoformat(raw)
@@ -177,7 +184,14 @@ def build_market_snapshot(
                 observations.append(_unavailable(identity, "provider_mapping_missing"))
                 continue
             configured = configured_all if providers is not None else default_daily_k_providers(identity.index_id)
-            result = fetch_global_daily_k_service(identity.index_id, start_date, end_date, now=evaluation, transport=transport, providers=tuple(_ordered_provider(item) for item in configured))
+            if daily_k_results is not None:
+                supplied = daily_k_results.get(identity.index_id)
+                result = supplied if isinstance(supplied, Mapping) else {
+                    "status": fetcher_contract.STATUS_ERROR,
+                    "failure_reason": "pre-fetched daily-K result missing",
+                }
+            else:
+                result = fetch_global_daily_k_service(identity.index_id, start_date, end_date, now=evaluation, transport=transport, providers=tuple(_ordered_provider(item) for item in configured))
             if result.get("status") != fetcher_contract.STATUS_OK:
                 observations.append(_unavailable(identity, str(result.get("failure_reason") or result.get("status") or "provider_error")))
                 continue
@@ -221,7 +235,7 @@ def build_market_snapshot(
             dated.sort(key=lambda item: item[0])
             latest_day, latest_row = dated[-1]
             latest_close = float(latest_row["close"])
-            bar_time = _date_timestamp(latest_day.isoformat())
+            bar_time = _date_timestamp(latest_day.isoformat(), identity)
             future = datetime.fromisoformat(bar_time).astimezone(evaluation.tzinfo) > evaluation
             metadata = TimeMetadata(fetched_at=evaluation_time, data_as_of=bar_time)
             try:
@@ -265,7 +279,9 @@ def build_market_snapshot(
         and item.availability in (MarketAvailability.AVAILABLE, MarketAvailability.DELAYED)
     ]
     day_status = calendar.status_on(max(usable_days)) if usable_days else TradingDayStatus.UNKNOWN
-    return MarketSnapshot(snapshot_id, "cn", universe.identities, universe.aliases, frozen_observations, day_status)
+    markets = {get_global_index(identity.index_id).market for identity in universe.identities}
+    market = next(iter(markets)) if len(markets) == 1 else "multi"
+    return MarketSnapshot(snapshot_id, market, universe.identities, universe.aliases, frozen_observations, day_status)
 
 
 create_market_snapshot = build_market_snapshot
