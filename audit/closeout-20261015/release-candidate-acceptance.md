@@ -60,7 +60,7 @@ Registry 中登记 9 个指数，且本轮每个指数各发起一次真实日�
 
 ## AO / 临时产物
 
-Pytest、构建会在本 RC 工作树生成 Python 缓存、`.pytest_cache`、`build/` 和 `da_a_data.egg-info/`。这些只属于本轮 RC 工作树；最终卫生检查会清理这些本轮产物，保留已跟踪截图和原工作区历史文件。未修改 AO 框架，也未清理旧 Worktree。
+Pytest、构建曾在本 RC 工作树生成 Python 缓存、`.pytest_cache`、`build/` 和 `da_a_data.egg-info/`；这些本轮生成物已清理。已跟踪截图和原工作区历史文件保留。未修改 AO 框架，也未清理旧 Worktree。
 
 ## PR 准备与合并判断
 
