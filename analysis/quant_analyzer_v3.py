@@ -173,6 +173,11 @@ __all__ = [
 # CLI 入口 (P2-A Phase 5: v3 薄壳, 主分析流程在 analysis.pipeline)
 # ============================================================
 def main():
+    if len(sys.argv) == 2 and sys.argv[1] in ("-h", "--help"):
+        print("用法: da-a-analyze <code> [name]")
+        print("\n分析指定股票并生成报告。name 可选；不传时使用行情数据中的名称。")
+        print("\n选项:\n  -h, --help  显示此帮助信息并退出")
+        return 0
     if len(sys.argv) < 2:
         print(__doc__)
         print("用法: python quant_analyzer_v3.py <code> [name]")
