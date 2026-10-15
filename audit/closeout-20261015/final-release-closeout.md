@@ -67,3 +67,11 @@ The earlier acceptance record documents the implementation review of Canonical I
 ## Merge decision
 
 Local implementation and acceptance gates pass. The release does **not yet meet the complete merge-main gate** because GitHub CI has not run. After explicit push/PR authorization, merge readiness still requires the PR CI checks to pass and a final check for new review findings. No merge has occurred.
+
+## 2026-10-16 GitHub CI follow-up
+
+- PR #7: https://github.com/Swartea/a-stock-data/pull/7; open, base `main` at `d21a41179511055b8dddb2ce17a18a266e608ecb`, RC head `feb2b709d71fa429201997116b3fcdd2f2ecef1f`.
+- Repository Actions permissions report `enabled: true` and `allowed_actions: all`; the `CI` workflow (`.github/workflows/ci.yml`) is active and includes `workflow_dispatch`.
+- PR #7 has no check runs. A manual dispatch against the RC branch was attempted once and GitHub rejected it with HTTP 422: `Actions has been disabled for this repository`. No CI jobs or logs were produced. The reported permission/workflow state and dispatch rejection are inconsistent; execution remains blocked at GitHub.
+- No source changes or repair commits were made in this follow-up. Existing local validation remains 1695 passed / 2 deselected; it does not substitute for GitHub CI.
+- Current PR metadata reports `MERGEABLE` / `CLEAN`, but no branch protection is configured and no required checks are reported. Do not merge until Actions can actually run and the complete CI result is reviewed. No merge or deployment occurred.
