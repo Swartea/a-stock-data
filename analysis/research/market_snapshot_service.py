@@ -4,23 +4,32 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from datetime import date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from analysis import fetcher_contract
 from analysis.research.freshness import MaxAgePolicy, evaluate_freshness
-from analysis.research.global_daily_k_service import DailyKProvider, default_daily_k_providers, fetch_global_daily_k_service
+from analysis.research.global_daily_k_service import (
+    DailyKProvider,
+    default_daily_k_providers,
+    fetch_global_daily_k_service,
+)
 from analysis.research.global_indices import get_global_index
-from analysis.research.index_symbols import IndexProviderSymbolRegistry
 from analysis.research.index_registry import A_SHARE_INDEX_IDENTITIES
+from analysis.research.index_symbols import IndexProviderSymbolRegistry
 from analysis.research.market_availability import MarketAvailability
 from analysis.research.market_evidence import MarketEvidence
 from analysis.research.market_index_universe import A_SHARE_CORE_UNIVERSE, MarketIndexUniverse
 from analysis.research.market_snapshot import MarketSnapshot
 from analysis.research.market_state import MarketIndexObservation
 from analysis.research.pit_guard import PITStatus
-from analysis.research.providers import ProviderRegistry, ProviderSpec, build_default_provider_registry
+from analysis.research.providers import (
+    ProviderRegistry,
+    ProviderSpec,
+    build_default_provider_registry,
+)
 from analysis.research.quality import CompletenessStatus, FreshnessStatus, QualityMetadata
 from analysis.research.time_semantics import TimeMetadata
 from analysis.research.trading_calendar import TradingCalendar, TradingDayStatus
@@ -65,10 +74,8 @@ def _ordered_provider(provider: DailyKProvider) -> DailyKProvider:
             rows = envelope.get("data")
             index_name = None
             if args and isinstance(args[0], str):
-                try:
+                with suppress(KeyError, ValueError):
                     index_name = get_global_index(args[0]).name
-                except (KeyError, ValueError):
-                    pass
             if isinstance(rows, list) and all(
                 isinstance(row, Mapping) and isinstance(row.get("date"), str)
                 and _valid_iso_day(row["date"])
@@ -159,11 +166,8 @@ def build_market_snapshot(
     if providers is not None:
         for item in configured_all:
             if registry.resolve(item.name) is None:
-                try:
+                with suppress(TypeError, ValueError):
                     registry.register(ProviderSpec(item.name, item.source, item.name))
-                except (TypeError, ValueError):
-                    # Invalid injected identity must fail closed during resolution.
-                    pass
     aliases = IndexProviderSymbolRegistry(universe.aliases)
     observations: list[MarketIndexObservation] = []
     for identity in universe.identities:

@@ -5,8 +5,7 @@ import pytest
 from analysis.research.freshness import MaxAgePolicy
 from analysis.research.market_index_universe import A_SHARE_CORE_UNIVERSE
 from analysis.research.market_snapshot_service import build_market_snapshot
-from analysis.research.trading_calendar import TradingCalendar
-from analysis.research.trading_calendar import TradingCalendarDay, TradingDayStatus
+from analysis.research.trading_calendar import TradingCalendar, TradingCalendarDay, TradingDayStatus
 
 
 def test_invalid_evaluation_time_rejected_before_provider_invocation():
@@ -37,8 +36,8 @@ def test_missing_universe_mapping_is_unavailable_without_numeric_values():
 
 def _provider(*, reverse=False, row_days=None, payload_name=None):
     from analysis import fetcher_contract
-    from analysis.research.global_indices import get_global_index
     from analysis.research.global_daily_k_service import DailyKProvider
+    from analysis.research.global_indices import get_global_index
 
     def fetch(index_id, start_date, end_date, **kwargs):
         spec = get_global_index(index_id)

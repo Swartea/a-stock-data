@@ -6,11 +6,11 @@ import math
 from dataclasses import dataclass
 from datetime import date
 
+from analysis.fetcher_contract import STATUS_OK
 from analysis.research.index_registry import IndexIdentity
 from analysis.research.market_availability import MarketAvailability
 from analysis.research.market_evidence import MarketEvidence
 from analysis.research.pit_guard import PITStatus
-from analysis.fetcher_contract import STATUS_OK
 from analysis.research.quality import FreshnessStatus
 
 
