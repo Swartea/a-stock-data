@@ -90,3 +90,27 @@ A_SHARE_INDEX_IDENTITIES: tuple[IndexIdentity, ...] = (
 A_SHARE_INDEX_BY_ID: Mapping[str, IndexIdentity] = MappingProxyType(
     {identity.index_id: identity for identity in A_SHARE_INDEX_IDENTITIES}
 )
+
+# Accept identifiers from the pre-canonical Global Daily-K and S3 contracts
+# at API boundaries, while always returning the single canonical identity.
+# These aliases never create additional IndexIdentity entries.
+INDEX_ID_ALIASES: Mapping[str, str] = MappingProxyType(
+    {
+        "cn.index.sse.000001": "cn.index.sh_comp",
+        "cn.index.szse.399001": "cn.index.sz_component",
+        "cn.index.szse.399006": "cn.index.chinext",
+        "cn.index.csi.000300": "cn.index.csi300",
+        "sse.composite": "cn.index.sh_comp",
+        "szse.component": "cn.index.sz_component",
+        "szse.chinext": "cn.index.chinext",
+        "csi.300": "cn.index.csi300",
+    }
+)
+
+
+def canonical_index_id(index_id: str) -> str:
+    """Resolve a known historical identifier to its canonical index ID."""
+
+    if not isinstance(index_id, str):
+        raise TypeError("index_id must be a string")
+    return INDEX_ID_ALIASES.get(index_id, index_id)

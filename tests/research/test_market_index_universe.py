@@ -106,8 +106,8 @@ def test_five_provider_aliases_are_prepopulated() -> None:
 
 
 def test_literal_tencent_and_baostock_contract_mappings() -> None:
-    from analysis.research.global_indices import build_global_index_symbol_registry
     from analysis.research.global_daily_k_baostock import BAOSTOCK_INDEX_CODES
+    from analysis.research.global_indices import build_global_index_symbol_registry
 
     registry = build_global_index_symbol_registry()
     assert {
@@ -131,9 +131,10 @@ def test_literal_tencent_and_baostock_contract_mappings() -> None:
 @pytest.mark.parametrize(
     "legacy_id", ("sse.composite", "szse.component", "szse.chinext", "csi.300")
 )
-def test_legacy_ids_are_rejected(legacy_id: str) -> None:
-    with pytest.raises(KeyError):
-        A_SHARE_CORE_UNIVERSE.require_index(legacy_id)
+def test_legacy_ids_resolve_to_the_canonical_identity(legacy_id: str) -> None:
+    identity = A_SHARE_CORE_UNIVERSE.require_index(legacy_id)
+    assert identity.index_id in A_SHARE_CORE_UNIVERSE.index_ids
+    assert A_SHARE_CORE_UNIVERSE.aliases_for(legacy_id)
 
 
 def test_alias_order_is_preserved() -> None:

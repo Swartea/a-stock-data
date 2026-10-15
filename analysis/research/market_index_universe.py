@@ -70,6 +70,7 @@ from analysis.research.global_indices import list_global_indices
 from analysis.research.index_registry import (
     A_SHARE_INDEX_IDENTITIES,
     IndexIdentity,
+    canonical_index_id,
 )
 from analysis.research.index_symbols import (
     IndexProviderSymbolAlias,
@@ -133,8 +134,9 @@ class MarketIndexUniverse:
 
         if not isinstance(index_id, str):
             raise TypeError("index_id must be a string")
+        canonical_id = canonical_index_id(index_id)
         for identity in self.identities:
-            if identity.index_id == index_id:
+            if identity.index_id == canonical_id:
                 return identity
         raise KeyError(f"index outside universe: {index_id!r}")
 
@@ -147,8 +149,8 @@ class MarketIndexUniverse:
         the provider mapping.
         """
 
-        self.require_index(index_id)
-        return tuple(alias for alias in self.aliases if alias.index_id == index_id)
+        identity = self.require_index(index_id)
+        return tuple(alias for alias in self.aliases if alias.index_id == identity.index_id)
 
     @classmethod
     def contract_fields(cls) -> tuple[str, ...]:

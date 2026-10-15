@@ -34,6 +34,7 @@ from .index_registry import (
     A_SHARE_INDEX_BY_ID,
     IndexIdentity,
     IndexPublisher,
+    canonical_index_id,
 )
 from .index_symbols import (
     IndexProviderSymbolAlias,
@@ -284,7 +285,7 @@ def get_global_index(index_id: str) -> GlobalIndexSpec:
 
     if not isinstance(index_id, str):
         raise TypeError("index_id must be a string")
-    canonical = index_id.strip()
+    canonical = canonical_index_id(index_id.strip())
     if not canonical:
         raise ValueError("index_id must not be empty")
 

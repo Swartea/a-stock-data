@@ -7,7 +7,7 @@ from analysis.research.global_indices import (
     get_global_index,
     list_global_indices,
 )
-from analysis.research.index_registry import A_SHARE_INDEX_IDENTITIES
+from analysis.research.index_registry import A_SHARE_INDEX_IDENTITIES, INDEX_ID_ALIASES
 
 
 def test_a_share_specs_share_canonical_identity_objects_and_exact_tencent_symbols() -> None:
@@ -26,8 +26,7 @@ def test_a_share_specs_share_canonical_identity_objects_and_exact_tencent_symbol
 
 
 @pytest.mark.parametrize(
-    "legacy_id", ("cn.index.sse.000001", "cn.index.szse.399001", "cn.index.szse.399006", "cn.index.csi.000300")
+    "legacy_id,canonical_id", tuple(INDEX_ID_ALIASES.items())
 )
-def test_legacy_ids_are_rejected_by_public_lookup(legacy_id: str) -> None:
-    with pytest.raises(KeyError):
-        get_global_index(legacy_id)
+def test_legacy_ids_resolve_to_the_canonical_identity(legacy_id: str, canonical_id: str) -> None:
+    assert get_global_index(legacy_id).identity.index_id == canonical_id
