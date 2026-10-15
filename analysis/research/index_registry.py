@@ -14,6 +14,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, fields
 from enum import Enum
+from types import MappingProxyType
+from typing import Mapping
 
 _INDEX_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 _LOCAL_CODE_RE = re.compile(r"^[A-Z0-9]+$")
@@ -75,3 +77,40 @@ class IndexIdentity:
         """Return the intentionally small B2 identity surface."""
 
         return tuple(field.name for field in fields(cls))
+
+
+# Shared A-share identities live here so universe and provider specifications
+# refer to the same canonical objects instead of maintaining parallel facts.
+A_SHARE_INDEX_IDENTITIES: tuple[IndexIdentity, ...] = (
+    IndexIdentity("cn.index.sh_comp", IndexPublisher.SSE, "000001"),
+    IndexIdentity("cn.index.sz_component", IndexPublisher.SZSE, "399001"),
+    IndexIdentity("cn.index.chinext", IndexPublisher.SZSE, "399006"),
+    IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),
+)
+A_SHARE_INDEX_BY_ID: Mapping[str, IndexIdentity] = MappingProxyType(
+    {identity.index_id: identity for identity in A_SHARE_INDEX_IDENTITIES}
+)
+
+# Accept identifiers from the pre-canonical Global Daily-K and S3 contracts
+# at API boundaries, while always returning the single canonical identity.
+# These aliases never create additional IndexIdentity entries.
+INDEX_ID_ALIASES: Mapping[str, str] = MappingProxyType(
+    {
+        "cn.index.sse.000001": "cn.index.sh_comp",
+        "cn.index.szse.399001": "cn.index.sz_component",
+        "cn.index.szse.399006": "cn.index.chinext",
+        "cn.index.csi.000300": "cn.index.csi300",
+        "sse.composite": "cn.index.sh_comp",
+        "szse.component": "cn.index.sz_component",
+        "szse.chinext": "cn.index.chinext",
+        "csi.300": "cn.index.csi300",
+    }
+)
+
+
+def canonical_index_id(index_id: str) -> str:
+    """Resolve a known historical identifier to its canonical index ID."""
+
+    if not isinstance(index_id, str):
+        raise TypeError("index_id must be a string")
+    return INDEX_ID_ALIASES.get(index_id, index_id)

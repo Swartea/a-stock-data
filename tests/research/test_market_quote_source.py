@@ -37,16 +37,16 @@ from analysis.research.time_semantics import TimeMetadata
 
 _TENCENT = ProviderSpec("tencent", "Tencent", "tencent")
 _EASTMONEY = ProviderSpec("eastmoney", "EastMoney", "eastmoney")
-_SINA = ProviderSpec("sina", "Sina", "sina")  # declared for sse.composite below
+_SINA = ProviderSpec("sina", "Sina", "sina")  # declared for cn.index.sh_comp below
 
-_COMPOSITE = IndexIdentity("sse.composite", IndexPublisher.SSE, "000001")
-_CHINEXT = IndexIdentity("szse.chinext", IndexPublisher.SZSE, "399006")
+_COMPOSITE = IndexIdentity("cn.index.sh_comp", IndexPublisher.SSE, "000001")
+_CHINEXT = IndexIdentity("cn.index.chinext", IndexPublisher.SZSE, "399006")
 
 _UNIVERSE = MarketIndexUniverse(
     identities=(_COMPOSITE, _CHINEXT),
     aliases=(
-        IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
-        IndexProviderSymbolAlias("sse.composite", "sina", "sh000001-sina"),
+        IndexProviderSymbolAlias("cn.index.sh_comp", "tencent", "sh000001"),
+        IndexProviderSymbolAlias("cn.index.sh_comp", "sina", "sh000001-sina"),
     ),
 )
 
@@ -181,13 +181,13 @@ def test_module_does_not_define_a_status_enum_or_bar_schema() -> None:
 def test_transport_receives_the_exact_resolved_request() -> None:
     source, transport = _source(_ok())
 
-    envelope = source.fetch("sse.composite", provider=_TENCENT, time=_TIME)
+    envelope = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME)
 
     assert transport.call_count == 1
     request = transport.requests[0]
     assert request.identity is _COMPOSITE
     assert request.provider is _TENCENT
-    assert request.alias == IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001")
+    assert request.alias == IndexProviderSymbolAlias("cn.index.sh_comp", "tencent", "sh000001")
     assert request.time is _TIME
     # The request is the same frozen object that comes back as provenance.
     assert envelope.alias is request.alias
@@ -197,7 +197,7 @@ def test_transport_receives_the_exact_resolved_request() -> None:
 def test_exact_provider_match_is_selected_over_other_declared_aliases() -> None:
     source, transport = _source(_ok())
 
-    source.fetch("sse.composite", provider=_SINA, time=_TIME)
+    source.fetch("cn.index.sh_comp", provider=_SINA, time=_TIME)
 
     assert transport.requests[0].alias.provider_symbol == "sh000001-sina"
 
@@ -205,7 +205,7 @@ def test_exact_provider_match_is_selected_over_other_declared_aliases() -> None:
 def test_result_is_ok_with_data_and_explicit_provenance_fields() -> None:
     source, _ = _source(_ok())
 
-    envelope = source.fetch("sse.composite", provider=_TENCENT, time=_TIME)
+    envelope = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME)
     result = envelope.result
 
     assert result["status"] == STATUS_OK
@@ -222,10 +222,10 @@ def test_identity_provider_time_and_result_stay_separate_fields() -> None:
 
     source, _ = _source(_ok())
 
-    envelope = source.fetch("sse.composite", provider=_TENCENT, time=_TIME)
+    envelope = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME)
 
     assert dataclasses.is_dataclass(envelope)
-    assert envelope.identity.index_id == "sse.composite"
+    assert envelope.identity.index_id == "cn.index.sh_comp"
     assert envelope.identity.local_code == "000001"
     assert envelope.provider.provider_id == "tencent"
     assert envelope.alias.provider_symbol == "sh000001"
@@ -239,7 +239,7 @@ def test_identity_provider_time_and_result_stay_separate_fields() -> None:
 def test_envelope_and_request_surfaces_are_frozen_and_small() -> None:
     source, _ = _source(_ok())
 
-    envelope = source.fetch("sse.composite", provider=_TENCENT, time=_TIME)
+    envelope = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME)
 
     assert MarketQuoteRequest.contract_fields() == ("identity", "provider", "alias", "time")
     assert envelope.__dataclass_params__.frozen is True
@@ -252,7 +252,7 @@ def test_result_carries_no_quote_bar_schema_or_evidence() -> None:
 
     source, _ = _source(_ok(data={"open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5}))
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["data"] == {"open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5}
     assert "evidence" not in result
@@ -266,7 +266,7 @@ def test_result_carries_no_quote_bar_schema_or_evidence() -> None:
 def test_zero_is_valid_ok_data() -> None:
     source, _ = _source(_ok(data=0))
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_OK
     assert result["data"] == 0
@@ -277,7 +277,7 @@ def test_falsey_but_present_data_is_preserved_verbatim() -> None:
     for payload in (0.0, "", False, [], {}):
         source, _ = _source(_ok(data=payload))
 
-        result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+        result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
         assert result["status"] == STATUS_OK
         assert result["data"] == payload
@@ -295,7 +295,7 @@ def test_empty_with_a_valid_error_object_is_preserved() -> None:
         }
     )
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert transport.call_count == 1
     assert result["status"] == STATUS_EMPTY
@@ -306,7 +306,7 @@ def test_empty_with_a_valid_error_object_is_preserved() -> None:
 def test_empty_without_an_error_object_gets_the_canonical_empty_error() -> None:
     source, _ = _source({"status": STATUS_EMPTY, "data": None, "error": None})
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_EMPTY
     assert result["data"] is None
@@ -323,7 +323,7 @@ def test_error_from_transport_is_preserved_with_its_code() -> None:
         }
     )
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_ERROR
     assert result["data"] is None
@@ -343,7 +343,7 @@ def test_unsupported_from_transport_requires_the_unsupported_code() -> None:
         }
     )
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_UNSUPPORTED
     assert result["data"] is None
@@ -353,7 +353,7 @@ def test_unsupported_from_transport_requires_the_unsupported_code() -> None:
 def test_transport_exception_becomes_canonical_error_with_unknown() -> None:
     source, transport = _source(ConnectionRefusedError("no route"))
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert transport.call_count == 1
     assert result["status"] == STATUS_ERROR
@@ -379,7 +379,7 @@ def test_transport_exception_detail_is_sanitized_and_single_line(
 ) -> None:
     source, _ = _source(ConnectionRefusedError(detail))
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     message = result["error"]["message"]
     assert expected in message
@@ -395,7 +395,7 @@ def test_base_exception_from_transport_is_not_swallowed() -> None:
     source, _ = _source(KeyboardInterrupt())
 
     with pytest.raises(KeyboardInterrupt):
-        source.fetch("sse.composite", provider=_TENCENT, time=_TIME)
+        source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME)
 
 
 # --- malformed responses never become success ------------------------------
@@ -444,7 +444,7 @@ def test_base_exception_from_transport_is_not_swallowed() -> None:
 def test_malformed_responses_become_canonical_error_not_ok(label, response) -> None:
     source, transport = _source(response)
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_ERROR, label
     assert result["data"] is None, label
@@ -458,7 +458,7 @@ def test_malformed_responses_become_canonical_error_not_ok(label, response) -> N
 def test_valid_units_are_preserved_onto_the_result() -> None:
     source, _ = _source(_ok(units={"amount": "CNY", "pct": "%"}))
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_OK
     assert result["units"] == {"amount": "CNY", "pct": "%"}
@@ -467,7 +467,7 @@ def test_valid_units_are_preserved_onto_the_result() -> None:
 def test_result_absent_units_default_to_empty_mapping() -> None:
     source, _ = _source(_ok())
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["units"] == {}
 
@@ -504,7 +504,7 @@ def test_incomplete_transport_error_object_is_rejected(label, error) -> None:
 
     source, transport = _source(_error_response(STATUS_ERROR, error))
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_ERROR, label
     assert result["data"] is None, label
@@ -523,7 +523,7 @@ def test_rejected_error_object_is_replaced_wholesale() -> None:
         )
     )
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["error"]["code"] == ERR_VALIDATION
     assert result["error"]["code"] != "NET_TIMEOUT"
@@ -546,7 +546,7 @@ def test_error_object_extension_keys_are_not_forwarded() -> None:
         )
     )
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["status"] == STATUS_ERROR
     assert set(result["error"]) == {"code", "message", "retryable"}
@@ -580,7 +580,7 @@ def test_complete_error_object_survives_rebuild_in_every_state(label, status, er
 
     source, transport = _source(_error_response(status, dict(error, extra="dropped")))
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert transport.call_count == 1, label
     assert result["status"] == status, label
@@ -598,7 +598,7 @@ def test_transport_error_message_is_bounded_by_the_contract_helper() -> None:
         )
     )
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert len(result["error"]["message"]) == 200
 
@@ -609,31 +609,31 @@ def test_transport_error_message_is_bounded_by_the_contract_helper() -> None:
 @pytest.mark.parametrize(
     ("label", "index_id", "provider", "time", "match"),
     [
-        ("provider_str", "sse.composite", "tencent", _TIME, "provider must be ProviderSpec"),
-        ("provider_none", "sse.composite", None, _TIME, "provider must be ProviderSpec"),
-        ("time_str", "sse.composite", _TENCENT, "2026-10-08", "time must be TimeMetadata"),
-        ("time_none", "sse.composite", _TENCENT, None, "time must be TimeMetadata"),
+        ("provider_str", "cn.index.sh_comp", "tencent", _TIME, "provider must be ProviderSpec"),
+        ("provider_none", "cn.index.sh_comp", None, _TIME, "provider must be ProviderSpec"),
+        ("time_str", "cn.index.sh_comp", _TENCENT, "2026-10-08", "time must be TimeMetadata"),
+        ("time_none", "cn.index.sh_comp", _TENCENT, None, "time must be TimeMetadata"),
         (
             "time_mapping",
-            "sse.composite",
+            "cn.index.sh_comp",
             _TENCENT,
             {"fetched_at": "2026-10-08T01:00:00+08:00"},
             "time must be TimeMetadata",
         ),
         # The same mistakes where no alias exists at all: without an early
         # type gate these would have been reported as `unsupported` instead.
-        ("provider_str_no_alias", "szse.chinext", "tencent", _TIME, "provider must be ProviderSpec"),
-        ("time_str_no_alias", "szse.chinext", _TENCENT, "2026-10-08", "time must be TimeMetadata"),
+        ("provider_str_no_alias", "cn.index.chinext", "tencent", _TIME, "provider must be ProviderSpec"),
+        ("time_str_no_alias", "cn.index.chinext", _TENCENT, "2026-10-08", "time must be TimeMetadata"),
         (
             "provider_str_unmatched_alias",
-            "sse.composite",
+            "cn.index.sh_comp",
             "eastmoney",
             _TIME,
             "provider must be ProviderSpec",
         ),
         (
             "time_none_unmatched_alias",
-            "sse.composite",
+            "cn.index.sh_comp",
             _EASTMONEY,
             None,
             "time must be TimeMetadata",
@@ -659,7 +659,7 @@ def test_invalid_time_raises_even_when_the_alias_would_have_matched() -> None:
     source, transport = _source(_ok())
 
     with pytest.raises(TypeError, match="time must be TimeMetadata"):
-        source.fetch("sse.composite", provider=_TENCENT, time=None)
+        source.fetch("cn.index.sh_comp", provider=_TENCENT, time=None)
 
     assert transport.call_count == 0
 
@@ -670,7 +670,7 @@ def test_unknown_index_still_wins_over_the_argument_type_checks() -> None:
     source, transport = _source(_ok())
 
     with pytest.raises(KeyError):
-        source.fetch("szse.component", provider="tencent", time=_TIME)
+        source.fetch("cn.index.sz_component", provider="tencent", time=_TIME)
 
     assert transport.call_count == 0
 
@@ -682,7 +682,7 @@ def test_unknown_index_raises_before_the_transport_is_invoked() -> None:
     source, transport = _source(_ok())
 
     with pytest.raises(KeyError):
-        source.fetch("szse.component", provider=_TENCENT, time=_TIME)
+        source.fetch("cn.index.sz_component", provider=_TENCENT, time=_TIME)
 
     assert transport.call_count == 0
 
@@ -690,7 +690,7 @@ def test_unknown_index_raises_before_the_transport_is_invoked() -> None:
 def test_unknown_index_id_is_not_normalized_into_a_known_one() -> None:
     source, transport = _source(_ok())
 
-    for candidate in ("sse.composite ", "SSE.COMPOSITE", "sse.composi", "csi.300"):
+    for candidate in ("cn.index.sh_comp ", "CN.INDEX.SH_COMP", "cn.index.sh_com", "cn.index.csi30"):
         with pytest.raises(KeyError):
             source.fetch(candidate, provider=_TENCENT, time=_TIME)
 
@@ -700,7 +700,7 @@ def test_unknown_index_id_is_not_normalized_into_a_known_one() -> None:
 def test_covered_index_without_any_alias_is_unsupported_before_transport() -> None:
     source, transport = _source(_ok())
 
-    envelope = source.fetch("szse.chinext", provider=_TENCENT, time=_TIME)
+    envelope = source.fetch("cn.index.chinext", provider=_TENCENT, time=_TIME)
 
     assert transport.call_count == 0
     assert envelope.result["status"] == STATUS_UNSUPPORTED
@@ -711,11 +711,11 @@ def test_covered_index_without_any_alias_is_unsupported_before_transport() -> No
 
 
 def test_unmatched_provider_is_unsupported_and_never_falls_back() -> None:
-    """Asking eastmoney for sse.composite must not borrow tencent's symbol."""
+    """Asking eastmoney for cn.index.sh_comp must not borrow tencent's symbol."""
 
     source, transport = _source(_ok())
 
-    envelope = source.fetch("sse.composite", provider=_EASTMONEY, time=_TIME)
+    envelope = source.fetch("cn.index.sh_comp", provider=_EASTMONEY, time=_TIME)
 
     assert transport.call_count == 0
     assert envelope.alias is None
@@ -734,7 +734,7 @@ def test_provider_id_match_is_exact_and_not_case_folded() -> None:
         ProviderSpec("TENCENT", "Tencent", "tencent")
 
     # And an undeclared-but-canonical provider still stops at the alias gate.
-    envelope = source.fetch("sse.composite", provider=_EASTMONEY, time=_TIME)
+    envelope = source.fetch("cn.index.sh_comp", provider=_EASTMONEY, time=_TIME)
 
     assert transport.call_count == 0
     assert envelope.result["status"] == STATUS_UNSUPPORTED
@@ -745,9 +745,9 @@ def test_provider_alias_is_matched_verbatim_from_the_universe() -> None:
 
     source, transport = _source(_ok())
 
-    source.fetch("sse.composite", provider=_TENCENT, time=_TIME)
+    source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME)
 
-    declared = _UNIVERSE.aliases_for("sse.composite")[0]
+    declared = _UNIVERSE.aliases_for("cn.index.sh_comp")[0]
     assert transport.requests[0].alias is declared
     assert transport.requests[0].alias.provider_symbol == "sh000001"
 
@@ -755,7 +755,7 @@ def test_provider_alias_is_matched_verbatim_from_the_universe() -> None:
 def test_unsupported_gate_still_reports_both_clocks_verbatim() -> None:
     source, _ = _source(_ok())
 
-    result = source.fetch("sse.composite", provider=_EASTMONEY, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_EASTMONEY, time=_TIME).result
 
     assert result["as_of"] == "2026-10-07"
     assert result["fetched_at"] == "2026-10-08T01:00:00+08:00"
@@ -769,7 +769,7 @@ def test_request_rejects_alias_from_another_index() -> None:
         MarketQuoteRequest(
             identity=_COMPOSITE,
             provider=_TENCENT,
-            alias=IndexProviderSymbolAlias("szse.chinext", "tencent", "sz399006"),
+            alias=IndexProviderSymbolAlias("cn.index.chinext", "tencent", "sz399006"),
             time=_TIME,
         )
 
@@ -779,7 +779,7 @@ def test_request_rejects_alias_from_another_provider() -> None:
         MarketQuoteRequest(
             identity=_COMPOSITE,
             provider=_TENCENT,
-            alias=IndexProviderSymbolAlias("sse.composite", "sina", "sh000001-sina"),
+            alias=IndexProviderSymbolAlias("cn.index.sh_comp", "sina", "sh000001-sina"),
             time=_TIME,
         )
 
@@ -789,7 +789,7 @@ def test_request_rejects_non_string_time_metadata() -> None:
         MarketQuoteRequest(
             identity=_COMPOSITE,
             provider=_TENCENT,
-            alias=IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
+            alias=IndexProviderSymbolAlias("cn.index.sh_comp", "tencent", "sh000001"),
             time="2026-10-08T01:00:00+08:00",  # type: ignore[arg-type]
         )
 
@@ -799,7 +799,7 @@ def test_request_rejects_non_provider_spec() -> None:
         MarketQuoteRequest(
             identity=_COMPOSITE,
             provider="tencent",  # type: ignore[arg-type]
-            alias=IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
+            alias=IndexProviderSymbolAlias("cn.index.sh_comp", "tencent", "sh000001"),
             time=_TIME,
         )
 
@@ -813,7 +813,7 @@ def test_envelope_rejects_a_mismatched_alias() -> None:
         MarketQuoteEnvelope(
             identity=_COMPOSITE,
             provider=_TENCENT,
-            alias=IndexProviderSymbolAlias("szse.chinext", "tencent", "sz399006"),
+            alias=IndexProviderSymbolAlias("cn.index.chinext", "tencent", "sz399006"),
             time=_TIME,
             result={"status": STATUS_OK, "data": 1},
         )
@@ -822,7 +822,7 @@ def test_envelope_rejects_a_mismatched_alias() -> None:
         MarketQuoteEnvelope(
             identity=_COMPOSITE,
             provider=_TENCENT,
-            alias=IndexProviderSymbolAlias("sse.composite", "sina", "sh000001-sina"),
+            alias=IndexProviderSymbolAlias("cn.index.sh_comp", "sina", "sh000001-sina"),
             time=_TIME,
             result={"status": STATUS_OK, "data": 1},
         )
@@ -835,7 +835,7 @@ def test_data_as_of_none_stays_none() -> None:
     no_as_of = TimeMetadata(fetched_at="2026-10-08T01:00:00+08:00")
     source, _ = _source(_ok())
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=no_as_of).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=no_as_of).result
 
     assert result["as_of"] is None
     assert result["fetched_at"] == "2026-10-08T01:00:00+08:00"
@@ -844,7 +844,7 @@ def test_data_as_of_none_stays_none() -> None:
 def test_data_as_of_is_never_backfilled_from_fetched_at() -> None:
     source, _ = _source(_ok())
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
 
     assert result["as_of"] == "2026-10-07"
     assert result["as_of"] != result["fetched_at"]
@@ -859,7 +859,7 @@ def test_extra_time_metadata_fields_survive_on_the_envelope() -> None:
     )
     source, transport = _source(_ok())
 
-    envelope = source.fetch("sse.composite", provider=_TENCENT, time=rich_time)
+    envelope = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=rich_time)
 
     assert transport.requests[0].time is rich_time
     assert envelope.time.period_start == "2026-10-01"
@@ -872,7 +872,7 @@ def test_no_freshness_or_market_state_is_computed() -> None:
     stale_time = TimeMetadata(fetched_at="2000-01-01T00:00:00+08:00", data_as_of="1999-12-31")
     source, _ = _source(_ok())
 
-    result = source.fetch("sse.composite", provider=_TENCENT, time=stale_time).result
+    result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=stale_time).result
 
     # An ancient payload is still reported exactly as the caller declared it.
     assert result["fetched_at"] == "2000-01-01T00:00:00+08:00"
@@ -891,10 +891,10 @@ def test_boundary_never_needs_a_system_clock(monkeypatch) -> None:
     source, transport = _source(_ok(), {"status": STATUS_EMPTY, "data": None, "error": None})
     unsupported_source, _ = _source(_ok())
 
-    ok_result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
-    empty_result = source.fetch("sse.composite", provider=_TENCENT, time=_TIME).result
+    ok_result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
+    empty_result = source.fetch("cn.index.sh_comp", provider=_TENCENT, time=_TIME).result
     unsupported_result = unsupported_source.fetch(
-        "sse.composite", provider=_EASTMONEY, time=_TIME
+        "cn.index.sh_comp", provider=_EASTMONEY, time=_TIME
     ).result
 
     assert transport.call_count == 2

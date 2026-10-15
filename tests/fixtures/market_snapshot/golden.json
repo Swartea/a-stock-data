@@ -1,0 +1,316 @@
+{
+  "date_window": {
+    "end_date": "2026-10-14",
+    "start_date": "2026-10-09"
+  },
+  "evaluation_time": "2026-10-14T16:00:00+08:00",
+  "fixture_kind": "offline_synthetic_service_output",
+  "generator_command": "python -B scripts/generate_market_snapshot_fixture.py --output tests/fixtures/market_snapshot/golden.json",
+  "scenarios": [
+    {
+      "fixture_inputs": {
+        "fallback": null,
+        "primary": {
+          "close": 3912.34,
+          "date": "2026-10-14",
+          "status": "ok"
+        }
+      },
+      "id": "primary_success",
+      "provider_attempts": [
+        {
+          "provider": "tencent",
+          "status": "ok"
+        }
+      ],
+      "snapshot": {
+        "indexes": [
+          "cn.index.sh_comp"
+        ],
+        "market": "cn",
+        "observation": {
+          "availability": "available",
+          "change": null,
+          "change_percent": null,
+          "close": 3912.34,
+          "data_date": "2026-10-14",
+          "degraded": false,
+          "evidence": [
+            {
+              "evidence_id": "cn.index.sh_comp:daily-close:2026-10-14",
+              "metric": "daily_close",
+              "observation": 3912.34,
+              "pit_status": "allow",
+              "provider": {
+                "display_name": "腾讯财经",
+                "provider_family": "tencent",
+                "provider_id": "tencent"
+              },
+              "quality": {
+                "completeness": "complete",
+                "degraded": false,
+                "freshness": "fresh",
+                "quality_flags": []
+              },
+              "status": "ok",
+              "subject": "cn.index.sh_comp",
+              "time": {
+                "data_as_of": "2026-10-14T15:00:00+08:00",
+                "effective_from": null,
+                "effective_to": null,
+                "fetched_at": "2026-10-14T16:00:00+08:00",
+                "period_end": null,
+                "period_start": null,
+                "published_at": null
+              }
+            }
+          ],
+          "freshness": "fresh",
+          "identity": "cn.index.sh_comp",
+          "name": "上证指数",
+          "provider": "tencent",
+          "reason": null
+        },
+        "snapshot_id": "market-snapshot-20261014",
+        "trading_day_status": "open"
+      }
+    },
+    {
+      "fixture_inputs": {
+        "fallback": {
+          "close": 3912.34,
+          "date": "2026-10-14",
+          "status": "ok"
+        },
+        "primary": {
+          "code": "SYNTHETIC",
+          "message": "synthetic primary error",
+          "status": "error"
+        }
+      },
+      "id": "baostock_fallback_degraded_success",
+      "provider_attempts": [
+        {
+          "provider": "tencent",
+          "status": "error"
+        },
+        {
+          "provider": "baostock",
+          "status": "ok"
+        }
+      ],
+      "snapshot": {
+        "indexes": [
+          "cn.index.sh_comp"
+        ],
+        "market": "cn",
+        "observation": {
+          "availability": "available",
+          "change": null,
+          "change_percent": null,
+          "close": 3912.34,
+          "data_date": "2026-10-14",
+          "degraded": true,
+          "evidence": [
+            {
+              "evidence_id": "cn.index.sh_comp:daily-close:2026-10-14",
+              "metric": "daily_close",
+              "observation": 3912.34,
+              "pit_status": "allow",
+              "provider": {
+                "display_name": "Baostock",
+                "provider_family": "baostock",
+                "provider_id": "baostock"
+              },
+              "quality": {
+                "completeness": "complete",
+                "degraded": true,
+                "freshness": "fresh",
+                "quality_flags": []
+              },
+              "status": "ok",
+              "subject": "cn.index.sh_comp",
+              "time": {
+                "data_as_of": "2026-10-14T15:00:00+08:00",
+                "effective_from": null,
+                "effective_to": null,
+                "fetched_at": "2026-10-14T16:00:00+08:00",
+                "period_end": null,
+                "period_start": null,
+                "published_at": null
+              }
+            }
+          ],
+          "freshness": "fresh",
+          "identity": "cn.index.sh_comp",
+          "name": "上证指数",
+          "provider": "baostock",
+          "reason": null
+        },
+        "snapshot_id": "market-snapshot-20261014",
+        "trading_day_status": "open"
+      }
+    },
+    {
+      "fixture_inputs": {
+        "fallback": null,
+        "primary": {
+          "close": 3888.0,
+          "date": "2026-10-09",
+          "status": "ok"
+        }
+      },
+      "id": "stale_delayed_data",
+      "provider_attempts": [
+        {
+          "provider": "tencent",
+          "status": "ok"
+        }
+      ],
+      "snapshot": {
+        "indexes": [
+          "cn.index.sh_comp"
+        ],
+        "market": "cn",
+        "observation": {
+          "availability": "delayed",
+          "change": null,
+          "change_percent": null,
+          "close": 3888.0,
+          "data_date": "2026-10-09",
+          "degraded": false,
+          "evidence": [
+            {
+              "evidence_id": "cn.index.sh_comp:daily-close:2026-10-09",
+              "metric": "daily_close",
+              "observation": 3888.0,
+              "pit_status": "allow",
+              "provider": {
+                "display_name": "腾讯财经",
+                "provider_family": "tencent",
+                "provider_id": "tencent"
+              },
+              "quality": {
+                "completeness": "complete",
+                "degraded": false,
+                "freshness": "stale",
+                "quality_flags": []
+              },
+              "status": "ok",
+              "subject": "cn.index.sh_comp",
+              "time": {
+                "data_as_of": "2026-10-09T15:00:00+08:00",
+                "effective_from": null,
+                "effective_to": null,
+                "fetched_at": "2026-10-14T16:00:00+08:00",
+                "period_end": null,
+                "period_start": null,
+                "published_at": null
+              }
+            }
+          ],
+          "freshness": "stale",
+          "identity": "cn.index.sh_comp",
+          "name": "上证指数",
+          "provider": "tencent",
+          "reason": null
+        },
+        "snapshot_id": "market-snapshot-20261014",
+        "trading_day_status": "open"
+      }
+    },
+    {
+      "fixture_inputs": {
+        "fallback": {
+          "status": "empty"
+        },
+        "primary": {
+          "status": "empty"
+        }
+      },
+      "id": "missing_empty_data",
+      "provider_attempts": [
+        {
+          "provider": "tencent",
+          "status": "empty"
+        },
+        {
+          "provider": "baostock",
+          "status": "empty"
+        }
+      ],
+      "snapshot": {
+        "indexes": [
+          "cn.index.sh_comp"
+        ],
+        "market": "cn",
+        "observation": {
+          "availability": "unavailable",
+          "change": null,
+          "change_percent": null,
+          "close": null,
+          "data_date": null,
+          "degraded": false,
+          "evidence": [],
+          "freshness": "unknown",
+          "identity": "cn.index.sh_comp",
+          "name": "上证指数",
+          "provider": null,
+          "reason": "VALIDATION: synthetic empty result"
+        },
+        "snapshot_id": "market-snapshot-20261014",
+        "trading_day_status": "unknown"
+      }
+    },
+    {
+      "fixture_inputs": {
+        "fallback": {
+          "code": "SYNTHETIC",
+          "message": "synthetic fallback error",
+          "status": "error"
+        },
+        "primary": {
+          "code": "SYNTHETIC",
+          "message": "synthetic provider error",
+          "status": "error"
+        }
+      },
+      "id": "provider_error",
+      "provider_attempts": [
+        {
+          "provider": "tencent",
+          "status": "error"
+        },
+        {
+          "provider": "baostock",
+          "status": "error"
+        }
+      ],
+      "snapshot": {
+        "indexes": [
+          "cn.index.sh_comp"
+        ],
+        "market": "cn",
+        "observation": {
+          "availability": "unavailable",
+          "change": null,
+          "change_percent": null,
+          "close": null,
+          "data_date": null,
+          "degraded": false,
+          "evidence": [],
+          "freshness": "unknown",
+          "identity": "cn.index.sh_comp",
+          "name": "上证指数",
+          "provider": null,
+          "reason": "SYNTHETIC: synthetic fallback error"
+        },
+        "snapshot_id": "market-snapshot-20261014",
+        "trading_day_status": "unknown"
+      }
+    }
+  ],
+  "schema": "a_share_market_snapshot_golden",
+  "schema_version": "2.0",
+  "source_inputs": "Synthetic deterministic Daily-K provider envelopes and explicit calendar entries; no live response or network is used."
+}

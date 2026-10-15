@@ -50,6 +50,8 @@ from dataclasses import dataclass, fields
 
 from analysis.research.index_registry import IndexIdentity
 from analysis.research.index_symbols import IndexProviderSymbolAlias
+from analysis.research.market_state import MarketIndexObservation
+from analysis.research.trading_calendar import TradingDayStatus
 
 _TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 _INDEX_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
@@ -69,6 +71,8 @@ class MarketSnapshot:
     market: str
     indexes: tuple[IndexIdentity, ...]
     provider_symbols: tuple[IndexProviderSymbolAlias, ...]
+    observations: tuple[MarketIndexObservation, ...] = ()
+    trading_day_status: TradingDayStatus = TradingDayStatus.UNKNOWN
 
     def __post_init__(self) -> None:
         if not isinstance(self.snapshot_id, str):
@@ -99,6 +103,15 @@ class MarketSnapshot:
 
         if not isinstance(self.provider_symbols, tuple):
             raise TypeError("provider_symbols must be a tuple")
+
+        if not isinstance(self.observations, tuple):
+            raise TypeError("observations must be a tuple")
+        if any(not isinstance(item, MarketIndexObservation) for item in self.observations):
+            raise TypeError("observations must contain MarketIndexObservation values")
+        if not isinstance(self.trading_day_status, TradingDayStatus):
+            raise TypeError("trading_day_status must be TradingDayStatus")
+        if any(item.identity.index_id not in known_index_ids for item in self.observations):
+            raise ValueError("observations must refer to an index in this snapshot")
 
         seen_symbols: set[tuple[str, str]] = set()
         for alias in self.provider_symbols:

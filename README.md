@@ -1,4 +1,4 @@
-<p align="center"><b>简体中文</b> · <a href="README_en.md" title="English translation pending — PRs welcome">English</a></p>
+<p align="center"><b>简体中文</b> · <a href="README_en.md">English</a></p>
 
 <h1 align="center">a-stock-data</h1>
 
@@ -69,10 +69,10 @@ pip install -e .
 
 # 3. 一句话出报告
 da-a-analyze 002353
-# 报告目录: reports/002353_杰瑞股份/{timestamp}/
-#           ├── report.html          ← 浏览器直接打开
-#           ├── report.docx          ← Word 可编辑
-#           └── report.md            ← 源 markdown
+# 已检入样本: reports/002353_杰瑞股份/2026-09-09/
+#           ├── 002353-杰瑞股份-v3-20260909-1621.html
+#           ├── 002353-杰瑞股份-1621.docx
+#           └── 002353-杰瑞股份-1621.md
 ```
 
 4 只样本票（实盘验证）已存在 `reports/`，跑完后可直接对照：
@@ -98,6 +98,18 @@ pip install mootdx requests beautifulsoup4 lxml baostock python-docx openpyxl
 > **Codex / OpenClaw / Cursor / Hermes / WorkBuddy / Doubao / Coze 用户：** 把 SKILL.md 的内容贴入你的系统 prompt 或项目上下文文件即可，内嵌的 Python 代码可直接执行。
 >
 > **维护者注意：** 单文件 SKILL.md 是构建产物，编辑入口是 `skill-src/`（按层拆分的小文件），修改后运行 `python scripts/build_skill.py` 重新生成，CI 用 `--check` 校验同步。对外分发形态（单文件自包含）不变。详见 [SKILL 维护指南](docs/11-SKILL维护指南.md)。
+
+### Swartee Market Research 全球市场终端 V1（本地 Release Candidate）
+
+V1 提供 9 个中、港、美指数的市场概览、日线 K 线、OHLC 指针提示、日期筛选和历史行情表。页面使用本地研究服务请求日线；最新收盘不代表实时行情。交易日状态缺少日历证据时显示为“未知”。
+
+安装项目依赖后，在仓库目录启动本机服务：
+
+```bash
+python scripts/market_research.py
+```
+
+然后打开 `http://127.0.0.1:8765/`。此 V1 仍处于本地 Release Candidate 验收阶段；GitHub CI 尚未验证，详见[总体进度与阶段验收](docs/12-智能市场研究系统-总体进度与阶段验收.md)。
 
 ---
 
@@ -323,6 +335,18 @@ da-a-analyze 002353 --layers chip,fund
 # 报告保存路径自定义
 da-a-analyze 002353 --output-dir ./my_reports/
 ```
+
+### 全球指数日线研究页面（第一版）
+
+在项目根目录启动本地页面：
+
+```bash
+python scripts/market_research.py
+```
+
+浏览器打开 `http://127.0.0.1:8765/`。第一版终端提供全球市场概览、市场/指数筛选、日线 K 线、历史日线与数据口径切换；图表支持指针查看 OHLC、缩放和横向浏览，市场信息显示数据日期、来源、可用性与新鲜度。支持注册表中的 9 个指数（中国内地 4、香港 2、美国 3），并适配桌面与手机屏幕。
+
+概览和图表展示本地研究服务返回的**最新日线收盘，不是实时行情**；涨跌幅只在相邻两日收盘均可得时计算，并标明基准。数据覆盖取决于已验证的 Provider；默认以 72 小时最大年龄评估日线新鲜度，来源未提供成交量时不显示，缺少交易日历证据时市场日状态显示“未知”。页面只监听本机回环地址，不提供交易下单功能。
 
 ### 内置 4 套调研流程
 

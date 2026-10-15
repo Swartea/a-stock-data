@@ -21,10 +21,10 @@ from analysis.research.market_index_universe import (
 
 def test_core_universe_covers_exact_four_indexes_in_declared_order() -> None:
     assert A_SHARE_CORE_UNIVERSE.index_ids == (
-        "sse.composite",
-        "szse.component",
-        "szse.chinext",
-        "csi.300",
+        "cn.index.sh_comp",
+        "cn.index.sz_component",
+        "cn.index.chinext",
+        "cn.index.csi300",
     )
 
 
@@ -32,25 +32,25 @@ def test_core_identities_are_exact() -> None:
     universe = A_SHARE_CORE_UNIVERSE
 
     assert universe.identities[0] == IndexIdentity(
-        "sse.composite", IndexPublisher.SSE, "000001"
+        "cn.index.sh_comp", IndexPublisher.SSE, "000001"
     )
     assert universe.identities[1] == IndexIdentity(
-        "szse.component", IndexPublisher.SZSE, "399001"
+        "cn.index.sz_component", IndexPublisher.SZSE, "399001"
     )
     assert universe.identities[2] == IndexIdentity(
-        "szse.chinext", IndexPublisher.SZSE, "399006"
+        "cn.index.chinext", IndexPublisher.SZSE, "399006"
     )
-    assert universe.identities[3] == IndexIdentity("csi.300", IndexPublisher.CSI, "000300")
+    assert universe.identities[3] == IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300")
 
 
 def test_identity_is_not_derived_from_local_code() -> None:
     """The internal id states the publisher; the local code is a separate space.
 
-    ``sse.composite`` deliberately does not equal its local_code "000001", so a
+    ``cn.index.sh_comp`` deliberately does not equal its local_code "000001", so a
     consumer cannot silently treat the publisher-local code as the internal id.
     """
 
-    composite = A_SHARE_CORE_UNIVERSE.require_index("sse.composite")
+    composite = A_SHARE_CORE_UNIVERSE.require_index("cn.index.sh_comp")
 
     assert composite.index_id != composite.local_code
     assert composite.publisher is IndexPublisher.SSE
@@ -60,10 +60,10 @@ def test_identity_is_not_derived_from_local_code() -> None:
 def test_require_index_returns_exact_identity_for_each_covered_index() -> None:
     universe = A_SHARE_CORE_UNIVERSE
 
-    assert universe.require_index("sse.composite") == universe.identities[0]
-    assert universe.require_index("szse.component") == universe.identities[1]
-    assert universe.require_index("szse.chinext") == universe.identities[2]
-    assert universe.require_index("csi.300") == universe.identities[3]
+    assert universe.require_index("cn.index.sh_comp") == universe.identities[0]
+    assert universe.require_index("cn.index.sz_component") == universe.identities[1]
+    assert universe.require_index("cn.index.chinext") == universe.identities[2]
+    assert universe.require_index("cn.index.csi300") == universe.identities[3]
 
 
 # --- provider aliases -------------------------------------------------------
@@ -72,28 +72,69 @@ def test_require_index_returns_exact_identity_for_each_covered_index() -> None:
 def test_alias_relations_are_exact_and_verbatim() -> None:
     universe = A_SHARE_CORE_UNIVERSE
 
-    assert universe.aliases_for("csi.300") == (
-        IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300"),
+    assert universe.aliases_for("cn.index.csi300") == (
+        IndexProviderSymbolAlias("cn.index.csi300", "tencent", "sh000300"),
+        IndexProviderSymbolAlias("cn.index.csi300", "eastmoney", "1.000300"),
     )
-    assert universe.aliases_for("sse.composite") == (
-        IndexProviderSymbolAlias("sse.composite", "tencent", "sh000001"),
+    assert universe.aliases_for("cn.index.sh_comp") == (
+        IndexProviderSymbolAlias("cn.index.sh_comp", "tencent", "sh000001"),
     )
 
 
-def test_covered_index_without_verified_alias_returns_empty_tuple() -> None:
-    """Absence is an explicit state, never a guessed symbol."""
+def test_all_core_indexes_have_verified_tencent_aliases() -> None:
 
     universe = A_SHARE_CORE_UNIVERSE
 
-    assert universe.aliases_for("szse.component") == ()
-    assert universe.aliases_for("szse.chinext") == ()
+    assert universe.aliases_for("cn.index.sz_component") == (
+        IndexProviderSymbolAlias("cn.index.sz_component", "tencent", "sz399001"),
+    )
+    assert universe.aliases_for("cn.index.chinext") == (
+        IndexProviderSymbolAlias("cn.index.chinext", "tencent", "sz399006"),
+    )
 
 
-def test_no_extra_aliases_are_prepopulated() -> None:
+def test_five_provider_aliases_are_prepopulated() -> None:
     aliased_ids = {alias.index_id for alias in A_SHARE_CORE_UNIVERSE.aliases}
 
-    assert aliased_ids == {"sse.composite", "csi.300"}
-    assert len(A_SHARE_CORE_UNIVERSE.aliases) == 2
+    assert aliased_ids == {
+        "cn.index.sh_comp", "cn.index.sz_component", "cn.index.chinext", "cn.index.csi300"
+    }
+    assert len(A_SHARE_CORE_UNIVERSE.aliases) == 5
+    assert A_SHARE_CORE_UNIVERSE.aliases_for("cn.index.csi300")[-1] == (
+        IndexProviderSymbolAlias("cn.index.csi300", "eastmoney", "1.000300")
+    )
+
+
+def test_literal_tencent_and_baostock_contract_mappings() -> None:
+    from analysis.research.global_daily_k_baostock import BAOSTOCK_INDEX_CODES
+    from analysis.research.global_indices import build_global_index_symbol_registry
+
+    registry = build_global_index_symbol_registry()
+    assert {
+        symbol: registry.require("tencent", symbol)
+        for symbol in ("sh000001", "sz399001", "sz399006", "sh000300")
+    } == {
+        "sh000001": "cn.index.sh_comp",
+        "sz399001": "cn.index.sz_component",
+        "sz399006": "cn.index.chinext",
+        "sh000300": "cn.index.csi300",
+    }
+    assert BAOSTOCK_INDEX_CODES == {
+        "cn.index.sh_comp": "sh.000001",
+        "cn.index.sz_component": "sz.399001",
+        "cn.index.chinext": "sz.399006",
+        "cn.index.csi300": "sh.000300",
+    }
+    assert registry.require("eastmoney", "1.000300") == "cn.index.csi300"
+
+
+@pytest.mark.parametrize(
+    "legacy_id", ("sse.composite", "szse.component", "szse.chinext", "csi.300")
+)
+def test_legacy_ids_resolve_to_the_canonical_identity(legacy_id: str) -> None:
+    identity = A_SHARE_CORE_UNIVERSE.require_index(legacy_id)
+    assert identity.index_id in A_SHARE_CORE_UNIVERSE.index_ids
+    assert A_SHARE_CORE_UNIVERSE.aliases_for(legacy_id)
 
 
 def test_alias_order_is_preserved() -> None:
@@ -122,12 +163,12 @@ def test_alias_order_is_preserved() -> None:
     "unknown_index_id",
     [
         "csi.500",
-        "szse.chinext.extra",
-        "sse.composite ",
-        " sse.composite",
+        "cn.index.chinext.extra",
+        "cn.index.sh_comp ",
+        " cn.index.sh_comp",
         "SSE.COMPOSITE",
         "sse.composi",
-        "csi.3000",
+        "cn.index.csi3000",
     ],
 )
 def test_require_index_rejects_index_outside_universe(unknown_index_id) -> None:
@@ -142,7 +183,7 @@ def test_aliases_for_rejects_index_outside_universe() -> None:
 
 def test_require_index_rejects_non_string_lookup() -> None:
     with pytest.raises(TypeError):
-        A_SHARE_CORE_UNIVERSE.require_index(("csi.300",))
+        A_SHARE_CORE_UNIVERSE.require_index(("cn.index.csi300",))
 
 
 # --- caller-supplied universes (no A-share-only branch) ----------------------
@@ -172,7 +213,7 @@ def test_custom_universe_gating_is_independent_of_the_a_share_default() -> None:
     )
 
     with pytest.raises(KeyError):
-        custom.require_index("csi.300")
+        custom.require_index("cn.index.csi300")
 
     with pytest.raises(KeyError):
         A_SHARE_CORE_UNIVERSE.require_index("sample.gamma")
@@ -189,7 +230,7 @@ def test_universe_is_frozen_and_holds_immutable_tuples() -> None:
     assert isinstance(universe.identities, tuple)
     assert isinstance(universe.aliases, tuple)
     assert isinstance(universe.index_ids, tuple)
-    assert isinstance(universe.aliases_for("csi.300"), tuple)
+    assert isinstance(universe.aliases_for("cn.index.csi300"), tuple)
 
 
 def test_frozen_universe_rejects_field_mutation() -> None:
@@ -224,13 +265,13 @@ def test_empty_identity_collection_is_rejected() -> None:
 def test_non_tuple_identity_collection_is_rejected() -> None:
     with pytest.raises(TypeError, match="identities must be a tuple"):
         MarketIndexUniverse(
-            identities=[IndexIdentity("csi.300", IndexPublisher.CSI, "000300")]
+            identities=[IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300")]
         )
 
 
 def test_invalid_identity_item_is_rejected() -> None:
     with pytest.raises(TypeError, match="identities must contain IndexIdentity values"):
-        MarketIndexUniverse(identities=("csi.300",))
+        MarketIndexUniverse(identities=("cn.index.csi300",))
 
 
 def test_invalid_identity_instance_is_rejected() -> None:
@@ -243,7 +284,7 @@ def test_invalid_identity_instance_is_rejected() -> None:
 
     with pytest.raises(TypeError, match="publisher must be IndexPublisher"):
         MarketIndexUniverse(
-            identities=(IndexIdentity("csi.300", "csi", "000300"),)  # type: ignore[arg-type]
+            identities=(IndexIdentity("cn.index.csi300", "csi", "000300"),)  # type: ignore[arg-type]
         )
 
 
@@ -251,8 +292,8 @@ def test_duplicate_index_ids_are_rejected() -> None:
     with pytest.raises(ValueError, match="duplicate index_id in universe"):
         MarketIndexUniverse(
             identities=(
-                IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),
-                IndexIdentity("csi.300", IndexPublisher.SSE, "000001"),
+                IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),
+                IndexIdentity("cn.index.csi300", IndexPublisher.SSE, "000001"),
             )
         )
 
@@ -260,15 +301,15 @@ def test_duplicate_index_ids_are_rejected() -> None:
 def test_non_tuple_alias_collection_is_rejected() -> None:
     with pytest.raises(TypeError, match="aliases must be a tuple"):
         MarketIndexUniverse(
-            identities=(IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),),
-            aliases=[IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300")],
+            identities=(IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),),
+            aliases=[IndexProviderSymbolAlias("cn.index.csi300", "eastmoney", "1.000300")],
         )
 
 
 def test_invalid_alias_item_is_rejected() -> None:
     with pytest.raises(TypeError, match="aliases must contain IndexProviderSymbolAlias"):
         MarketIndexUniverse(
-            identities=(IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),),
+            identities=(IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),),
             aliases=("1.000300",),
         )
 
@@ -276,15 +317,15 @@ def test_invalid_alias_item_is_rejected() -> None:
 def test_invalid_alias_instance_is_rejected() -> None:
     with pytest.raises(ValueError):
         MarketIndexUniverse(
-            identities=(IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),),
-            aliases=(IndexProviderSymbolAlias("csi.300", "EastMoney", "1.000300"),),
+            identities=(IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),),
+            aliases=(IndexProviderSymbolAlias("cn.index.csi300", "EastMoney", "1.000300"),),
         )
 
 
 def test_alias_pointing_outside_universe_is_rejected() -> None:
     with pytest.raises(ValueError, match="alias index outside universe"):
         MarketIndexUniverse(
-            identities=(IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),),
+            identities=(IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),),
             aliases=(
                 IndexProviderSymbolAlias("csi.500", "eastmoney", "1.000500"),
             ),
@@ -298,12 +339,12 @@ def test_provider_symbol_collision_is_rejected() -> None:
     with pytest.raises(ValueError, match="provider index symbol collision"):
         MarketIndexUniverse(
             identities=(
-                IndexIdentity("sse.composite", IndexPublisher.SSE, "000001"),
-                IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),
+                IndexIdentity("cn.index.sh_comp", IndexPublisher.SSE, "000001"),
+                IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),
             ),
             aliases=(
-                IndexProviderSymbolAlias("sse.composite", "eastmoney", "1.000001"),
-                IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000001"),
+                IndexProviderSymbolAlias("cn.index.sh_comp", "eastmoney", "1.000001"),
+                IndexProviderSymbolAlias("cn.index.csi300", "eastmoney", "1.000001"),
             ),
         )
 
@@ -311,10 +352,10 @@ def test_provider_symbol_collision_is_rejected() -> None:
 def test_duplicate_alias_entry_is_rejected_as_a_collision() -> None:
     with pytest.raises(ValueError, match="provider index symbol collision"):
         MarketIndexUniverse(
-            identities=(IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),),
+            identities=(IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),),
             aliases=(
-                IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300"),
-                IndexProviderSymbolAlias("csi.300", "eastmoney", "1.000300"),
+                IndexProviderSymbolAlias("cn.index.csi300", "eastmoney", "1.000300"),
+                IndexProviderSymbolAlias("cn.index.csi300", "eastmoney", "1.000300"),
             ),
         )
 
@@ -324,12 +365,12 @@ def test_same_symbol_under_different_providers_is_not_a_collision() -> None:
 
     universe = MarketIndexUniverse(
         identities=(
-            IndexIdentity("sse.composite", IndexPublisher.SSE, "000001"),
-            IndexIdentity("csi.300", IndexPublisher.CSI, "000300"),
+            IndexIdentity("cn.index.sh_comp", IndexPublisher.SSE, "000001"),
+            IndexIdentity("cn.index.csi300", IndexPublisher.CSI, "000300"),
         ),
         aliases=(
-            IndexProviderSymbolAlias("sse.composite", "eastmoney", "1.000001"),
-            IndexProviderSymbolAlias("csi.300", "tencent", "1.000001"),
+            IndexProviderSymbolAlias("cn.index.sh_comp", "eastmoney", "1.000001"),
+            IndexProviderSymbolAlias("cn.index.csi300", "tencent", "1.000001"),
         ),
     )
 

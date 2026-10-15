@@ -31,10 +31,10 @@ BAOSTOCK_SOURCE = "baostock.daily_k"
 BAOSTOCK_SCOPE = "market"
 BAOSTOCK_HARD_TIMEOUT_SECONDS = 10.0
 BAOSTOCK_INDEX_CODES: dict[str, str] = {
-    "cn.index.sse.000001": "sh.000001",
-    "cn.index.szse.399001": "sz.399001",
-    "cn.index.szse.399006": "sz.399006",
-    "cn.index.csi.000300": "sh.000300",
+    "cn.index.sh_comp": "sh.000001",
+    "cn.index.sz_component": "sz.399001",
+    "cn.index.chinext": "sz.399006",
+    "cn.index.csi300": "sh.000300",
 }
 _BAOSTOCK_FIELDS = "date,code,open,high,low,close,volume,amount"
 _UNITS = {"price": "index_points", "volume": "unavailable"}

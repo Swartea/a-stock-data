@@ -40,10 +40,11 @@ Three code spaces stay separate, and none is derived from another
   -- the provider's symbol for that index;
 * :class:`~analysis.research.providers.ProviderSpec.provider_id` -- who is asked.
 
-A caller asking for provider ``tencent`` for index ``csi.300`` gets
-``unsupported``, because this repository declares no tencent symbol for
-``csi.300``. Guessing, normalizing, case-folding, or falling back to another
-provider's symbol would be a fabrication, so the module refuses instead.
+A caller asking for a provider/index pair without an explicit alias gets
+``unsupported``. The A-share canonical identities include four verified
+Tencent mappings, including CSI300. Guessing, normalizing, case-folding, or
+falling back to another provider's symbol would be a fabrication, so the
+module refuses instead.
 """
 
 from __future__ import annotations

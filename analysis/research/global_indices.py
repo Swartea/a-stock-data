@@ -30,7 +30,12 @@ from __future__ import annotations
 from dataclasses import dataclass, fields
 from typing import Iterable, Mapping
 
-from .index_registry import IndexIdentity, IndexPublisher
+from .index_registry import (
+    A_SHARE_INDEX_BY_ID,
+    IndexIdentity,
+    IndexPublisher,
+    canonical_index_id,
+)
 from .index_symbols import (
     IndexProviderSymbolAlias,
     IndexProviderSymbolRegistry,
@@ -79,6 +84,8 @@ class GlobalIndexSpec:
     currency: str
     timezone: str
     provider_symbol: str
+    # Additional provider mappings beyond the primary Tencent symbol above.
+    aliases: tuple[IndexProviderSymbolAlias, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, IndexIdentity):
@@ -106,12 +113,30 @@ class GlobalIndexSpec:
             raise ValueError("provider_symbol must be a non-empty string")
         if self.provider_symbol != self.provider_symbol.strip():
             raise ValueError("provider_symbol must not contain surrounding whitespace")
+        if not isinstance(self.aliases, tuple):
+            raise TypeError("aliases must be a tuple")
+        for alias in self.aliases:
+            if not isinstance(alias, IndexProviderSymbolAlias):
+                raise TypeError("aliases must contain IndexProviderSymbolAlias values")
+            if alias.index_id != self.identity.index_id:
+                raise ValueError("provider alias index_id must match the spec identity")
 
     @classmethod
     def contract_fields(cls) -> tuple[str, ...]:
         """Return the intentionally small V1 global-index spec surface."""
 
         return tuple(field.name for field in fields(cls))
+
+    @property
+    def provider_aliases(self) -> tuple[IndexProviderSymbolAlias, ...]:
+        """Return every exact provider mapping declared for this index."""
+
+        return (
+            IndexProviderSymbolAlias(
+                self.identity.index_id, "tencent", self.provider_symbol
+            ),
+            *self.aliases,
+        )
 
 
 # The fixed V1 universe. Controller live-probed these nine indices on
@@ -120,11 +145,7 @@ class GlobalIndexSpec:
 # not an SLA. Nikkei and all other symbols are explicitly unsupported.
 _GLOBAL_INDEX_SPECS: tuple[GlobalIndexSpec, ...] = (
     GlobalIndexSpec(
-        identity=IndexIdentity(
-            index_id="cn.index.sse.000001",
-            publisher=IndexPublisher.SSE,
-            local_code="000001",
-        ),
+        identity=A_SHARE_INDEX_BY_ID["cn.index.sh_comp"],
         market=_MARKET_CN,
         name="上证指数",
         currency=_CURRENCY_CNY,
@@ -132,11 +153,7 @@ _GLOBAL_INDEX_SPECS: tuple[GlobalIndexSpec, ...] = (
         provider_symbol="sh000001",
     ),
     GlobalIndexSpec(
-        identity=IndexIdentity(
-            index_id="cn.index.szse.399001",
-            publisher=IndexPublisher.SZSE,
-            local_code="399001",
-        ),
+        identity=A_SHARE_INDEX_BY_ID["cn.index.sz_component"],
         market=_MARKET_CN,
         name="深证成指",
         currency=_CURRENCY_CNY,
@@ -144,11 +161,7 @@ _GLOBAL_INDEX_SPECS: tuple[GlobalIndexSpec, ...] = (
         provider_symbol="sz399001",
     ),
     GlobalIndexSpec(
-        identity=IndexIdentity(
-            index_id="cn.index.szse.399006",
-            publisher=IndexPublisher.SZSE,
-            local_code="399006",
-        ),
+        identity=A_SHARE_INDEX_BY_ID["cn.index.chinext"],
         market=_MARKET_CN,
         name="创业板指",
         currency=_CURRENCY_CNY,
@@ -156,16 +169,13 @@ _GLOBAL_INDEX_SPECS: tuple[GlobalIndexSpec, ...] = (
         provider_symbol="sz399006",
     ),
     GlobalIndexSpec(
-        identity=IndexIdentity(
-            index_id="cn.index.csi.000300",
-            publisher=IndexPublisher.CSI,
-            local_code="000300",
-        ),
+        identity=A_SHARE_INDEX_BY_ID["cn.index.csi300"],
         market=_MARKET_CN,
         name="沪深300",
         currency=_CURRENCY_CNY,
         timezone=_TZ_ASIA_SHANGHAI,
         provider_symbol="sh000300",
+        aliases=(IndexProviderSymbolAlias("cn.index.csi300", "eastmoney", "1.000300"),),
     ),
     GlobalIndexSpec(
         identity=IndexIdentity(
@@ -231,19 +241,14 @@ _GLOBAL_INDEX_SPECS: tuple[GlobalIndexSpec, ...] = (
 
 
 def _build_default_aliases() -> tuple[IndexProviderSymbolAlias, ...]:
-    """Translate every V1 spec into one Tencent provider-symbol alias.
+    """Collect provider aliases from specs and add Tencent for other specs.
 
-    The Tencent endpoint is the only V1 provider for these indices; the
-    resulting registry therefore contains exactly one alias per index.
+    Tencent is the default for every V1 index. The A-share specs may also
+    declare additional provider aliases, such as CSI300 on EastMoney.
     """
 
     return tuple(
-        IndexProviderSymbolAlias(
-            index_id=spec.identity.index_id,
-            provider_id="tencent",
-            provider_symbol=spec.provider_symbol,
-        )
-        for spec in _GLOBAL_INDEX_SPECS
+        alias for spec in _GLOBAL_INDEX_SPECS for alias in spec.provider_aliases
     )
 
 
@@ -280,7 +285,7 @@ def get_global_index(index_id: str) -> GlobalIndexSpec:
 
     if not isinstance(index_id, str):
         raise TypeError("index_id must be a string")
-    canonical = index_id.strip()
+    canonical = canonical_index_id(index_id.strip())
     if not canonical:
         raise ValueError("index_id must not be empty")
 

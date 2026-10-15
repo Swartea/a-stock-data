@@ -26,10 +26,10 @@ START = "2026-09-01"
 END = "2026-09-04"
 NOW = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
 INDEX_MAP = {
-    "cn.index.sse.000001": "sh.000001",
-    "cn.index.szse.399001": "sz.399001",
-    "cn.index.szse.399006": "sz.399006",
-    "cn.index.csi.000300": "sh.000300",
+    "cn.index.sh_comp": "sh.000001",
+    "cn.index.sz_component": "sz.399001",
+    "cn.index.chinext": "sz.399006",
+    "cn.index.csi300": "sh.000300",
 }
 
 
@@ -135,7 +135,7 @@ def test_non_a_share_symbol_is_unsupported_without_child_process() -> None:
 def test_noncanonical_registered_symbol_is_validation_without_child_process() -> None:
     with mock.patch.object(bao, "_run_baostock_child") as runner:
         result = bao.fetch_baostock_daily_k(
-            "CN.INDEX.CSI.000300", START, END, now=NOW
+            "CN.INDEX.CSI300", START, END, now=NOW
         )
     assert result["status"] == fetcher_contract.STATUS_ERROR
     assert result["error"]["code"] == fetcher_contract.ERR_VALIDATION
@@ -150,7 +150,7 @@ def test_rows_are_sorted_and_identical_duplicates_coalesce() -> None:
     ]
     with mock.patch.object(bao, "_run_baostock_child", return_value=_protocol(rows)):
         result = bao.fetch_baostock_daily_k(
-            "cn.index.csi.000300", START, END, now=NOW
+            "cn.index.csi300", START, END, now=NOW
         )
     _assert_ok(result)
     assert [row["date"] for row in result["data"]] == [
@@ -173,7 +173,7 @@ def test_wrong_symbol_or_malformed_row_is_parse_error(
 ) -> None:
     with mock.patch.object(bao, "_run_baostock_child", return_value=_protocol(rows)):
         result = bao.fetch_baostock_daily_k(
-            "cn.index.csi.000300", START, END, now=NOW
+            "cn.index.csi300", START, END, now=NOW
         )
     assert result["status"] == fetcher_contract.STATUS_ERROR
     assert result["error"]["code"] == fetcher_contract.ERR_PARSE
@@ -187,7 +187,7 @@ def test_conflicting_duplicate_date_is_parse_error() -> None:
     ]
     with mock.patch.object(bao, "_run_baostock_child", return_value=_protocol(rows)):
         result = bao.fetch_baostock_daily_k(
-            "cn.index.csi.000300", START, END, now=NOW
+            "cn.index.csi300", START, END, now=NOW
         )
     assert result["error"]["code"] == fetcher_contract.ERR_PARSE
 
@@ -195,7 +195,7 @@ def test_conflicting_duplicate_date_is_parse_error() -> None:
 def test_empty_window_uses_existing_empty_contract() -> None:
     with mock.patch.object(bao, "_run_baostock_child", return_value=_protocol([])):
         result = bao.fetch_baostock_daily_k(
-            "cn.index.csi.000300", START, END, now=NOW
+            "cn.index.csi300", START, END, now=NOW
         )
     assert result["status"] == fetcher_contract.STATUS_EMPTY
     assert result["data"] is None
@@ -220,7 +220,7 @@ def test_sdk_and_process_failures_map_to_stable_errors(
 ) -> None:
     with mock.patch.object(bao, "_run_baostock_child", return_value=protocol):
         result = bao.fetch_baostock_daily_k(
-            "cn.index.csi.000300", START, END, now=NOW
+            "cn.index.csi300", START, END, now=NOW
         )
     assert result["status"] == fetcher_contract.STATUS_ERROR
     assert result["error"]["code"] == code
@@ -230,7 +230,7 @@ def test_sdk_and_process_failures_map_to_stable_errors(
 def test_invalid_dates_do_not_start_child() -> None:
     with mock.patch.object(bao, "_run_baostock_child") as runner:
         result = bao.fetch_baostock_daily_k(
-            "cn.index.csi.000300", "2026-09-04", "2026-09-01", now=NOW
+            "cn.index.csi300", "2026-09-04", "2026-09-01", now=NOW
         )
     assert result["error"]["code"] == fetcher_contract.ERR_VALIDATION
     runner.assert_not_called()
@@ -242,7 +242,7 @@ def test_local_session_day_cutoff_uses_index_timezone() -> None:
     now = datetime(2026, 9, 1, 16, 30, tzinfo=timezone.utc)
     with mock.patch.object(bao, "_run_baostock_child", return_value=_protocol(rows)):
         result = bao.fetch_baostock_daily_k(
-            "cn.index.csi.000300", START, END, now=now
+            "cn.index.csi300", START, END, now=now
         )
     assert result["status"] == fetcher_contract.STATUS_EMPTY
 
@@ -331,7 +331,7 @@ def test_malformed_index_id_is_validated_before_default_routing() -> None:
 def test_default_chain_tencent_success_skips_baostock() -> None:
     with mock.patch.object(bao, "_run_baostock_child") as runner:
         result = fetch_global_daily_k_service(
-            "cn.index.csi.000300", START, END, now=NOW, transport=_ok_transport
+            "cn.index.csi300", START, END, now=NOW, transport=_ok_transport
         )
     assert result["status"] == fetcher_contract.STATUS_OK
     assert result["source_used"] == "tencent"
@@ -366,7 +366,7 @@ def test_primary_failure_uses_baostock_and_records_degraded_provenance(
         return_value=_provider_protocol([_row("sh.000300")]),
     ) as runner:
         result = fetch_global_daily_k_service(
-            "cn.index.csi.000300",
+            "cn.index.csi300",
             START,
             END,
             now=NOW,
@@ -392,7 +392,7 @@ def test_both_providers_fail_reports_baostock_as_last_attempt() -> None:
         bao, "_run_baostock_child", return_value={"status": "worker_error"}
     ):
         result = fetch_global_daily_k_service(
-            "cn.index.csi.000300",
+            "cn.index.csi300",
             START,
             END,
             now=NOW,
