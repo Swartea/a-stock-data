@@ -1,4 +1,4 @@
-"""Render the Swartee Market Research workbench (Chinese-first, dark).
+"""Render the Swartea Market Research workbench (Chinese-first, dark).
 
 This module is **additive and separate** from
 :mod:`analysis.research.market_snapshot_view`: the existing A-share static
@@ -18,10 +18,9 @@ sections behind a real top navigation:
     history table, data details and the raw field disclosure.
 
 ``市场比较`` (compare)
-    The section hook for the cross-market normalised comparison task. The
-    section is reachable through the navigation and ships an explicit mount
-    point plus a JS hook contract, so the dependent comparison task can bind
-    its renderer without touching the rest of the workbench.
+    A 2–4 index Canvas comparison with a common valid base date, cumulative
+    price returns, explicit missing sessions and per-series provenance. The
+    pure calculation endpoint reuses already fetched research payloads.
 
 ``自选关注`` (watchlist)
     A localStorage-backed watchlist of **canonical index ids only**, with
@@ -163,7 +162,8 @@ background:var(--panel-2)}
 
 /* --- workbench sections ---------------------------------------------- */
 main{padding:12px 14px 18px;display:grid;gap:12px;max-width:1720px;margin:0 auto}
-.section{display:grid;gap:12px}
+.section{display:grid;gap:12px;grid-template-columns:minmax(0,1fr);min-width:0}
+.grid3,.panel{min-width:0;max-width:100%}
 .section[hidden]{display:none}
 .grid3{display:grid;gap:12px;grid-template-columns:264px minmax(0,1fr) 300px;align-items:start}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
@@ -249,6 +249,12 @@ th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:
 th:first-child,td:first-child{text-align:left}
 
 /* --- responsive ------------------------------------------------------ */
+@media (min-width:1100px){
+#strip{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+#strip .cards{grid-template-columns:minmax(0,1fr)}
+}
+@media (min-width:1440px){#strip .cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 @media (min-width:1440px){
 .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
@@ -1090,6 +1096,7 @@ function renderWatchlist() {
       openResearch(id);
     });
     card.addEventListener('keydown', ev => {
+      if (ev.target.closest && ev.target.closest('button')) return;
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
         openResearch(id);
@@ -1193,6 +1200,7 @@ document.addEventListener('DOMContentLoaded', () => {
       openResearch(id);
     });
     card.addEventListener('keydown', ev => {
+      if (ev.target.closest && ev.target.closest('button')) return;
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
         openResearch(id);
@@ -1359,7 +1367,7 @@ def render_global_market_research_page(
     end_date: str = "",
     api_path: str = DEFAULT_API_PATH,
 ) -> str:
-    """Render the Swartee Market Research workbench shell.
+    """Render the Swartea Market Research workbench shell.
 
     The HTML embeds only selector metadata plus a single endpoint URL; every
     price number is fetched at runtime through the research service, so the
