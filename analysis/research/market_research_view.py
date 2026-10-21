@@ -1,20 +1,31 @@
-"""Render the Swartee global market research terminal (Chinese-first, dark).
+"""Render the Swartee Market Research workbench (Chinese-first, dark).
 
 This module is **additive and separate** from
 :mod:`analysis.research.market_snapshot_view`: the existing A-share static
 snapshot page and its record contract are untouched and stay in their own file.
 
-The page shell is a single-screen research terminal:
+V2.1 turns the V1 single-page terminal into a real workbench with four live
+sections behind a real top navigation:
 
-* a compact top bar carrying the product identity, the one real page (全球市场)
-  and the clearly-marked planning items (A股研究 / 市场发现 / AI研究) — planning
-  items are plain labels, never links, so there is no dead route to click;
-* an overview strip plus navigation built from the canonical registry
-  (``list_global_indices``) metadata only;
-* a three-column desktop layout (市场与指数导航 / 主图 / 市场信息) that collapses
-  at 1280 / 768 / 390 px;
-* a tabbed lower section for history, so the full OHLC table never occupies the
-  initial viewport.
+``市场总览`` (overview, default homepage)
+    One card per registered global index, grouped by market (cn / hk / us),
+    each showing its **own** latest daily close, adjacent-close change, data
+    date, freshness, availability, source and trading-calendar status. One
+    click on a card opens that index in ``指数研究``.
+
+``指数研究`` (research)
+    The unchanged V1 daily-K canvas: OHLC candles, zoom, pan, date range,
+    history table, data details and the raw field disclosure.
+
+``市场比较`` (compare)
+    The section hook for the cross-market normalised comparison task. The
+    section is reachable through the navigation and ships an explicit mount
+    point plus a JS hook contract, so the dependent comparison task can bind
+    its renderer without touching the rest of the workbench.
+
+``自选关注`` (watchlist)
+    A localStorage-backed watchlist of **canonical index ids only**, with
+    legacy-alias normalisation through the existing identity vocabulary.
 
 Every price number is fetched at runtime through the single research service
 endpoint, so the browser never calls a provider and no market data is hardcoded
@@ -36,17 +47,33 @@ from typing import Any
 
 DEFAULT_API_PATH = "/api/daily-k"
 
-PRODUCT_NAME = "Swartee Market Research"
+PRODUCT_NAME = "Swartea Market Research"
 PRODUCT_SUBTITLE = "斯沃尔蒂 · 全球市场研究终端"
 
-#: Navigation labels: the first entry is the live page, the rest are planning
-#: items rendered as inert labels (never links) so there is no dead route.
+#: Top navigation: every entry is a real, reachable section of the workbench.
+#: There is no inert "规划中" label and no dead route in the shell.
 NAV_ITEMS: tuple[Mapping[str, str], ...] = (
-    {"key": "global", "label": "全球市场", "state": "active"},
-    {"key": "cn_equity", "label": "A股研究", "state": "planning"},
-    {"key": "discovery", "label": "市场发现", "state": "planning"},
-    {"key": "ai", "label": "AI研究", "state": "planning"},
+    {"key": "overview", "label": "市场总览", "state": "ready"},
+    {"key": "research", "label": "指数研究", "state": "ready"},
+    {"key": "compare", "label": "市场比较", "state": "ready"},
+    {"key": "watchlist", "label": "自选关注", "state": "ready"},
 )
+
+#: Section metadata: the navigation key and the DOM id of the section panel.
+SECTIONS: tuple[Mapping[str, str], ...] = (
+    {"key": "overview", "title": "市场总览", "target": "section-overview"},
+    {"key": "research", "title": "指数研究", "target": "section-research"},
+    {"key": "compare", "title": "市场比较", "target": "section-compare"},
+    {"key": "watchlist", "title": "自选关注", "target": "section-watchlist"},
+)
+
+#: Display-only market labels. Identity (id / name / market token / currency)
+#: always comes from the canonical registry; these are Chinese captions.
+MARKET_LABELS: Mapping[str, str] = {
+    "cn": "中国内地",
+    "hk": "中国香港",
+    "us": "美国",
+}
 
 STATUS_LABELS: Mapping[str, str] = {
     "ok": "数据正常 / available",
@@ -55,11 +82,37 @@ STATUS_LABELS: Mapping[str, str] = {
     "error": "错误 / error",
 }
 
+#: localStorage key holding the watchlist. Only canonical index ids are stored.
+WATCHLIST_STORAGE_KEY = "swartea.market-research.watchlist.v1"
+
 
 def _text(value: Any, fallback: str = "—") -> str:
     if value is None or value == "":
         return html.escape(fallback, quote=True)
     return html.escape(str(value), quote=True)
+
+
+def legacy_alias_map() -> dict[str, list[str]]:
+    """Return ``canonical id -> known legacy aliases`` from the identity module.
+
+    The mapping is derived from the *existing* canonical identity vocabulary
+    (:data:`analysis.research.index_registry.INDEX_ID_ALIASES`). No parallel
+    registry is created here: the browser only receives the aliases that the
+    identity layer already recognises, so the UI can normalise an old stored
+    id into the current canonical id.
+    """
+
+    from analysis.research.index_registry import INDEX_ID_ALIASES
+
+    grouped: dict[str, list[str]] = {}
+    for alias, canonical in INDEX_ID_ALIASES.items():
+        grouped.setdefault(canonical, []).append(alias)
+    return grouped
+
+
+def _market_label(market: Any) -> str:
+    token = str(market or "").strip().lower()
+    return MARKET_LABELS.get(token, token.upper())
 
 
 _STYLE = """
@@ -73,10 +126,14 @@ button,select,input{font:inherit;color:var(--fg);background:var(--panel);
 border:1px solid var(--line);border-radius:6px;min-height:32px;padding:5px 9px}
 button{cursor:pointer}
 button:hover{border-color:var(--accent)}
-h1,h2,h3{margin:0}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{
+outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{margin:0}
 .muted{color:var(--muted)}
 .up{color:var(--up)}
 .down{color:var(--down)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 /* --- top bar --------------------------------------------------------- */
 .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;
@@ -86,36 +143,53 @@ padding:8px 14px;background:var(--panel-2);border-bottom:1px solid var(--line)}
 .brand span{font-size:11px;color:var(--muted)}
 .nav{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
 .nav-item{display:inline-flex;align-items:center;gap:5px;font-size:12px;
-padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);
+background:var(--panel-2)}
 .nav-item.is-active{color:var(--fg);border-color:var(--accent);background:#16233a}
-.nav-item.is-planning{color:#6d7787;border-style:dashed;cursor:not-allowed}
 .badge{font-size:10px;padding:1px 5px;border-radius:4px;background:#1d2534;color:#7d8798}
 .scope{width:100%;font-size:11px;color:var(--muted)}
 .overview{margin:10px 14px 0}
-.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-.overview-market{min-width:0}
-.overview-market h3{font-size:11px;color:var(--muted);font-weight:500;margin:0 0 6px}
-.chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.chip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;
-padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);
-text-align:left;overflow:hidden}
-.chip strong{max-width:100%;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chip .chip-quote{font-size:14px;font-variant-numeric:tabular-nums;font-weight:600}
-.chip .chip-meta{font-size:10px;color:var(--muted)}
-.chip.is-selected{border-color:var(--accent);background:#16233a}
-.chip.is-unproven{border-style:dashed}
-.chip.is-unavailable .chip-quote{color:var(--warn)}
-.chip .unknown{color:var(--warn)}
+.overview-grid{display:grid;gap:14px}
 
-/* --- layout ---------------------------------------------------------- */
-main{padding:12px 14px 18px;display:grid;gap:12px;
-grid-template-columns:264px minmax(0,1fr) 300px;align-items:start}
+/* --- workbench sections ---------------------------------------------- */
+main{padding:12px 14px 18px;display:grid;gap:12px;max-width:1720px;margin:0 auto}
+.section{display:grid;gap:12px}
+.section[hidden]{display:none}
+.grid3{display:grid;gap:12px;grid-template-columns:264px minmax(0,1fr) 300px;align-items:start}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
 .panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
 margin:0 0 9px;font-size:13px;font-weight:600}
 .panel-h small{font-weight:400;font-size:11px;color:var(--muted)}
+.notice{margin:0 0 9px;padding:7px 10px;border-radius:7px;font-size:12px;
+border:1px solid #6b5220;background:#221a0d;color:var(--warn)}
+.notice[hidden]{display:none}
 
-/* --- overview strip + navigation ------------------------------------- */
+/* --- overview cards --------------------------------------------------- */
+.market-group{min-width:0}
+.market-group h3{font-size:12px;color:var(--muted);font-weight:600;margin:0 0 8px}
+.cards{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(232px,1fr))}
+.mcard{min-width:0;display:flex;flex-direction:column;gap:6px;padding:10px;
+border:1px solid var(--line);border-radius:9px;background:var(--panel-2);cursor:pointer}
+.mcard:hover{border-color:var(--accent)}
+.mcard.is-unavailable{border-style:dashed}
+.mcard-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.mcard-head h4{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.mcard-market{font-size:10px;color:var(--muted);white-space:nowrap}
+.mcard-close{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.mcard-close.is-unavailable{color:var(--warn)}
+.mcard-change{font-size:12px;font-variant-numeric:tabular-nums}
+.mcard-meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 8px;
+font-size:11px;margin:2px 0 0}
+.mcard-meta dt{color:var(--muted);white-space:nowrap}
+.mcard-meta dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.mcard-meta dd.unknown{color:var(--warn)}
+.mcard-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.mcard-actions .btn{min-height:30px;font-size:12px}
+.mcard-actions .btn.watch[aria-pressed=true]{border-color:var(--accent);color:#cfe3ff}
+.compare-mount{min-height:120px;border:1px dashed var(--line);border-radius:8px;
+padding:10px;margin-top:8px}
+
+/* --- layout ---------------------------------------------------------- */
 .field{display:grid;gap:4px;margin-bottom:9px}
 .field label{font-size:11px;color:var(--muted)}
 .field select,.field input{width:100%}
@@ -165,14 +239,21 @@ th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:
 th:first-child,td:first-child{text-align:left}
 
 /* --- responsive ------------------------------------------------------ */
+@media (min-width:1440px){
+.cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:1920px){
+.cards{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
 @media (max-width:1280px){
-main{grid-template-columns:232px minmax(0,1fr)}
+.grid3{grid-template-columns:232px minmax(0,1fr)}
 .col-info{grid-column:1 / -1}
 .col-info .kv{grid-template-columns:auto auto 1fr}
 }
 @media (max-width:768px){
 main{grid-template-columns:minmax(0,1fr);padding:10px}
 .overview{margin:8px 10px 0}
+.cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 canvas{height:240px}
 .controls input[type=range]{width:100%}
 .col-info .kv{grid-template-columns:auto 1fr}
@@ -181,15 +262,254 @@ canvas{height:240px}
 .topbar{gap:6px 10px;padding:8px 10px}
 .nav{margin-left:0;width:100%}
 .overview-grid{grid-template-columns:minmax(0,1fr)}
-.chips{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cards{grid-template-columns:minmax(0,1fr)}
 .price{font-size:19px}
 canvas{height:200px}
 }
 """
 
+# ---------------------------------------------------------------------------
+# Core script: pure logic, no DOM access. Kept dependency-free on purpose so
+# the very same source can be executed under Node in the automated tests.
+# ---------------------------------------------------------------------------
+_CORE_JS = r"""
+(function (root) {
+  'use strict';
+
+  var WATCHLIST_KEY = 'swartea.market-research.watchlist.v1';
+
+  function toNum(value) {
+    if (typeof value === 'number') return isFinite(value) ? value : null;
+    if (typeof value === 'string' && value.trim() !== '') {
+      var n = Number(value);
+      return isFinite(n) ? n : null;
+    }
+    return null;
+  }
+
+  function buildAliasMap(options) {
+    var map = Object.create(null);
+    (options || []).forEach(function (opt) {
+      if (!opt || !opt.index_id) return;
+      map[opt.index_id] = opt.index_id;
+      (opt.aliases || []).forEach(function (alias) {
+        if (alias) map[alias] = opt.index_id;
+      });
+    });
+    return map;
+  }
+
+  /* Resolve any recognised identifier (canonical id or known legacy alias) to
+     the canonical id. Unknown / retired ids resolve to null: they are never
+     silently accepted, and never crash the caller. */
+  function normalizeId(raw, knownIds, aliasMap) {
+    if (typeof raw !== 'string') return null;
+    var trimmed = raw.trim();
+    if (!trimmed) return null;
+    var known = knownIds || [];
+    if (known.indexOf(trimmed) !== -1) return trimmed;
+    var resolved = (aliasMap || {})[trimmed];
+    if (resolved && known.indexOf(resolved) !== -1) return resolved;
+    return null;
+  }
+
+  /* Latest valid daily close plus the adjacent-close change. The change is
+     only produced from two valid closes; a single bar, a missing base or a
+     zero base yields no percentage at all (never a fabricated one). */
+  function latestClose(bars) {
+    var rows = (bars || []).filter(function (b) { return b && b.date; });
+    if (!rows.length) return null;
+    var last = rows[rows.length - 1];
+    var close = toNum(last.close);
+    var result = {
+      date: last.date, close: close, prevDate: null, prevClose: null,
+      changePct: null, barCount: rows.length
+    };
+    if (close === null) return result;
+    if (rows.length >= 2) {
+      var prev = rows[rows.length - 2];
+      var prevClose = toNum(prev.close);
+      if (prevClose !== null && prevClose !== 0) {
+        result.prevDate = prev.date;
+        result.prevClose = prevClose;
+        result.changePct = (close - prevClose) / Math.abs(prevClose) * 100;
+      }
+    }
+    return result;
+  }
+
+  /* Watchlist store: canonical ids only, persisted in localStorage when it
+     works, degraded to memory when it does not. Corrupt, retired or duplicate
+     stored entries are dropped instead of breaking the page. */
+  function createWatchlist(config) {
+    var opts = config || {};
+    var storage = opts.storage || null;
+    var knownIds = (opts.knownIds || []).slice();
+    var aliasMap = opts.aliasMap || {};
+    var key = opts.key || WATCHLIST_KEY;
+    var ids = [];
+    var persistent = true;
+    var notice = '';
+
+    function readRaw() {
+      if (!storage) {
+        persistent = false;
+        notice = '浏览器存储不可用，自选暂存于内存，刷新页面后不会保留。';
+        return null;
+      }
+      try {
+        var raw = storage.getItem(key);
+        return typeof raw === 'string' ? raw : null;
+      } catch (err) {
+        persistent = false;
+        notice = '浏览器存储读取失败，自选暂存于内存，刷新页面后不会保留。';
+        return null;
+      }
+    }
+
+    function writeRaw(text) {
+      if (!storage) {
+        persistent = false;
+        notice = '浏览器存储不可用，自选暂存于内存，刷新页面后不会保留。';
+        return false;
+      }
+      try {
+        storage.setItem(key, text);
+        return true;
+      } catch (err) {
+        persistent = false;
+        notice = '浏览器存储写入失败，自选暂存于内存，刷新页面后不会保留。';
+        return false;
+      }
+    }
+
+    function persist() { writeRaw(JSON.stringify(ids)); }
+
+    function load() {
+      var raw = readRaw();
+      ids = [];
+      if (raw === null) return;
+      var parsed;
+      try { parsed = JSON.parse(raw); } catch (err) { parsed = undefined; }
+      if (!Array.isArray(parsed)) {
+        notice = notice || '自选存储内容损坏或格式无效，已重置为空。';
+        writeRaw('[]');
+        return;
+      }
+      var seen = [];
+      var dropped = 0;
+      parsed.forEach(function (item) {
+        var id = normalizeId(item, knownIds, aliasMap);
+        if (!id) { dropped += 1; return; }
+        if (seen.indexOf(id) !== -1) { dropped += 1; return; }
+        seen.push(id);
+      });
+      ids = seen;
+      if (dropped) {
+        notice = notice || '已忽略无效、重复或已退役的自选条目。';
+        writeRaw(JSON.stringify(ids));
+      }
+    }
+
+    function add(rawId) {
+      var id = normalizeId(rawId, knownIds, aliasMap);
+      if (!id) return false;
+      if (ids.indexOf(id) !== -1) return false;
+      ids.push(id);
+      persist();
+      return true;
+    }
+
+    function remove(rawId) {
+      var id = normalizeId(rawId, knownIds, aliasMap);
+      if (!id) return false;
+      var at = ids.indexOf(id);
+      if (at === -1) return false;
+      ids.splice(at, 1);
+      persist();
+      return true;
+    }
+
+    function toggle(rawId) {
+      var id = normalizeId(rawId, knownIds, aliasMap);
+      if (!id) return false;
+      if (ids.indexOf(id) !== -1) { remove(id); return false; }
+      add(id);
+      return true;
+    }
+
+    function has(rawId) {
+      var id = normalizeId(rawId, knownIds, aliasMap);
+      return id !== null && ids.indexOf(id) !== -1;
+    }
+
+    function list() { return ids.slice(); }
+    function clear() { ids = []; persist(); }
+    function isPersistent() { return persistent; }
+    function noticeText() { return notice; }
+
+    load();
+
+    return {
+      add: add, remove: remove, toggle: toggle, has: has, list: list,
+      clear: clear, persist: persist, isPersistent: isPersistent,
+      noticeText: noticeText, key: key
+    };
+  }
+
+  /* Section switching: one active section, one active navigation item. */
+  function activateSection(key, sections, navItems) {
+    (sections || []).forEach(function (item) {
+      if (!item || !item.el) return;
+      item.el.hidden = item.key !== key;
+    });
+    (navItems || []).forEach(function (item) {
+      if (!item || !item.el) return;
+      var active = item.key === key;
+      if (item.el.classList) item.el.classList.toggle('is-active', active);
+      if (typeof item.el.setAttribute === 'function') {
+        if (active) item.el.setAttribute('aria-current', 'page');
+        else item.el.removeAttribute('aria-current');
+      }
+    });
+    return key;
+  }
+
+  /* Watchlist button binding. The handler never lets the click reach an
+     enclosing navigation target, so adding or removing an index can not
+     accidentally open the research section. */
+  function bindWatchButton(el, indexId, store, onChanged) {
+    if (!el || typeof el.addEventListener !== 'function') return;
+    el.addEventListener('click', function (ev) {
+      if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+      var added = store.toggle(indexId);
+      if (typeof onChanged === 'function') onChanged(indexId, added);
+    });
+  }
+
+  var api = {
+    WATCHLIST_KEY: WATCHLIST_KEY,
+    toNum: toNum,
+    buildAliasMap: buildAliasMap,
+    normalizeId: normalizeId,
+    latestClose: latestClose,
+    createWatchlist: createWatchlist,
+    activateSection: activateSection,
+    bindWatchButton: bindWatchButton
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  root.SwarteaCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+"""
+
+# ---------------------------------------------------------------------------
+# Application script: DOM wiring on top of the core logic.
+# ---------------------------------------------------------------------------
 _JS = r"""
 const OPTS = window.__OPTS || [];
 const API = window.__API || '/api/daily-k';
+const CORE = (typeof globalThis !== 'undefined' && globalThis.SwarteaCore) || null;
 const UP = '#f2564d';      // 中国习惯：红涨
 const DOWN = '#39b87a';    // 绿跌
 const MARKET = {cn: '中国内地', hk: '中国香港', us: '美国', jp: '日本'};
@@ -203,11 +523,14 @@ const STATUS = {
 };
 const SPANS = [20, 40, 60, 120, 250, 0];
 
-const state = {payload: null, seq: 0, hover: null, from: 0, span: 120};
+const state = {payload: null, seq: 0, hover: null, from: 0, span: 120, section: 'overview'};
 const payloadCache = new Map();
+const payloadResults = new Map();
+const overviewTokens = new Map();
 const requestQueue = [];
 let activeRequests = 0;
 const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,
   ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch]));
 const num = v => (typeof v === 'number' && isFinite(v)) ? v : null;
@@ -224,58 +547,188 @@ const label = (map, v) => {
 const tone = v => (v === 'unknown' || v == null || v === '' ? 'unknown' : '');
 const marketName = m => MARKET[m] || String(m || '').toUpperCase();
 
+/* --- watchlist store -------------------------------------------------- */
+function safeLocalStorage() {
+  try {
+    const store = window.localStorage;
+    if (!store) return null;
+    return store;
+  } catch (err) {
+    return null;
+  }
+}
+
+const KNOWN_IDS = OPTS.map(o => o.index_id);
+const ALIAS_MAP = CORE ? CORE.buildAliasMap(OPTS) : {};
+const WATCHLIST = CORE ? CORE.createWatchlist({
+  storage: safeLocalStorage(),
+  knownIds: KNOWN_IDS,
+  aliasMap: ALIAS_MAP
+}) : {list: () => [], has: () => false, toggle: () => false, noticeText: () => '',
+      isPersistent: () => false, add: () => false, remove: () => false};
+
+/* --- navigation ------------------------------------------------------- */
+function sectionItems() {
+  return $$('[data-section]').filter(el => el.classList.contains('section'))
+    .map(el => ({key: el.dataset.section, el: el}));
+}
+
+function navItems() {
+  return $$('.nav-item').map(el => ({key: el.dataset.nav, el: el}));
+}
+
+function navigate(key) {
+  if (CORE) {
+    CORE.activateSection(key, sectionItems(), navItems());
+  } else {
+    sectionItems().forEach(item => { item.el.hidden = item.key !== key; });
+  }
+  state.section = key;
+  try {
+    document.dispatchEvent(new CustomEvent('swartea:workbench-section', {
+      detail: {section: key}
+    }));
+  } catch (err) {
+    /* CustomEvent unavailable: the section is still switched. */
+  }
+  return key;
+}
+
 function setState(kind, text) {
   const el = $('#state');
+  if (!el) return;
   el.className = 'state ' + kind;
   el.textContent = text;
 }
 
-/* --- navigation / overview strip ------------------------------------- */
-function renderOptions() {
-  const markets = [];
-  OPTS.forEach(o => { if (!markets.includes(o.market)) markets.push(o.market); });
-  $('#market').innerHTML = markets
-    .map(m => '<option value="' + esc(m) + '">' + esc(marketName(m)) + ' · ' + esc(String(m).toUpperCase()) + '</option>')
-    .join('');
-  renderIndices();
-  $('#strip').innerHTML = '<div class="overview-grid">' + markets.map(m => {
-    const items = OPTS.filter(o => o.market === m);
-    return '<section class="overview-market" data-market="' + esc(m) + '"><h3>'
-      + esc(marketName(m)) + ' · ' + items.length + ' 个指数</h3>'
-      + '<div class="chips">' + items.map(o =>
-        '<button type="button" class="chip' + (o.proven === 'yes' ? '' : ' is-unproven') +
-        '" data-index="' + esc(o.index_id) + '" title="' + esc(o.index_id) + ' · ' +
-        esc(o.currency) + ' · ' + esc(o.timezone) + '"><strong>' + esc(o.name) + '</strong>'
-        + '<span class="chip-meta">' + (o.proven === 'yes' ? '已验证数据源' : '未验证数据源') + '</span>'
-        + '<span class="chip-quote" data-field="quote">读取中…</span>'
-        + '<span class="chip-change muted" data-field="change">最新日K收盘 · 非实时</span>'
-        + '<span class="chip-meta" data-field="date">等待研究服务</span></button>').join('')
-      + '</div></section>';
-  }).join('') + '</div>';
-  $('#strip').querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const opt = OPTS.find(o => o.index_id === chip.dataset.index);
-      if (!opt) return;
-      $('#market').value = opt.market;
-      renderIndices(opt.index_id);
-      load();
-    });
+/* --- overview cards --------------------------------------------------- */
+function cardFor(indexId) {
+  return $$('#strip .mcard').find(el => el.dataset.index === indexId) || null;
+}
+
+function setField(card, field, text, cls) {
+  if (!card) return;
+  const el = card.querySelector('[data-field="' + field + '"]');
+  if (!el) return;
+  el.textContent = text;
+  if (cls !== undefined) el.className = cls;
+}
+
+function renderOverviewQuote(opt, p) {
+  const card = cardFor(opt.index_id);
+  if (!card) return;
+  const rows = (p.bars || []).filter(b => b && b.date);
+  const last = rows.length ? rows[rows.length - 1] : null;
+  const summary = CORE ? CORE.latestClose(p.bars) : null;
+  const usable = p.status === 'ok' && summary && summary.close !== null;
+  card.classList.toggle('is-unavailable', !usable);
+  if (!usable) {
+    setField(card, 'close', p.status === 'unavailable' ? '暂不可用' : '暂无日K收盘',
+      'mcard-close is-unavailable');
+    setField(card, 'change', label(AVAIL, p.availability) + ' · ' + label(FRESH, p.freshness),
+      'mcard-change muted');
+    setField(card, 'date', p.data_date ? '数据日期 ' + p.data_date : '无可用数据', 'mcard-meta');
+    setField(card, 'freshness', label(FRESH, p.freshness), tone(p.availability) ? '' : '');
+    setField(card, 'availability', label(AVAIL, p.availability), tone(p.availability));
+    setField(card, 'source', p.source || '—', '');
+    setField(card, 'calendar', label(TRADING, p.trading_day_status),
+      tone(p.trading_day_status));
+    card.title = p.unavailable_reason || p.failure_reason || opt.index_id;
+    return;
+  }
+  setField(card, 'close', fmt(summary.close) + ' ' + opt.currency, 'mcard-close');
+  if (summary.changePct !== null) {
+    const trend = summary.changePct >= 0 ? 'up' : 'down';
+    setField(card, 'change',
+      (summary.changePct >= 0 ? '+' : '') + summary.changePct.toFixed(2) + '% · 相邻日收盘',
+      'mcard-change ' + trend);
+    card.title = opt.name + ' · ' + summary.prevDate + ' 至 ' + summary.date
+      + ' · ' + opt.index_id;
+  } else {
+    setField(card, 'change', '仅一根日线，暂无涨跌幅', 'mcard-change muted');
+    card.title = opt.name + ' · ' + summary.date + ' · ' + opt.index_id;
+  }
+  setField(card, 'date', p.data_date || summary.date, '');
+  setField(card, 'freshness', label(FRESH, p.freshness), '');
+  setField(card, 'availability', label(AVAIL, p.availability), tone(p.availability));
+  setField(card, 'source', p.source || '—', '');
+  setField(card, 'calendar', label(TRADING, p.trading_day_status), tone(p.trading_day_status));
+}
+
+function renderOverviewFailure(opt) {
+  const card = cardFor(opt.index_id);
+  if (!card) return;
+  card.classList.add('is-unavailable');
+  setField(card, 'close', '暂不可用', 'mcard-close is-unavailable');
+  setField(card, 'change', '研究服务请求失败', 'mcard-change muted');
+  setField(card, 'date', '无法读取日线', '');
+}
+
+/* --- shared bounded fetch queue / cache -------------------------------- */
+function requestFor(opt) {
+  return paramsFor(opt.index_id, opt.market);
+}
+
+function paramsFor(indexId, market, start, end) {
+  const startEl = $('#start');
+  const endEl = $('#end');
+  return new URLSearchParams({
+    index_id: indexId,
+    market: market || '',
+    start_date: start == null ? (startEl ? startEl.value : '') : start,
+    end_date: end == null ? (endEl ? endEl.value : '') : end
   });
 }
 
-function renderIndices(selected) {
-  const m = $('#market').value;
-  $('#index').innerHTML = OPTS.filter(o => o.market === m).map(o =>
-    '<option value="' + esc(o.index_id) + '">' + esc(o.name)
-    + (o.proven === 'yes' ? '' : '（未验证）') + '</option>').join('');
-  if (selected) $('#index').value = selected;
-  markChip();
+function pumpRequests() {
+  while (activeRequests < 3 && requestQueue.length) {
+    const item = requestQueue.shift();
+    activeRequests += 1;
+    fetch(item.url).then(res => {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(payload => {
+      payloadResults.set(item.key, payload);
+      item.resolve(payload);
+    }).catch(error => {
+      payloadCache.delete(item.key);
+      payloadResults.delete(item.key);
+      item.reject(error);
+    }).finally(() => {
+      activeRequests -= 1;
+      pumpRequests();
+    });
+  }
 }
 
-function markChip() {
-  const id = $('#index').value;
-  $('#strip').querySelectorAll('.chip').forEach(c =>
-    c.classList.toggle('is-selected', c.dataset.index === id));
+function cachedPayload(params) {
+  const key = params.toString();
+  if (payloadCache.has(key)) return payloadCache.get(key);
+  const promise = new Promise((resolve, reject) => {
+    requestQueue.push({key: key, url: API + '?' + key, resolve: resolve, reject: reject});
+  });
+  payloadCache.set(key, promise);
+  pumpRequests();
+  return promise;
+}
+
+function nextOverviewToken(indexId) {
+  const token = (overviewTokens.get(indexId) || 0) + 1;
+  overviewTokens.set(indexId, token);
+  return token;
+}
+
+function refreshOverview() {
+  OPTS.forEach(opt => {
+    const token = nextOverviewToken(opt.index_id);
+    cachedPayload(requestFor(opt)).then(p => {
+      if (overviewTokens.get(opt.index_id) !== token) return;
+      renderOverviewQuote(opt, p);
+    }).catch(() => {
+      if (overviewTokens.get(opt.index_id) !== token) return;
+      renderOverviewFailure(opt);
+    });
+  });
 }
 
 /* --- status + information panel --------------------------------------- */
@@ -288,17 +741,12 @@ function renderInfo(p) {
   setState(p.status || 'error', STATUS[p.status] || '未知状态');
 
   const rows = bars.filter(b => b && b.date);
-  let change = null;
-  if (rows.length >= 2) {
-    const last = num(rows[rows.length - 1].close);
-    const prev = num(rows[rows.length - 2].close);
-    const prevDate = rows[rows.length - 2].date;
-    if (last !== null && prev !== null && prev !== 0) {
-      change = {pct: (last - prev) / Math.abs(prev) * 100, prevDate: prevDate, prev: prev};
-    }
-  }
+  const summary = CORE ? CORE.latestClose(p.bars) : null;
+  const change = summary && summary.changePct !== null
+    ? {pct: summary.changePct, prevDate: summary.prevDate, prev: summary.prevClose}
+    : null;
   const closeEl = $('#close');
-  const lastRow = rows.length ? rows[rows.length - 1] : null;
+  const lastRow = summary && summary.close !== null ? summary : null;
   if (lastRow) {
     closeEl.innerHTML = '<span class="' + (change && change.pct >= 0 ? 'up' : 'down') + '">'
       + fmt(lastRow.close) + '</span>'
@@ -338,93 +786,6 @@ function renderInfo(p) {
     ['availability', p.availability], ['freshness', p.freshness],
     ['trading_day_status', p.trading_day_status]
   ].map(r => '<dt>' + r[0] + '</dt><dd>' + esc(r[1] == null ? '' : r[1]) + '</dd>').join('');
-}
-
-function requestFor(opt) {
-  return new URLSearchParams({
-    index_id: opt.index_id,
-    market: opt.market,
-    start_date: $('#start').value,
-    end_date: $('#end').value
-  });
-}
-
-function pumpRequests() {
-  while (activeRequests < 3 && requestQueue.length) {
-    const item = requestQueue.shift();
-    activeRequests += 1;
-    fetch(item.url).then(res => {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    }).then(payload => item.resolve(payload)).catch(error => {
-      payloadCache.delete(item.key);
-      item.reject(error);
-    }).finally(() => {
-      activeRequests -= 1;
-      pumpRequests();
-    });
-  }
-}
-
-function cachedPayload(params) {
-  const key = params.toString();
-  if (payloadCache.has(key)) return payloadCache.get(key);
-  const promise = new Promise((resolve, reject) => {
-    requestQueue.push({key: key, url: API + '?' + key, resolve: resolve, reject: reject});
-  });
-  payloadCache.set(key, promise);
-  pumpRequests();
-  return promise;
-}
-
-function renderOverviewQuote(opt, p) {
-  const card = Array.from($('#strip').querySelectorAll('.chip'))
-    .find(el => el.dataset.index === opt.index_id);
-  if (!card) return;
-  const rows = (p.bars || []).filter(b => b && b.date);
-  const last = rows.length ? rows[rows.length - 1] : null;
-  const quote = card.querySelector('[data-field="quote"]');
-  const changeEl = card.querySelector('[data-field="change"]');
-  const date = card.querySelector('[data-field="date"]');
-  const usable = p.status === 'ok' && last && num(last.close) !== null;
-  card.classList.toggle('is-unavailable', !usable);
-  if (!usable) {
-    quote.textContent = p.status === 'unavailable' ? '暂不可用' : '暂无日K收盘';
-    changeEl.textContent = label(AVAIL, p.availability) + ' · ' + label(FRESH, p.freshness);
-    changeEl.className = 'chip-change ' + tone(p.availability);
-    date.textContent = p.data_date ? '数据日期 ' + p.data_date : '无可用数据';
-    card.title = p.unavailable_reason || p.failure_reason || opt.index_id;
-    return;
-  }
-  quote.textContent = fmt(last.close) + ' ' + opt.currency;
-  date.textContent = '最新日K收盘 · ' + (p.data_date || last.date);
-  if (rows.length >= 2 && num(rows[rows.length - 2].close) !== null
-      && num(rows[rows.length - 2].close) !== 0) {
-    const previous = rows[rows.length - 2];
-    const pct = (last.close - previous.close) / Math.abs(previous.close) * 100;
-    const trend = pct >= 0 ? 'up' : 'down';
-    changeEl.className = 'chip-change ' + trend;
-    changeEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '% · 相邻日收盘';
-    card.title = opt.name + ' · ' + previous.date + ' 至 ' + last.date + ' · ' + opt.index_id;
-  } else {
-    changeEl.className = 'chip-change muted';
-    changeEl.textContent = '仅一根日线，暂无涨跌幅';
-    card.title = opt.name + ' · ' + last.date + ' · ' + opt.index_id;
-  }
-}
-
-function refreshOverview() {
-  OPTS.forEach(opt => {
-    cachedPayload(requestFor(opt)).then(p => renderOverviewQuote(opt, p)).catch(() => {
-      const card = Array.from($('#strip').querySelectorAll('.chip'))
-        .find(el => el.dataset.index === opt.index_id);
-      if (!card) return;
-      card.classList.add('is-unavailable');
-      card.querySelector('[data-field="quote"]').textContent = '暂不可用';
-      card.querySelector('[data-field="change"]').textContent = '研究服务请求失败';
-      card.querySelector('[data-field="date"]').textContent = '无法读取日线';
-    });
-  });
 }
 
 /* --- history table ---------------------------------------------------- */
@@ -614,6 +975,112 @@ async function load() {
   }
 }
 
+/* --- index selectors -------------------------------------------------- */
+function renderOptions() {
+  const markets = [];
+  OPTS.forEach(o => { if (!markets.includes(o.market)) markets.push(o.market); });
+  $('#market').innerHTML = markets
+    .map(m => '<option value="' + esc(m) + '">' + esc(marketName(m)) + ' · ' + esc(String(m).toUpperCase()) + '</option>')
+    .join('');
+  renderIndices();
+}
+
+function renderIndices(selected) {
+  const m = $('#market').value;
+  $('#index').innerHTML = OPTS.filter(o => o.market === m).map(o =>
+    '<option value="' + esc(o.index_id) + '">' + esc(o.name)
+    + (o.proven === 'yes' ? '' : '（未验证）') + '</option>').join('');
+  if (selected) $('#index').value = selected;
+  markChip();
+}
+
+function markChip() {
+  const id = $('#index').value;
+  $$('#strip .mcard').forEach(c =>
+    c.classList.toggle('is-selected', c.dataset.index === id));
+}
+
+/* --- watchlist rendering ---------------------------------------------- */
+function watchButtonLabel(indexId) {
+  return WATCHLIST.has(indexId) ? '移出自选' : '加入自选';
+}
+
+function syncWatchButtons() {
+  $$('[data-action="watch"]').forEach(btn => {
+    const id = btn.dataset.index;
+    const on = WATCHLIST.has(id);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.textContent = watchButtonLabel(id);
+  });
+}
+
+function renderWatchlist() {
+  const items = WATCHLIST.list();
+  const list = $('#watch-list');
+  const empty = $('#watch-empty');
+  const count = $('#watch-count');
+  const notice = $('#watch-notice');
+  if (count) count.textContent = items.length + ' 个指数';
+  const noticeText = WATCHLIST.noticeText();
+  if (notice) {
+    notice.textContent = noticeText;
+    notice.hidden = !noticeText;
+  }
+  if (empty) empty.hidden = items.length > 0;
+  if (!list) return;
+  list.innerHTML = items.map(id => {
+    const opt = OPTS.find(o => o.index_id === id);
+    const name = opt ? opt.name : id;
+    const market = opt ? marketName(opt.market) : '';
+    const payload = payloadResults.get(paramsFor(id, opt ? opt.market : '').toString());
+    const summary = payload && CORE ? CORE.latestClose(payload.bars) : null;
+    const quote = summary && summary.close !== null
+      ? fmt(summary.close) + ' ' + (opt ? opt.currency : '')
+      : '—';
+    return '<article class="mcard watch-card" data-index="' + esc(id) + '" tabindex="0">'
+      + '<div class="mcard-head"><h4>' + esc(name) + '</h4>'
+      + '<span class="mcard-market">' + esc(market) + '</span></div>'
+      + '<div class="mcard-close" data-field="close">' + esc(quote) + '</div>'
+      + '<div class="mcard-change" data-field="change">' + esc(id) + '</div>'
+      + '<div class="mcard-actions">'
+      + '<button type="button" class="btn" data-action="open">进入研究</button>'
+      + '<button type="button" class="btn watch" data-action="watch" data-index="' + esc(id)
+      + '" aria-pressed="true">移出自选</button>'
+      + '</div></article>';
+  }).join('');
+  list.querySelectorAll('.watch-card').forEach(card => {
+    const id = card.dataset.index;
+    card.addEventListener('click', ev => {
+      const watchBtn = ev.target.closest ? ev.target.closest('[data-action="watch"]') : null;
+      if (watchBtn) return;
+      openResearch(id);
+    });
+    card.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        openResearch(id);
+      }
+    });
+    const watchBtn = card.querySelector('[data-action="watch"]');
+    if (watchBtn && CORE) {
+      CORE.bindWatchButton(watchBtn, id, WATCHLIST, () => {
+        renderWatchlist();
+        syncWatchButtons();
+      });
+    }
+  });
+}
+
+/* --- open an index in the research section ---------------------------- */
+function openResearch(indexId) {
+  const opt = OPTS.find(o => o.index_id === indexId);
+  if (!opt) return;
+  navigate('research');
+  $('#market').value = opt.market;
+  renderIndices(opt.index_id);
+  load();
+}
+
 /* --- tabs / zoom / pan ------------------------------------------------ */
 function initTabs() {
   document.querySelectorAll('.tab').forEach(tab => {
@@ -640,10 +1107,72 @@ function initZoom() {
   });
 }
 
+/* --- public hook surface for the dependent comparison task -------------- */
+function installWorkbenchHooks() {
+  const compareRoot = $('#compare-root');
+  const compareCallbacks = [];
+  let compareBound = false;
+  window.__WORKBENCH__ = {
+    version: 'v2.1',
+    sections: ['overview', 'research', 'compare', 'watchlist'],
+    navigate: navigate,
+    compareMount: compareRoot,
+    onCompareReady: function (callback) {
+      if (typeof callback !== 'function') return;
+      compareCallbacks.push(callback);
+      if (compareRoot && !compareBound) {
+        compareBound = true;
+        try { callback(compareRoot); } catch (err) { /* keep the page alive */ }
+      }
+    },
+    requestDailyK: function (indexId, start, end) {
+      const opt = OPTS.find(o => o.index_id === indexId);
+      return cachedPayload(paramsFor(indexId, opt ? opt.market : '', start, end));
+    },
+    watchlist: {
+      list: () => WATCHLIST.list(),
+      has: id => WATCHLIST.has(id),
+      add: id => WATCHLIST.add(id),
+      remove: id => WATCHLIST.remove(id),
+      isPersistent: () => WATCHLIST.isPersistent(),
+      notice: () => WATCHLIST.noticeText()
+    },
+    options: OPTS
+  };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderOptions();
   initTabs();
   initZoom();
+  installWorkbenchHooks();
+
+  $$('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => navigate(btn.dataset.nav));
+  });
+
+  $$('#strip .mcard').forEach(card => {
+    const id = card.dataset.index;
+    card.addEventListener('click', ev => {
+      const watchBtn = ev.target.closest ? ev.target.closest('[data-action="watch"]') : null;
+      if (watchBtn) return;
+      openResearch(id);
+    });
+    card.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        openResearch(id);
+      }
+    });
+    const watchBtn = card.querySelector('[data-action="watch"]');
+    if (watchBtn && CORE) {
+      CORE.bindWatchButton(watchBtn, id, WATCHLIST, () => {
+        renderWatchlist();
+        syncWatchButtons();
+      });
+    }
+  });
+
   $('#market').addEventListener('change', () => {
     renderIndices();
     load();
@@ -693,33 +1222,101 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver(() => draw()).observe($('#chartwrap'));
   }
+
+  navigate('overview');
+  renderWatchlist();
+  syncWatchButtons();
   load();
 });
 """
 
 
 def nav_items_html() -> str:
-    """Render the top-bar navigation: one live page plus inert planning labels."""
+    """Render the top-bar navigation: four real, reachable workbench sections."""
 
     items = []
     for item in NAV_ITEMS:
-        state = str(item.get("state") or "planning")
-        cls = "nav-item is-active" if state == "active" else "nav-item is-planning"
-        badge = "" if state == "active" else '<span class="badge">规划中</span>'
-        # Planning entries are <span>, never <a href>: no dead route in the shell.
+        key = _text(item.get("key"))
+        label = _text(item.get("label"))
+        active = ' is-active' if item.get("key") == "overview" else ""
+        current = ' aria-current="page"' if item.get("key") == "overview" else ""
         items.append(
-            f'<span class="{cls}" data-nav="{_text(item.get("key"))}" '
-            f'aria-disabled="true" role="presentation">{_text(item.get("label"))}{badge}</span>'
+            f'<button type="button" class="nav-item{active}" data-nav="{key}"'
+            f"{current}>{label}</button>"
         )
     return "".join(items)
 
 
-def selector_options() -> list[dict[str, str]]:
-    """Return selector options derived from the canonical global-index registry."""
+def selector_options() -> list[dict[str, Any]]:
+    """Return selector options derived from the canonical global-index registry.
+
+    Each option also carries the legacy aliases the *existing* identity
+    vocabulary recognises for that index, so the browser can normalise an old
+    stored watchlist id without a second registry.
+    """
 
     from analysis.research.global_market_research import list_index_choices
 
-    return [dict(choice) for choice in list_index_choices()]
+    aliases = legacy_alias_map()
+    options: list[dict[str, Any]] = []
+    for choice in list_index_choices():
+        option = dict(choice)
+        option["aliases"] = list(aliases.get(str(option.get("index_id")), []))
+        options.append(option)
+    return options
+
+
+def _overview_cards_html(options: Sequence[Mapping[str, Any]]) -> str:
+    """Render one card per registered index, grouped by market."""
+
+    grouped: dict[str, list[Mapping[str, Any]]] = {}
+    order: list[str] = []
+    for option in options:
+        market = str(option.get("market") or "")
+        if market not in grouped:
+            grouped[market] = []
+            order.append(market)
+        grouped[market].append(option)
+
+    blocks = []
+    for market in order:
+        items = grouped[market]
+        cards = []
+        for option in items:
+            index_id = str(option.get("index_id") or "")
+            name = str(option.get("name") or index_id)
+            currency = str(option.get("currency") or "")
+            proven = option.get("proven") == "yes"
+            cards.append(
+                f'<article class="mcard" data-index="{_text(index_id)}" '
+                f'data-market="{_text(market)}" tabindex="0">'
+                f'<div class="mcard-head"><h4>{_text(name)}</h4>'
+                f'<span class="mcard-market">{_text(_market_label(market))} · {_text(currency)}</span>'
+                "</div>"
+                '<div class="mcard-close" data-field="close">读取中…</div>'
+                '<div class="mcard-change" data-field="change">最新日K收盘 · 非实时行情</div>'
+                '<dl class="mcard-meta">'
+                "<dt>数据日期</dt><dd data-field=\"date\">—</dd>"
+                "<dt>新鲜度</dt><dd data-field=\"freshness\">—</dd>"
+                "<dt>可用性</dt><dd data-field=\"availability\">—</dd>"
+                "<dt>来源</dt><dd data-field=\"source\">—</dd>"
+                "<dt>交易日历</dt><dd data-field=\"calendar\">未知（无交易日历证据）</dd>"
+                "</dl>"
+                '<div class="mcard-actions">'
+                f'<button type="button" class="btn" data-action="open" '
+                f'aria-label="进入 {_text(name)} 研究">进入研究</button>'
+                f'<button type="button" class="btn watch" data-action="watch" '
+                f'data-index="{_text(index_id)}" aria-pressed="false">加入自选</button>'
+                "</div></article>"
+            )
+        blocks.append(
+            f'<section class="market-group" data-market="{_text(market)}">'
+            f"<h3>{_text(_market_label(market))} · {len(items)} 个指数 · "
+            f"{'已验证数据源' if all(o.get('proven') == 'yes' for o in items) else '含未验证数据源'}"
+            "</h3>"
+            f'<div class="cards">{"".join(cards)}</div></section>'
+        )
+    return "".join(blocks)
 
 
 def render_global_market_research_page(
@@ -729,7 +1326,7 @@ def render_global_market_research_page(
     end_date: str = "",
     api_path: str = DEFAULT_API_PATH,
 ) -> str:
-    """Render the Swartee global market research terminal shell.
+    """Render the Swartee Market Research workbench shell.
 
     The HTML embeds only selector metadata plus a single endpoint URL; every
     price number is fetched at runtime through the research service, so the
@@ -748,12 +1345,20 @@ def render_global_market_research_page(
         f"<style>{_STYLE}</style></head><body>\n"
         '<header class="topbar"><div class="brand"><b>' + _text(PRODUCT_NAME) + "</b><span>"
         + _text(PRODUCT_SUBTITLE) + "</span></div>"
-        f'<nav class="nav">{nav_items_html()}</nav>'
+        f'<nav class="nav" aria-label="主导航">{nav_items_html()}</nav>'
         '<div class="scope">数据口径：本地研究服务的<b>最新日线收盘</b>，非实时行情；'
         "涨跌幅仅在相邻两日收盘均可得时展示，并标注基准日期。</div></header>\n"
-        '<section class="panel overview"><h2 class="panel-h">全球市场概览 '
-        '<small>最新日K收盘 · 非实时行情</small></h2><div id="strip"></div></section>'
-        "<main>"
+        '<main>'
+        '<section class="section" id="section-overview" data-section="overview">'
+        '<div class="panel overview"><h2 class="panel-h">全球市场概览 '
+        '<small>最新日K收盘 · 非实时行情</small></h2>'
+        '<div class="muted" style="font-size:12px;margin-bottom:8px">'
+        "共 " + str(len(choices)) + " 个注册指数；每个指数展示自己的数据日期、来源、"
+        "新鲜度与可用性。点击卡片即可进入该指数的日线研究。</div>"
+        f'<div id="strip" class="overview-grid">{_overview_cards_html(choices)}</div>'
+        "</div></section>"
+        '<section class="section" id="section-research" data-section="research" hidden>'
+        '<div class="grid3">'
         '<aside class="panel col-nav"><h2 class="panel-h">市场与指数 <small>来自注册表</small></h2>'
         '<div class="field"><label for="market">市场 market</label><select id="market"></select></div>'
         '<div class="field"><label for="index">指数 index</label><select id="index"></select></div>'
@@ -782,6 +1387,7 @@ def render_global_market_research_page(
         '<dl class="kv" id="raw"></dl></details>'
         '<div class="reason muted" id="empty" hidden>该窗口内没有可用的日线数据（empty）。</div>'
         "</aside>"
+        "</div>"
         '<section class="panel history"><div class="tabs">'
         '<button type="button" class="tab is-active" data-tab="daily">历史日线</button>'
         '<button type="button" class="tab" data-tab="about">数据口径</button></div>'
@@ -792,8 +1398,28 @@ def render_global_market_research_page(
         "红涨绿跌为国内显示习惯，K 线含义始终是收盘价与开盘价的比较；"
         "可用性 / 新鲜度 / 交易日状态为 unknown 时按未知展示，不会当作正常。"
         "</div></div></section>"
+        "</section>"
+        '<section class="section" id="section-compare" data-section="compare" hidden>'
+        '<div class="panel"><h2 class="panel-h">市场比较 <small>统一基准 = 100</small></h2>'
+        '<div class="muted" style="font-size:12px">'
+        "跨市场比较使用统一基准归一化（基准日收盘归一化为 100），不同市场的指数点位"
+        "不直接比较；各指数的数据日期与来源分别标注，缺失日期保留缺失含义。</div>"
+        '<div id="compare-root" class="compare-mount" data-compare-mount="1"></div>'
+        '<div class="muted" id="compare-status" style="font-size:12px">'
+        "比较图表挂载点已就绪：跨市场比较渲染由市场比较任务通过 "
+        "<code>window.__WORKBENCH__.onCompareReady</code> 接入，"
+        "日线数据复用同一研究服务与共享缓存 <code>window.__WORKBENCH__.requestDailyK</code>。</div>"
+        "</div></section>"
+        '<section class="section" id="section-watchlist" data-section="watchlist" hidden>'
+        '<div class="panel"><h2 class="panel-h">自选关注 <small id="watch-count">0 个指数</small></h2>'
+        '<p class="notice" id="watch-notice" role="status" aria-live="polite" hidden></p>'
+        '<div class="cards" id="watch-list"></div>'
+        '<div class="muted" id="watch-empty">还没有自选指数。在「市场总览」点击卡片上的'
+        "「加入自选」即可添加，自选会保存在浏览器本地。</div>"
+        "</div></section>"
         "</main>\n"
         f'<script>window.__OPTS={payload};window.__API={api_payload};</script>\n'
+        f'<script id="swartea-core-js">{_CORE_JS}</script>\n'
         f"<script>{_JS}</script>\n"
         "</body></html>"
     )
