@@ -1,4 +1,4 @@
-"""Behavioural tests for the Swartee Market Research workbench (V2.1).
+"""Behavioural tests for the Swartea Market Research workbench (V2.1).
 
 Two layers are covered:
 
@@ -134,14 +134,26 @@ out.add_duplicate = store.add('cn.index.sh_comp');
 out.list_after_add = store.list();
 out.stored_payload = storage.data[KEY];
 out.add_unknown = store.add('jp.index.n225');
-out.add_legacy_alias = store.add('sse.composite');
-out.list_after_alias = store.list();
-out.stored_payload_after_alias = storage.data[KEY];
-out.has_alias = store.has('sse.composite');
-out.has_canonical = store.has('cn.index.sh_comp');
+out.list_after_unknown = store.list();
 out.remove = store.remove('cn.index.sh_comp');
 out.list_after_remove = store.list();
 out.remove_missing = store.remove('cn.index.sh_comp');
+
+/* --- legacy alias: normalised to the canonical id --------------------- */
+const aliasStorage = makeStorage();
+const aliasStore = core.createWatchlist({
+  storage: aliasStorage, knownIds: KNOWN, aliasMap: ALIASES
+});
+out.add_legacy_alias = aliasStore.add('sse.composite');
+out.list_after_alias = aliasStore.list();
+out.stored_payload_after_alias = aliasStorage.data[KEY];
+out.has_alias = aliasStore.has('sse.composite');
+out.has_canonical = aliasStore.has('cn.index.sh_comp');
+// A second spelling of the very same index is a duplicate: never a second
+// entry, and never a second copy in storage.
+out.add_legacy_alias_again = aliasStore.add('sse.composite');
+out.list_after_alias_again = aliasStore.list();
+out.stored_payload_after_alias_again = aliasStorage.data[KEY];
 
 /* --- persistence across a reload ------------------------------------- */
 const persisted = makeStorage({[KEY]: JSON.stringify(['cn.index.sh_comp', 'hk.index.hang_seng.hsi'])});
@@ -316,16 +328,22 @@ def test_watchlist_rejects_unknown_and_retired_ids_safely(core_behaviour):
     assert core_behaviour["add_unknown"] is False
     assert core_behaviour["remove_missing"] is False
     assert "jp.index.n225" not in core_behaviour["list_after_add"]
+    # An unknown id never reaches the list and never changes the storage.
+    assert core_behaviour["list_after_unknown"] == ["cn.index.sh_comp"]
 
 
 @requires_node
 def test_legacy_alias_is_normalised_to_the_canonical_id(core_behaviour):
+    # A legacy alias is accepted and stored as the canonical id only.
     assert core_behaviour["add_legacy_alias"] is True
     assert core_behaviour["list_after_alias"] == ["cn.index.sh_comp"]
-    # The alias is stored as the canonical id only.
     assert json.loads(core_behaviour["stored_payload_after_alias"]) == ["cn.index.sh_comp"]
     assert core_behaviour["has_alias"] is True
     assert core_behaviour["has_canonical"] is True
+    # Adding the same index again through another spelling never duplicates it.
+    assert core_behaviour["add_legacy_alias_again"] is False
+    assert core_behaviour["list_after_alias_again"] == ["cn.index.sh_comp"]
+    assert json.loads(core_behaviour["stored_payload_after_alias_again"]) == ["cn.index.sh_comp"]
     assert core_behaviour["normalize_legacy"] == "cn.index.sh_comp"
     assert core_behaviour["normalize_legacy_upper"] == "cn.index.sh_comp"
     assert core_behaviour["normalize_canonical"] == "cn.index.sh_comp"
@@ -497,8 +515,10 @@ def test_watchlist_section_and_storage_contract():
 def test_watchlist_uses_the_existing_identity_vocabulary_and_no_parallel_registry():
     aliases = view.legacy_alias_map()
     assert aliases["cn.index.sh_comp"] == ["sse.composite", "cn.index.sse.000001"]
-    for canonical, legacy in INDEX_ID_ALIASES.items():
-        assert legacy in aliases[canonical]
+    # Every alias the identity module knows is exposed for its canonical id.
+    # (INDEX_ID_ALIASES maps alias -> canonical id.)
+    for alias, canonical in INDEX_ID_ALIASES.items():
+        assert alias in aliases[canonical]
     options = view.selector_options()
     assert [option["index_id"] for option in options] == [
         spec.identity.index_id for spec in list_global_indices()
@@ -510,12 +530,23 @@ def test_watchlist_uses_the_existing_identity_vocabulary_and_no_parallel_registr
     assert "sse.composite" in page
 
 
+def test_watchlist_quote_reuses_the_shared_cached_payload():
+    page = _page()
+    # The watchlist never issues a request of its own: it reuses the daily-K
+    # response that the overview already cached for the same index.
+    assert "function syncWatchQuote(indexId, p)" in page
+    assert "syncWatchQuote(opt.index_id, p);" in page
+    assert "payloadResults.get(requestFor(opt || {index_id:id, market:''}).toString())" in page
+    assert "if (payload) syncWatchQuote(id, payload);" in page
+
+
 def test_compare_section_exposes_a_clear_mount_point_and_hook():
     page = _page()
     assert 'id="compare-root"' in page
     assert 'data-compare-mount="1"' in page
-    assert "window.__WORKBENCH__.onCompareReady" in page
-    assert "window.__WORKBENCH__.requestDailyK" in page
+    assert "function compare()" in page
+    assert "fetch('/api/compare'" in page
+    assert "work.requestDailyK" in page
     assert "统一基准" in page
     # The comparison task can reuse the shared bounded queue / cache.
     assert "function cachedPayload(params)" in page

@@ -1,17 +1,18 @@
-"""Tests for the Swartee global market research terminal and its HTTP endpoints.
+"""Tests for the Swartea global market research terminal and its HTTP endpoints.
 
 Everything here is offline. The HTTP handler is exercised with an injected
 research callable (``fixture isolation``) so no provider and no network is
 touched, and the existing A-share static snapshot page is asserted to still
 render exactly as before.
 
-The renderer tests focus on the new product structure (identity, one live nav
-entry plus inert planning labels, three-column layout, tabbed history, canvas
-geometry) and on the absence of hardcoded market quotes in the page shell.
+The renderer tests focus on the new product structure (identity, four live
+navigation sections, three-column layout, tabbed history, canvas geometry) and
+on the absence of hardcoded market quotes in the page shell.
 """
 
 from __future__ import annotations
 
+import html
 import importlib.util
 import json
 import re
@@ -149,10 +150,10 @@ def _shell() -> str:
 # --- product identity and navigation --------------------------------------
 
 
-def test_page_is_the_swartee_chinese_first_research_terminal():
+def test_page_is_the_swartea_chinese_first_research_terminal():
     page = _shell()
-    assert "<title>Swartee Market Research</title>" in page
-    assert "斯沃尔蒂" in page
+    assert "<title>Swartea Market Research</title>" in page
+    assert "斯沃特" in page
     assert '<html lang="zh-CN">' in page
     # The previous English shell identity is gone.
     assert "Global Index Daily-K Research" not in page
@@ -160,23 +161,43 @@ def test_page_is_the_swartee_chinese_first_research_terminal():
     assert "color-scheme:dark" in page and "--bg:#0b0e13" in page
 
 
-def test_top_bar_has_one_live_page_and_inert_planning_items():
+def _nav_html() -> str:
+    """Return the top-bar navigation markup of the rendered workbench."""
+
     page = _shell()
-    assert page.count('class="nav-item is-active"') == 1
-    assert 'data-nav="global"' in page and ">全球市场<" in page
-    for key, label in (("cn_equity", "A股研究"), ("discovery", "市场发现"), ("ai", "AI研究")):
-        assert f'data-nav="{key}"' in page
-        assert f">{label}<span class=\"badge\">规划中</span>" in page
-    # Planning items are inert labels, never links: no dead route in the shell.
-    nav = page.split('<nav class="nav">')[1].split("</nav>")[0]
-    assert nav.count('class="nav-item') == 4
+    assert '<nav class="nav"' in page, "the workbench must ship a top navigation"
+    return page.split('<nav class="nav"')[1].split("</nav>")[0]
+
+
+def test_top_bar_has_four_live_sections_and_no_inert_planning_item():
+    nav = _nav_html()
+    # Exactly one entry is active: the overview is the default homepage.
+    assert nav.count('class="nav-item is-active"') == 1
+    assert 'class="nav-item is-active" data-nav="overview"' in nav
+    # Every entry is a real, live section of the workbench.
+    for key, label in (
+        ("overview", "市场总览"),
+        ("research", "指数研究"),
+        ("compare", "市场比较"),
+        ("watchlist", "自选关注"),
+    ):
+        assert f'data-nav="{key}"' in nav
+        assert f">{label}</button>" in nav
+    # Nothing is a placeholder any more: no inert "规划中" label, no dead link.
+    assert "规划中" not in nav
     assert "<a " not in nav and "href" not in nav
+    assert nav.count('type="button"') == 4
 
 
 def test_no_navigation_item_points_at_an_unbuilt_route():
     page = _shell()
-    nav = page.split('<nav class="nav">')[1].split("</nav>")[0]
+    nav = _nav_html()
     assert "<a " not in nav and "href" not in nav
+    # Every navigation entry resolves to a section panel that really exists.
+    keys = re.findall(r'data-nav="([^"]+)"', nav)
+    assert keys == ["overview", "research", "compare", "watchlist"]
+    for key in keys:
+        assert f'id="section-{key}" data-section="{key}"' in page
 
 
 # --- registry-driven data, no hardcoded quotes ----------------------------
@@ -206,6 +227,11 @@ def test_page_embeds_no_hardcoded_market_quote():
     # No numeric literal that would read as a price, index point or OHLC value
     # in the shell: bar coordinates are computed at runtime from the payload.
     body = page.split("<style>")[0] + page.split("</style>")[1].split("<script>")[0]
+    # The registered display names legitimately contain digits (沪深300, S&P 500);
+    # they are index names, not quotes, so they are removed before the scan
+    # (both raw and HTML-escaped, because the page escapes them).
+    for spec in list_global_indices():
+        body = body.replace(spec.name, "").replace(html.escape(spec.name), "")
     for match in re.finditer(r"(?<![a-zA-Z_])[3-9]\d{2,}(?:\.\d+)?(?![a-zA-Z_])", body):
         raise AssertionError(f"possible hardcoded quote in page shell: {match.group(0)}")
 
@@ -225,7 +251,7 @@ def test_overview_strip_lists_registry_indices_without_quotes():
     assert "renderOverviewQuote" in page and "cachedPayload(requestFor(opt))" in page
     assert "const AVAIL" in page and "已验证" in page and "未验证" in page
     assert "OPTS.forEach" in page and "OPTS.filter(o => o.market === m)" in page
-    assert "data-field=\"quote\"" in page and "data-field=\"date\"" in page
+    assert "data-field=\"close\"" in page and "data-field=\"date\"" in page
     assert "function pumpRequests()" in page and "activeRequests < 3" in page
     # The overview values are fetched from the same local API and shared cache
     # as the selected chart; no literal quote is embedded in the page shell.
@@ -243,7 +269,9 @@ def test_numbers_are_framed_as_latest_daily_close_not_realtime():
 def test_percentage_change_requires_two_adjacent_closes_and_labels_its_basis():
     page = _shell()
     assert "rows.length >= 2" in page
-    assert "change = {pct:" in page
+    # The percentage only exists when two valid adjacent closes are available.
+    assert "change = summary && summary.changePct !== null" in page
+    assert "? {pct: summary.changePct, prevDate: summary.prevDate" in page
     # Basis and dates are always shown together with the percentage.
     assert "涨跌幅基于相邻两日收盘" in page
     assert "esc(change.prevDate)" in page and "esc(lastRow.date)" in page
@@ -423,10 +451,15 @@ def test_state_block_is_renderable():
 
 
 def test_navigation_metadata_is_part_of_the_module_contract():
-    assert [item["key"] for item in view.NAV_ITEMS] == ["global", "cn_equity", "discovery", "ai"]
-    assert sum(1 for item in view.NAV_ITEMS if item["state"] == "active") == 1
-    assert all(item["state"] == "planning" for item in view.NAV_ITEMS[1:])
-    assert view.PRODUCT_NAME == "Swartee Market Research"
+    assert [item["key"] for item in view.NAV_ITEMS] == [
+        "overview", "research", "compare", "watchlist"
+    ]
+    # All four entries are live sections: nothing is a planning placeholder.
+    assert all(item["state"] == "ready" for item in view.NAV_ITEMS)
+    assert [section["target"] for section in view.SECTIONS] == [
+        "section-overview", "section-research", "section-compare", "section-watchlist"
+    ]
+    assert view.PRODUCT_NAME == "Swartea Market Research"
     assert view.DEFAULT_API_PATH == "/api/daily-k"
     assert set(view.STATUS_LABELS) == {"ok", "empty", "unavailable", "error"}
 
@@ -451,8 +484,11 @@ def test_html_endpoint_serves_the_page(server):
     base, _ = server
     status, body = _get(f"{base}/")
     assert status == 200
-    assert "<canvas" in body and "Swartee Market Research" in body
-    assert "规划中" in body
+    assert "<canvas" in body and "Swartea Market Research" in body
+    # The four workbench entries are served as live sections, not placeholders.
+    for key in ("overview", "research", "compare", "watchlist"):
+        assert f'data-nav="{key}"' in body
+    assert "规划中" not in body
 
 
 def test_api_endpoint_returns_labeled_payload(server):
@@ -537,3 +573,34 @@ def test_existing_snapshot_page_is_preserved():
     assert callable(view.render_global_market_research_page)
     assert callable(view.selector_options)
     assert view.selector_options()[0]["index_id"] == "cn.index.sh_comp"
+
+
+def test_comparison_endpoint_reuses_payloads_without_provider_calls(server):
+    base, calls = server
+    payloads = [dict(_LABELED_OK_PAYLOAD),
+                {**_LABELED_OK_PAYLOAD, "index_id": "hk.index.hang_seng.hstech"}]
+    before = len(calls)
+    request = urllib.request.Request(
+        base + "/api/compare", data=json.dumps({"payloads": payloads}).encode(),
+        headers={"Content-Type": "application/json"}, method="POST",
+    )
+    with urllib.request.urlopen(request) as response:
+        result = json.load(response)
+    assert result["status"] == "ok"
+    assert result["base_date"] == "2026-09-24"
+    assert len(result["series"]) == 2
+    assert all(s["normalized100"][0] == 100 for s in result["series"])
+    assert len(calls) == before
+
+
+@pytest.mark.parametrize("body", [b"broken", b"[]", b"", b'{"payloads":NaN}'])
+def test_comparison_endpoint_handles_invalid_requests(server, body):
+    base, _ = server
+    request = urllib.request.Request(base + "/api/compare", data=body, method="POST")
+    try:
+        with urllib.request.urlopen(request) as response:
+            result = json.load(response)
+    except urllib.error.HTTPError as error:
+        assert error.code == 400
+        result = json.load(error)
+    assert result["status"] == "error"

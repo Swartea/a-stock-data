@@ -45,10 +45,12 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from analysis.research.market_comparison_view import COMPARISON_JS, COMPARISON_STYLE
+
 DEFAULT_API_PATH = "/api/daily-k"
 
 PRODUCT_NAME = "Swartea Market Research"
-PRODUCT_SUBTITLE = "斯沃尔蒂 · 全球市场研究终端"
+PRODUCT_SUBTITLE = "斯沃特 · 全球市场研究终端"
 
 #: Top navigation: every entry is a real, reachable section of the workbench.
 #: There is no inert "规划中" label and no dead route in the shell.
@@ -100,6 +102,11 @@ def legacy_alias_map() -> dict[str, list[str]]:
     registry is created here: the browser only receives the aliases that the
     identity layer already recognises, so the UI can normalise an old stored
     id into the current canonical id.
+
+    The aliases of one index are ordered shortest first (alphabetically within
+    one length), so the order is deterministic and independent of the mapping's
+    insertion order: the short pre-canonical name (``sse.composite``) leads and
+    the dotted contract id (``cn.index.sse.000001``) follows.
     """
 
     from analysis.research.index_registry import INDEX_ID_ALIASES
@@ -107,7 +114,10 @@ def legacy_alias_map() -> dict[str, list[str]]:
     grouped: dict[str, list[str]] = {}
     for alias, canonical in INDEX_ID_ALIASES.items():
         grouped.setdefault(canonical, []).append(alias)
-    return grouped
+    return {
+        canonical: sorted(aliases, key=lambda alias: (len(alias), alias))
+        for canonical, aliases in grouped.items()
+    }
 
 
 def _market_label(market: Any) -> str:
@@ -526,6 +536,8 @@ const SPANS = [20, 40, 60, 120, 250, 0];
 const state = {payload: null, seq: 0, hover: null, from: 0, span: 120, section: 'overview'};
 const payloadCache = new Map();
 const payloadResults = new Map();
+const payloadCachedAt = new Map();
+const overviewRange = {start: document.querySelector("#start").value, end: document.querySelector("#end").value};
 const overviewTokens = new Map();
 const requestQueue = [];
 let activeRequests = 0;
@@ -621,6 +633,7 @@ function renderOverviewQuote(opt, p) {
   const last = rows.length ? rows[rows.length - 1] : null;
   const summary = CORE ? CORE.latestClose(p.bars) : null;
   const usable = p.status === 'ok' && summary && summary.close !== null;
+  syncWatchQuote(opt.index_id, p);
   card.classList.toggle('is-unavailable', !usable);
   if (!usable) {
     setField(card, 'close', p.status === 'unavailable' ? '暂不可用' : '暂无日K收盘',
@@ -628,7 +641,7 @@ function renderOverviewQuote(opt, p) {
     setField(card, 'change', label(AVAIL, p.availability) + ' · ' + label(FRESH, p.freshness),
       'mcard-change muted');
     setField(card, 'date', p.data_date ? '数据日期 ' + p.data_date : '无可用数据', 'mcard-meta');
-    setField(card, 'freshness', label(FRESH, p.freshness), tone(p.availability) ? '' : '');
+    setField(card, 'freshness', label(FRESH, p.freshness), tone(p.freshness));
     setField(card, 'availability', label(AVAIL, p.availability), tone(p.availability));
     setField(card, 'source', p.source || '—', '');
     setField(card, 'calendar', label(TRADING, p.trading_day_status),
@@ -636,11 +649,11 @@ function renderOverviewQuote(opt, p) {
     card.title = p.unavailable_reason || p.failure_reason || opt.index_id;
     return;
   }
-  setField(card, 'close', fmt(summary.close) + ' ' + opt.currency, 'mcard-close');
+  setField(card, 'close', fmt(summary.close) + ' 点', 'mcard-close');
   if (summary.changePct !== null) {
     const trend = summary.changePct >= 0 ? 'up' : 'down';
     setField(card, 'change',
-      (summary.changePct >= 0 ? '+' : '') + summary.changePct.toFixed(2) + '% · 相邻日收盘',
+      (summary.changePct >= 0 ? '+' : '') + fmt(summary.close - summary.prevClose) + ' / ' + (summary.changePct >= 0 ? '+' : '') + summary.changePct.toFixed(2) + '% · 相邻日收盘',
       'mcard-change ' + trend);
     card.title = opt.name + ' · ' + summary.prevDate + ' 至 ' + summary.date
       + ' · ' + opt.index_id;
@@ -649,7 +662,7 @@ function renderOverviewQuote(opt, p) {
     card.title = opt.name + ' · ' + summary.date + ' · ' + opt.index_id;
   }
   setField(card, 'date', p.data_date || summary.date, '');
-  setField(card, 'freshness', label(FRESH, p.freshness), '');
+  setField(card, 'freshness', label(FRESH, p.freshness), tone(p.freshness));
   setField(card, 'availability', label(AVAIL, p.availability), tone(p.availability));
   setField(card, 'source', p.source || '—', '');
   setField(card, 'calendar', label(TRADING, p.trading_day_status), tone(p.trading_day_status));
@@ -664,9 +677,23 @@ function renderOverviewFailure(opt) {
   setField(card, 'date', '无法读取日线', '');
 }
 
+/* Keep the watchlist quote in sync with the daily-K payload it shares with the
+   overview: the watchlist never issues a second request, it reuses the cached
+   response of the very same index. */
+function syncWatchQuote(indexId, p) {
+  const card = $$('#watch-list .watch-card').find(el => el.dataset.index === indexId);
+  if (!card) return;
+  const opt = OPTS.find(o => o.index_id === indexId);
+  const summary = CORE ? CORE.latestClose(p.bars) : null;
+  const closeEl = card.querySelector('[data-field="close"]');
+  if (!closeEl) return;
+  const usable = p.status === 'ok' && summary && summary.close !== null;
+  closeEl.textContent = usable ? fmt(summary.close) + ' 点' : '—';
+}
+
 /* --- shared bounded fetch queue / cache -------------------------------- */
 function requestFor(opt) {
-  return paramsFor(opt.index_id, opt.market);
+  return paramsFor(opt.index_id, opt.market, overviewRange.start, overviewRange.end);
 }
 
 function paramsFor(indexId, market, start, end) {
@@ -684,17 +711,21 @@ function pumpRequests() {
   while (activeRequests < 3 && requestQueue.length) {
     const item = requestQueue.shift();
     activeRequests += 1;
-    fetch(item.url).then(res => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    fetch(item.url, {signal: controller.signal}).then(res => {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
     }).then(payload => {
       payloadResults.set(item.key, payload);
+      if (payload.status !== 'ok') payloadCache.delete(item.key);
       item.resolve(payload);
     }).catch(error => {
       payloadCache.delete(item.key);
       payloadResults.delete(item.key);
       item.reject(error);
     }).finally(() => {
+      clearTimeout(timeout);
       activeRequests -= 1;
       pumpRequests();
     });
@@ -703,11 +734,12 @@ function pumpRequests() {
 
 function cachedPayload(params) {
   const key = params.toString();
-  if (payloadCache.has(key)) return payloadCache.get(key);
+  if (payloadCache.has(key) && Date.now() - payloadCachedAt.get(key) < 300000) return payloadCache.get(key);
   const promise = new Promise((resolve, reject) => {
     requestQueue.push({key: key, url: API + '?' + key, resolve: resolve, reject: reject});
   });
   payloadCache.set(key, promise);
+  payloadCachedAt.set(key, Date.now());
   pumpRequests();
   return promise;
 }
@@ -931,7 +963,7 @@ function pick(ev) {
 /* --- data loading ----------------------------------------------------- */
 function query() {
   const opt = OPTS.find(o => o.index_id === $('#index').value);
-  return requestFor(opt || {index_id: $('#index').value, market: $('#market').value});
+  return paramsFor((opt || {}).index_id || $('#index').value, (opt || {}).market || $('#market').value);
 }
 
 function clearView() {
@@ -1032,15 +1064,10 @@ function renderWatchlist() {
     const opt = OPTS.find(o => o.index_id === id);
     const name = opt ? opt.name : id;
     const market = opt ? marketName(opt.market) : '';
-    const payload = payloadResults.get(paramsFor(id, opt ? opt.market : '').toString());
-    const summary = payload && CORE ? CORE.latestClose(payload.bars) : null;
-    const quote = summary && summary.close !== null
-      ? fmt(summary.close) + ' ' + (opt ? opt.currency : '')
-      : '—';
     return '<article class="mcard watch-card" data-index="' + esc(id) + '" tabindex="0">'
       + '<div class="mcard-head"><h4>' + esc(name) + '</h4>'
       + '<span class="mcard-market">' + esc(market) + '</span></div>'
-      + '<div class="mcard-close" data-field="close">' + esc(quote) + '</div>'
+      + '<div class="mcard-close" data-field="close">—</div>'
       + '<div class="mcard-change" data-field="change">' + esc(id) + '</div>'
       + '<div class="mcard-actions">'
       + '<button type="button" class="btn" data-action="open">进入研究</button>'
@@ -1048,6 +1075,13 @@ function renderWatchlist() {
       + '" aria-pressed="true">移出自选</button>'
       + '</div></article>';
   }).join('');
+  // The watchlist reuses the daily-K response that the overview already cached:
+  // no watchlist entry ever triggers a second request.
+  items.forEach(id => {
+    const opt = OPTS.find(o => o.index_id === id);
+    const payload = payloadResults.get(requestFor(opt || {index_id:id, market:''}).toString());
+    if (payload) syncWatchQuote(id, payload);
+  });
   list.querySelectorAll('.watch-card').forEach(card => {
     const id = card.dataset.index;
     card.addEventListener('click', ev => {
@@ -1286,7 +1320,6 @@ def _overview_cards_html(options: Sequence[Mapping[str, Any]]) -> str:
             index_id = str(option.get("index_id") or "")
             name = str(option.get("name") or index_id)
             currency = str(option.get("currency") or "")
-            proven = option.get("proven") == "yes"
             cards.append(
                 f'<article class="mcard" data-index="{_text(index_id)}" '
                 f'data-market="{_text(market)}" tabindex="0">'
@@ -1342,7 +1375,7 @@ def render_global_market_research_page(
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         '<link rel="icon" href="data:,">'
         f"<title>{_text(PRODUCT_NAME)}</title>"
-        f"<style>{_STYLE}</style></head><body>\n"
+        f"<style>{_STYLE}{COMPARISON_STYLE}</style></head><body>\n"
         '<header class="topbar"><div class="brand"><b>' + _text(PRODUCT_NAME) + "</b><span>"
         + _text(PRODUCT_SUBTITLE) + "</span></div>"
         f'<nav class="nav" aria-label="主导航">{nav_items_html()}</nav>'
@@ -1406,9 +1439,7 @@ def render_global_market_research_page(
         "不直接比较；各指数的数据日期与来源分别标注，缺失日期保留缺失含义。</div>"
         '<div id="compare-root" class="compare-mount" data-compare-mount="1"></div>'
         '<div class="muted" id="compare-status" style="font-size:12px">'
-        "比较图表挂载点已就绪：跨市场比较渲染由市场比较任务通过 "
-        "<code>window.__WORKBENCH__.onCompareReady</code> 接入，"
-        "日线数据复用同一研究服务与共享缓存 <code>window.__WORKBENCH__.requestDailyK</code>。</div>"
+        "选择指数后比较历史收盘的累计表现。</div>"
         "</div></section>"
         '<section class="section" id="section-watchlist" data-section="watchlist" hidden>'
         '<div class="panel"><h2 class="panel-h">自选关注 <small id="watch-count">0 个指数</small></h2>'
@@ -1421,6 +1452,7 @@ def render_global_market_research_page(
         f'<script>window.__OPTS={payload};window.__API={api_payload};</script>\n'
         f'<script id="swartea-core-js">{_CORE_JS}</script>\n'
         f"<script>{_JS}</script>\n"
+        f"<script>{COMPARISON_JS}</script>\n"
         "</body></html>"
     )
 

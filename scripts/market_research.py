@@ -41,6 +41,7 @@ from analysis.research.global_market_research import (
     list_index_choices,
     list_research_markets,
 )
+from analysis.research.market_comparison import build_comparison
 from analysis.research.market_research_view import (
     render_global_market_research_page,
     selector_options,
@@ -168,10 +169,32 @@ def make_handler(research_callable: Any = None):
             self.end_headers()
             self.wfile.write(body)
 
+        def do_POST(self) -> None:  # noqa: N802 - stdlib naming
+            # Pure calculation over previously fetched research payloads: no provider
+            # requests, no persistence and no additional source of market identity.
+            if urlparse(self.path).path != "/api/compare":
+                self._send(b'{"status":"error"}', "application/json", 404)
+                return
+            try:
+                size = int(self.headers.get("Content-Length", "0"))
+                if not 0 < size <= 1_000_000:
+                    raise ValueError("invalid request size")
+                request = json.loads(self.rfile.read(size))
+                if not isinstance(request, dict):
+                    raise ValueError("request must be an object")
+                result = build_comparison(request.get("payloads"), request.get("start_date"), request.get("end_date"))
+                body = json.dumps(result, ensure_ascii=False, allow_nan=False)
+            except (ValueError, TypeError, OverflowError, RecursionError):
+                self._send('{"status":"error","error":{"message":"比较请求格式无效"}}'.encode(),
+                           "application/json; charset=utf-8", 400)
+                return
+            self._send(body.encode(), "application/json; charset=utf-8")
+
         def do_GET(self) -> None:  # noqa: N802 - stdlib naming
             parsed = urlparse(self.path)
             if parsed.path in ("/", "/index.html"):
-                page = render_global_market_research_page()
+                start, end = default_window(365)
+                page = render_global_market_research_page(start_date=start, end_date=end)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
                 return
             if parsed.path == INDICES_PATH:
