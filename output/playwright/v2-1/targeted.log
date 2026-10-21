@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/swarteachou/.codex/worktrees/market-research-v2-1
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 120 items
+
+tests/research/test_market_comparison.py ............................... [ 25%]
+....................                                                     [ 42%]
+tests/research/test_market_workbench.py .........................        [ 63%]
+tests/research/test_market_research_view.py ............................ [ 86%]
+................                                                         [100%]
+
+============================= 120 passed in 5.86s ==============================

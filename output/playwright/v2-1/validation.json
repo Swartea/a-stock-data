@@ -1,0 +1,115 @@
+{
+  "date": "2026-10-21",
+  "timezone": "Asia/Shanghai",
+  "base_sha": "8e8cb5c6225d219e7429acf51b440e8e7c5498c0",
+  "branch": "codex/market-research-v2-1",
+  "code_head": "4786188d64736ad77186556c6ff1d1a62a672b40",
+  "controller_acceptance": "PASS",
+  "remote_ci": "CI_NOT_VERIFIED",
+  "pytest": {
+    "passed": 1776,
+    "deselected": 2
+  },
+  "research": {
+    "passed": 1063
+  },
+  "targeted": {
+    "passed": 120
+  },
+  "ruff_changed_scope": "PASS",
+  "javascript": {
+    "core": "PASS",
+    "workbench": "PASS",
+    "comparison": "PASS"
+  },
+  "cli_smoke": "PASS",
+  "wheel_build_and_isolated_import": "PASS",
+  "browser": {
+    "browser-main": {
+      "status": "PASS",
+      "viewports": {
+        "390": 3,
+        "768": 3,
+        "1280": 3,
+        "1440": 3,
+        "1920": 3
+      },
+      "errors": []
+    },
+    "browser-errors": {
+      "status": "PASS",
+      "scenarios": [
+        "partial",
+        "no_common_base",
+        "empty",
+        "single",
+        "gaps",
+        "touch",
+        "invalid_dates",
+        "network",
+        "corrupt_storage",
+        "aliases",
+        "denied_storage"
+      ],
+      "errors": []
+    },
+    "browser-cache": {
+      "status": "PASS",
+      "mode": "offline.cache.fixture",
+      "overviewDailyRequests": 9,
+      "compareExtraDailyRequests": 0,
+      "detailExtraDailyRequests": 0,
+      "comparisonCalculationRequests": 1,
+      "staleSelection": "PASS"
+    },
+    "browser-limit": {
+      "status": "PASS",
+      "fourSeries": true,
+      "fifthSelectionDisabled": true,
+      "removeReenables": true
+    }
+  },
+  "ao": {
+    "checkout_revision": "f5ca7549d043edd935f8b1da173c62c30aaeab97",
+    "primary_worker": "minimax",
+    "initial_run": "20261021T023938-86caab0c",
+    "recovery_run": "20261021T025107-c5f542d1",
+    "implementation_runs_status": "BLOCKED: fixed provider output event limit",
+    "fallback": "Codex adopted preserved drafts, repaired and integrated; no adapter gate relaxed",
+    "mandatory_kimi_review": {
+      "20261021T030835-d3417e74": "PASS",
+      "20261021T081534-92230600": "PASS"
+    },
+    "desktop_acceptance": "Codex PASS; per-task CLI acceptance DEFERRED by configured desktop policy"
+  },
+  "limitations": [
+    "GitHub Actions 422 remains unresolved; no remote CI verification",
+    "Upstream Tencent intermittently empty or unavailable; existing A-share fallback and explicit UI unavailability remain",
+    "No verified exchange trading calendars: unknown state preserved"
+  ],
+  "artifacts_sha256": {
+    "browser-cache.js": "868485beea69c77f3fa4dcd028bd5c27af96c3a226c4a0c9b51eb7ba3f0cb1ea",
+    "browser-errors.js": "5becfabb15e4c963d5c7aba7e8208b941b3869544f69546b2423e5406ebfaab9",
+    "browser-limit.js": "a06fde86a518f6557b0832d44ee0b1620b91ffe437184824a5ef6efd5f31ddfe",
+    "browser-main.js": "3b4ba20fdeacc08181c92cc9cae0c6884309fd6e7d4d90700feec5b116cbe18e",
+    "build.log": "9a772431b023b1d463750495d4c7730fa768e24bde6794d4df56c5e51f14a499",
+    "comparison-1280.png": "c15b10b099088294da8e487ee2fe6d3c9e835a172b801fd0b7234607a166737a",
+    "comparison-1440.png": "57b8114e9c2e32c8ddb3807852afbe54b314a47ba408a87ee9f9e1d5381b0b35",
+    "comparison-1920.png": "9f80d76e9a42e4f11fe79d311471f28a68963557b897e2c56ee11b6e533a7d50",
+    "comparison-390.png": "d8033a4b3ce4c59615424d00f9c361dd80fd472a7d41cd41bc983cafe41ac46a",
+    "comparison-768.png": "d9da7cfcd0381acd4e2b53f1557055060b3733e97de08a062b17cca0e3b61e40",
+    "mobile-touch-390.png": "fc6af7b4b582fd05af258e380d1553f8561971f7dc96c77ca4c4b811b406f021",
+    "mobile-touch-fixture-390.png": "463b168de1cde615f74108726d3bc67f06833856940f5112c3e596944ca353c7",
+    "overview-1280.png": "2faf1822ed933e05ca0d5835b97bffaeb202ca5959d5961256ce9bbe5f2bded9",
+    "overview-1440.png": "7ccc8411e3360177536ac0754f0a6e5240a1d733140c6328553b70618a6c30de",
+    "overview-1920.png": "bc573797d26635f306a8b3009bb14be1dd25ac6d9f6ba53629d5b95d8cc637eb",
+    "overview-390.png": "173c685666bb6c3c084a13b0439fa2254b6fbfe3edbe98ca112db73a138f1c6e",
+    "overview-768.png": "db44a93114c662945a207ad7cfd11b858afee76e3eb46a7e6fe9683e710a5055",
+    "pytest.log": "fd3d9376a0c708181e1b26627717db029e8eab3fc1a653c855d39fd086255149",
+    "research-1440.png": "afab2dee65f3384b0878e69d346c24f72b3eaaecbad62ab4d94f61158e0f9065",
+    "research-390.png": "fcbe491227e00594b365f282a67df10a284957583bcc5e3a3e69c74f1311e085",
+    "research.log": "5dfb5ddcb504fd6be31cbc2fc82f9a8276e53a4f7476029f078fe102688f2c11",
+    "ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "targeted.log": "e678e4b243e9d3c2e30f4e6ade26c8cb9b707839657042ef34fcd48aff085c43"
+  }
+}

@@ -1,0 +1,16 @@
+Processing ./.
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: da-a-data
+  Building wheel for da-a-data (pyproject.toml): started
+  Building wheel for da-a-data (pyproject.toml): finished with status 'done'
+  Created wheel for da-a-data: filename=da_a_data-0.17.0-py3-none-any.whl size=365699 sha256=743d2118ce5ca94d28310ce1177ec7ce78965c5abe433b1244fe68319fb53cf0
+  Stored in directory: /Users/swarteachou/Library/Caches/pip/wheels/7e/12/e0/cd462f43bbdcd90cc88212e3737ba82c068a697c53c5ee81c2
+Successfully built da-a-data
+
+[notice] A new release of pip is available: 26.1.2 -> 26.2.1
+[notice] To update, run: /Users/swarteachou/Desktop/大A数据/venv/bin/python -m pip install --upgrade pip
