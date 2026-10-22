@@ -29,6 +29,22 @@ Scope boundaries kept on purpose:
 * **No guessed clock.** The payload carries the index timezone, the data date
   and an ``unknown`` trading-day status: absent exchange-calendar evidence
   stays unknown rather than being inferred from a date.
+
+Calendar inputs
+---------------
+
+The builder accepts one of two calendar sources:
+
+* ``calendar`` -- the existing single-calendar argument.  Its behavior is
+  unchanged for every caller that does not supply the new composition.
+* ``calendar_evidence`` -- the optional
+  :class:`~analysis.research.trading_calendar_evidence.MarketScopedCalendarEvidence`
+  composition.  The index's market comes from the canonical global-index
+  registry, so no second market registry is introduced, and a market without
+  evidence yields an **empty** calendar whose status stays ``unknown``.
+
+The two inputs are mutually exclusive: supplying both raises ``ValueError``
+instead of silently preferring one.
 """
 
 from __future__ import annotations
@@ -55,6 +71,7 @@ from analysis.research.market_index_universe import MarketIndexUniverse
 from analysis.research.market_snapshot_service import build_market_snapshot
 from analysis.research.market_state import MarketIndexObservation
 from analysis.research.trading_calendar import TradingCalendar
+from analysis.research.trading_calendar_evidence import MarketScopedCalendarEvidence
 
 # Exact registered identities with validated daily-K provider evidence. A
 # registry entry alone must not make an index appear available. HK/US entries
@@ -425,6 +442,7 @@ def build_global_market_research(
     transport: Any = None,
     snapshot_builder: Any = _default_snapshot_builder,
     now: datetime | None = None,
+    calendar_evidence: MarketScopedCalendarEvidence | None = None,
 ) -> GlobalMarketResearch:
     """Compose normalized daily bars plus an evidence-backed observation.
 
@@ -432,7 +450,22 @@ def build_global_market_research(
     snapshot call, unproven indexes short-circuit to ``unavailable`` without a
     provider call, and every downstream failure degrades into an explicit
     status rather than an exception.
+
+    ``calendar_evidence`` is the optional market-scoped calendar composition.
+    It is mutually exclusive with ``calendar``: supplying both raises
+    ``ValueError`` instead of silently preferring one.  Without it the legacy
+    single-calendar behavior is unchanged.
     """
+
+    if calendar_evidence is not None and not isinstance(
+        calendar_evidence, MarketScopedCalendarEvidence
+    ):
+        raise TypeError("calendar_evidence must be MarketScopedCalendarEvidence or None")
+    if calendar_evidence is not None and calendar is not None:
+        raise ValueError(
+            "calendar and calendar_evidence are mutually exclusive; omit "
+            "calendar when using the market-scoped composition"
+        )
 
     try:
         spec = resolve_index(index_id)
@@ -526,6 +559,14 @@ def build_global_market_research(
 
     snapshot: Any = None
     snapshot_error: str | None = None
+    # The composition resolves through the canonical registry's market token.
+    # A market without evidence yields an empty calendar, so the snapshot's
+    # trading-day status stays unknown instead of being inferred.
+    resolved_calendar = (
+        calendar_evidence.calendar_for(spec.market)
+        if calendar_evidence is not None
+        else (calendar if calendar is not None else TradingCalendar())
+    )
     if snapshot_builder is not None:
         try:
             snapshot = snapshot_builder(
@@ -533,7 +574,7 @@ def build_global_market_research(
                 evaluation_time=evaluated_at,
                 start_date=canonical_start,
                 end_date=canonical_end,
-                calendar=calendar if calendar is not None else TradingCalendar(),
+                calendar=resolved_calendar,
                 max_age_policy=(
                     max_age_policy
                     if max_age_policy is not None

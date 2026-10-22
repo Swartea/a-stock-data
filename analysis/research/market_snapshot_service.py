@@ -1,4 +1,31 @@
-"""Aggregate A-share daily-K service results into evidence-backed snapshots."""
+"""Aggregate A-share daily-K service results into evidence-backed snapshots.
+
+Calendar inputs
+---------------
+
+The snapshot accepts exactly one of two calendar sources:
+
+* ``calendar`` -- the existing single :class:`TradingCalendar` argument.  Its
+  behavior is unchanged for every caller that does not supply the new
+  composition: one calendar is applied to the whole snapshot, exactly as
+  before.
+* ``calendar_evidence`` -- the new optional
+  :class:`~analysis.research.trading_calendar_evidence.MarketScopedCalendarEvidence`
+  composition, which resolves evidence per market through the canonical
+  global-index market identity.
+
+The two inputs are **mutually exclusive**: supplying both is rejected with a
+``ValueError`` instead of silently preferring one.  When the composition is
+supplied it is the single authoritative source, and the per-market rules are:
+
+* an index whose market has evidence uses that market's calendar;
+* an index whose market has **no** evidence uses an **empty** calendar, so its
+  status stays ``UNKNOWN`` rather than borrowing another market's sessions;
+* the snapshot's single public ``trading_day_status`` is reported for a
+  single-market snapshot; a multi-market snapshot reports ``UNKNOWN`` because
+  the public model has only one status field and borrowing one market's
+  calendar for all markets would assert a fact nobody proved.
+"""
 
 from __future__ import annotations
 
@@ -33,8 +60,14 @@ from analysis.research.providers import (
 from analysis.research.quality import CompletenessStatus, FreshnessStatus, QualityMetadata
 from analysis.research.time_semantics import TimeMetadata
 from analysis.research.trading_calendar import TradingCalendar, TradingDayStatus
+from analysis.research.trading_calendar_evidence import MarketScopedCalendarEvidence
 
 _SHANGHAI = ZoneInfo("Asia/Shanghai")
+
+# Snapshot market tokens for the cases where the covered markets are not a
+# single known market.
+_MARKET_MULTI = "multi"
+_MARKET_UNKNOWN = "unknown"
 
 
 def _parse_aware(value: str) -> datetime:
@@ -118,6 +151,66 @@ def _confirmed_adjacent(previous: date, current: date, calendar: TradingCalendar
     return False
 
 
+def _market_token(identity: Any) -> str | None:
+    """Return the canonical market token for ``identity``.
+
+    The token comes from the existing global-index registry, which stays the
+    one market registry.  An index the registry does not know yields ``None``
+    instead of a guessed market.
+    """
+
+    try:
+        return get_global_index(identity.index_id).market
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _calendar_for_identity(
+    identity: Any,
+    calendar: TradingCalendar,
+    calendar_evidence: MarketScopedCalendarEvidence | None,
+) -> TradingCalendar:
+    """Return the calendar that may be used for ``identity``.
+
+    Without the composition the legacy single calendar is returned unchanged.
+    With the composition the identity's own market decides, and a market
+    without evidence yields an empty calendar so nothing is borrowed.
+    """
+
+    if calendar_evidence is None:
+        return calendar
+    token = _market_token(identity)
+    if token is None:
+        return TradingCalendar()
+    return calendar_evidence.calendar_for(token)
+
+
+def _snapshot_trading_day_status(
+    *,
+    calendar: TradingCalendar,
+    calendar_evidence: MarketScopedCalendarEvidence | None,
+    market: str,
+    usable_days: Sequence[str],
+) -> TradingDayStatus:
+    """Resolve the snapshot's single public trading-day status.
+
+    The legacy single-calendar path is preserved exactly.  The market-scoped
+    path reports the covered market's own status, and reports ``UNKNOWN`` for
+    a multi-market snapshot: the public model carries a single status, so
+    borrowing one market's calendar for every market would state a fact that
+    was never proven.
+    """
+
+    if not usable_days:
+        return TradingDayStatus.UNKNOWN
+    latest = max(usable_days)
+    if calendar_evidence is None:
+        return calendar.status_on(latest)
+    if market in (_MARKET_MULTI, _MARKET_UNKNOWN):
+        return TradingDayStatus.UNKNOWN
+    return calendar_evidence.status_on(market, latest)
+
+
 def build_market_snapshot(
     *,
     evaluation_time: str,
@@ -131,17 +224,32 @@ def build_market_snapshot(
     transport: Any = None,
     provider_registry: ProviderRegistry | None = None,
     daily_k_results: Mapping[str, Mapping[str, Any]] | None = None,
+    calendar_evidence: MarketScopedCalendarEvidence | None = None,
 ) -> MarketSnapshot:
     """Fetch and assess each universe member independently.
 
     Invalid caller dates/times are rejected before invoking any provider. Daily
     bars remain ``index.daily_k`` observations, never realtime quotes.
+
+    ``calendar_evidence`` is the optional market-scoped calendar composition.
+    It is mutually exclusive with a non-empty ``calendar``: supplying both
+    raises ``ValueError`` rather than silently preferring one.  Without it the
+    legacy single-calendar behavior is unchanged.
     """
     evaluation = _parse_aware(evaluation_time)
     if not isinstance(calendar, TradingCalendar):
         raise TypeError("calendar must be TradingCalendar")
     if not isinstance(max_age_policy, MaxAgePolicy):
         raise TypeError("max_age_policy must be MaxAgePolicy")
+    if calendar_evidence is not None and not isinstance(
+        calendar_evidence, MarketScopedCalendarEvidence
+    ):
+        raise TypeError("calendar_evidence must be MarketScopedCalendarEvidence or None")
+    if calendar_evidence is not None and calendar.days:
+        raise ValueError(
+            "calendar and calendar_evidence are mutually exclusive; supply an "
+            "empty TradingCalendar() when using the market-scoped composition"
+        )
     if daily_k_results is not None and not isinstance(daily_k_results, Mapping):
         raise TypeError("daily_k_results must be a mapping or None")
     for label, raw in (("start_date", start_date), ("end_date", end_date)):
@@ -252,7 +360,8 @@ def build_market_snapshot(
                 FreshnessStatus.UNKNOWN: MarketAvailability.UNKNOWN,
             }[freshness]
             change = change_percent = None
-            if len(dated) >= 2 and _confirmed_adjacent(dated[-2][0], latest_day, calendar):
+            identity_calendar = _calendar_for_identity(identity, calendar, calendar_evidence)
+            if len(dated) >= 2 and _confirmed_adjacent(dated[-2][0], latest_day, identity_calendar):
                 previous_close = dated[-2][1].get("close")
                 if isinstance(previous_close, (int, float)) and not isinstance(previous_close, bool) and math.isfinite(previous_close) and previous_close != 0:
                     change = latest_close - float(previous_close)
@@ -278,7 +387,6 @@ def build_market_snapshot(
         if item.data_date is not None and item.close is not None and item.evidence
         and item.availability in (MarketAvailability.AVAILABLE, MarketAvailability.DELAYED)
     ]
-    day_status = calendar.status_on(max(usable_days)) if usable_days else TradingDayStatus.UNKNOWN
     markets: set[str] = set()
     known_market_count = 0
     for identity in universe.identities:
@@ -289,11 +397,17 @@ def build_market_snapshot(
         else:
             known_market_count += 1
     if not markets:
-        market = "unknown"
+        market = _MARKET_UNKNOWN
     elif len(markets) == 1 and known_market_count == len(universe.identities):
         market = next(iter(markets))
     else:
-        market = "multi"
+        market = _MARKET_MULTI
+    day_status = _snapshot_trading_day_status(
+        calendar=calendar,
+        calendar_evidence=calendar_evidence,
+        market=market,
+        usable_days=usable_days,
+    )
     return MarketSnapshot(snapshot_id, market, universe.identities, universe.aliases, frozen_observations, day_status)
 
 
