@@ -325,3 +325,227 @@ def test_empty_provider_result_is_not_encoded_as_zero():
     )
     assert all(item.close is None for item in snapshot.observations)
     assert snapshot.trading_day_status is TradingDayStatus.UNKNOWN
+
+
+# --- identity-scoped calendar evidence --------------------------------------
+
+_A_SHARE_IDS = (
+    "cn.index.sh_comp",
+    "cn.index.sz_component",
+    "cn.index.chinext",
+    "cn.index.csi300",
+)
+
+
+def _szse_evidence(year=2026, month=10, closed_days=()):
+    """Return one SZSE calendar evidence value for the given month."""
+
+    from calendar import monthrange
+
+    from analysis.research.trading_calendar_evidence import (
+        trading_calendar_evidence_from_szse_rows,
+    )
+
+    count = monthrange(year, month)[1]
+    rows = [
+        {
+            "jyrq": f"{year:04d}-{month:02d}-{day:02d}",
+            "jybz": "0" if day in closed_days else "1",
+        }
+        for day in range(1, count + 1)
+    ]
+    return trading_calendar_evidence_from_szse_rows(
+        rows,
+        year=year,
+        month=month,
+        fetched_at=f"{year:04d}-{month:02d}-01T09:30:00+08:00",
+    )
+
+
+def _ok_result(index_id, days=("2026-10-13", "2026-10-14")):
+    """Return a labeled, offline daily-K result for one index."""
+
+    rows = [
+        {
+            "index_id": index_id,
+            "date": day,
+            "open": 100.0 + step,
+            "high": 101.0 + step,
+            "low": 99.0 + step,
+            "close": 100.0 + step,
+            "volume": None,
+        }
+        for step, day in enumerate(days)
+    ]
+    return {
+        "status": "ok",
+        "source": "wire",
+        "source_used": "tencent",
+        "scope": "market",
+        "data": rows,
+        "as_of": days[-1],
+        "fetched_at": "2026-10-14T15:30:00+08:00",
+        "units": {"price": "index_points"},
+        "error": None,
+    }
+
+
+def _daily_k_results(index_ids=_A_SHARE_IDS, days=("2026-10-13", "2026-10-14")):
+    return {index_id: _ok_result(index_id, days) for index_id in index_ids}
+
+
+def _snapshot(calendar_evidence, *, results=None, evaluation_time="2026-10-14T16:00:00+08:00", **kwargs):
+    return build_market_snapshot(
+        evaluation_time=evaluation_time,
+        start_date=kwargs.pop("start_date", "2026-10-13"),
+        end_date=kwargs.pop("end_date", "2026-10-14"),
+        calendar=TradingCalendar(),
+        max_age_policy=MaxAgePolicy(timedelta(days=1)),
+        daily_k_results=results if results is not None else _daily_k_results(),
+        calendar_evidence=calendar_evidence,
+        **kwargs,
+    )
+
+
+def _observation(snapshot, index_id):
+    for item in snapshot.observations:
+        if item.identity.index_id == index_id:
+            return item
+    raise AssertionError(f"no observation for {index_id}")
+
+
+def test_szse_evidence_does_not_apply_to_other_indices():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    composition = IndexScopedCalendarEvidence.from_mapping(
+        {"cn.index.sz_component": _szse_evidence()}
+    )
+    snapshot = _snapshot(composition)
+
+    # The SZSE calendar proves the Shenzhen Component sessions ...
+    sz = _observation(snapshot, "cn.index.sz_component")
+    assert sz.change == 1.0
+    # ... but it proves nothing about the SSE Composite or the CSI 300, so
+    # their change stays unproven instead of borrowing the SZSE sessions.
+    assert _observation(snapshot, "cn.index.sh_comp").change is None
+    assert _observation(snapshot, "cn.index.csi300").change is None
+
+
+def test_snapshot_status_requires_every_covered_identity_to_agree():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    evidence = _szse_evidence()
+    agreed = IndexScopedCalendarEvidence.from_mapping(
+        {index_id: evidence for index_id in _A_SHARE_IDS}
+    )
+    snapshot = _snapshot(agreed)
+    assert snapshot.trading_day_status is TradingDayStatus.OPEN
+
+    # One identity without evidence leaves the snapshot status unproven.
+    partial = IndexScopedCalendarEvidence.from_mapping(
+        {"cn.index.sz_component": evidence}
+    )
+    assert _snapshot(partial).trading_day_status is TradingDayStatus.UNKNOWN
+
+
+def test_snapshot_status_is_unknown_when_calendars_disagree():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    composition = IndexScopedCalendarEvidence.from_mapping(
+        {
+            "cn.index.sh_comp": _szse_evidence(closed_days=(14,)),
+            "cn.index.sz_component": _szse_evidence(),
+            "cn.index.chinext": _szse_evidence(),
+            "cn.index.csi300": _szse_evidence(closed_days=(14,)),
+        }
+    )
+    snapshot = _snapshot(composition)
+    assert snapshot.trading_day_status is TradingDayStatus.UNKNOWN
+
+
+def test_snapshot_status_is_unknown_for_dates_the_calendar_does_not_cover():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    composition = IndexScopedCalendarEvidence.from_mapping(
+        {index_id: _szse_evidence(year=2026, month=10) for index_id in _A_SHARE_IDS}
+    )
+    snapshot = _snapshot(
+        composition,
+        results=_daily_k_results(days=("2026-11-03", "2026-11-04")),
+        start_date="2026-11-03",
+        end_date="2026-11-04",
+        evaluation_time="2026-11-04T16:00:00+08:00",
+    )
+    assert snapshot.trading_day_status is TradingDayStatus.UNKNOWN
+
+
+def test_snapshot_status_is_unknown_for_a_multi_market_universe():
+    from analysis.research.global_indices import get_global_index
+    from analysis.research.market_index_universe import MarketIndexUniverse
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    hk = get_global_index("hk.index.hang_seng.hsi")
+    us = get_global_index("us.index.sp_dji.sp500")
+    universe = MarketIndexUniverse(
+        (hk.identity, us.identity), hk.provider_aliases + us.provider_aliases
+    )
+    composition = IndexScopedCalendarEvidence.from_mapping(
+        {
+            "hk.index.hang_seng.hsi": _szse_evidence(),
+            "us.index.sp_dji.sp500": _szse_evidence(),
+        }
+    )
+    snapshot = _snapshot(
+        composition,
+        results=_daily_k_results(
+            index_ids=("hk.index.hang_seng.hsi", "us.index.sp_dji.sp500")
+        ),
+        evaluation_time="2026-10-15T09:00:00+08:00",
+        universe=universe,
+    )
+    assert snapshot.market == "multi"
+    assert snapshot.trading_day_status is TradingDayStatus.UNKNOWN
+
+
+def test_market_level_calendar_evidence_is_rejected():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    with pytest.raises(ValueError, match="canonical index identity"):
+        IndexScopedCalendarEvidence.from_mapping({"cn": _szse_evidence()})
+
+
+def test_snapshot_rejects_a_foreign_calendar_evidence_object():
+    with pytest.raises(TypeError, match="IndexScopedCalendarEvidence"):
+        build_market_snapshot(
+            evaluation_time="2026-10-14T16:00:00+08:00",
+            start_date="2026-10-13", end_date="2026-10-14",
+            calendar=TradingCalendar(), max_age_policy=MaxAgePolicy(timedelta(days=1)),
+            calendar_evidence={"cn": _szse_evidence()},
+        )
+
+
+def test_legacy_single_calendar_still_applies_to_every_identity():
+    snapshot = build_market_snapshot(
+        evaluation_time="2026-10-14T16:00:00+08:00",
+        start_date="2026-10-13", end_date="2026-10-14",
+        calendar=TradingCalendar((
+            TradingCalendarDay("2026-10-13", TradingDayStatus.OPEN),
+            TradingCalendarDay("2026-10-14", TradingDayStatus.OPEN),
+        )),
+        max_age_policy=MaxAgePolicy(timedelta(days=1)),
+        daily_k_results=_daily_k_results(),
+    )
+    assert snapshot.trading_day_status is TradingDayStatus.OPEN
+    assert all(item.change == 1.0 for item in snapshot.observations)

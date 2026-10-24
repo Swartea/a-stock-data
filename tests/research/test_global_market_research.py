@@ -410,3 +410,120 @@ def test_registry_identity_is_not_redefined():
     assert result.index_id == spec.identity.index_id
     assert result.provider_symbol == spec.provider_symbol
     assert result.market == spec.market
+
+
+# --- identity-scoped calendar evidence --------------------------------------
+
+# Labeled fixture: September 2026 SZSE calendar rows.  Test data for this
+# module only; never written to disk and never fetched.
+_LABELED_SZSE_SEPTEMBER_ROWS = [
+    {
+        "jyrq": f"2026-09-{day:02d}",
+        "jybz": "0" if day == 25 else "1",
+    }
+    for day in range(1, 31)
+]
+
+
+def _szse_evidence():
+    """Return one labeled SZSE calendar evidence value."""
+
+    from analysis.research.trading_calendar_evidence import (
+        trading_calendar_evidence_from_szse_rows,
+    )
+
+    return trading_calendar_evidence_from_szse_rows(
+        _LABELED_SZSE_SEPTEMBER_ROWS,
+        year=2026,
+        month=9,
+        fetched_at="2026-08-25T09:30:00+08:00",
+    )
+
+
+def _rows_for(index_id):
+    """Return labeled rows bound to one index id."""
+
+    spec = get_global_index(index_id)
+    return [
+        dict(
+            row,
+            index_id=index_id,
+            market=spec.market,
+            symbol=spec.identity.local_code,
+            name=spec.name,
+            currency=spec.currency,
+            timezone=spec.timezone,
+        )
+        for row in _LABELED_CN_ROWS
+    ]
+
+
+def test_calendar_evidence_resolves_through_the_requested_index_identity():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    composition = IndexScopedCalendarEvidence.from_mapping(
+        {"cn.index.sz_component": _szse_evidence()}
+    )
+    result = gmr.build_global_market_research(
+        "cn.index.sz_component",
+        "2026-09-24",
+        "2026-09-25",
+        evaluation_time="2026-09-25T15:30:00+08:00",
+        providers=[_stub_provider(_ok_envelope(_rows_for("cn.index.sz_component")))],
+        calendar_evidence=composition,
+    )
+    # The SZSE calendar explicitly closes 2026-09-25 for the index it is
+    # assigned to, so the proven status is reported.
+    assert result.trading_day_status == "closed"
+
+
+def test_calendar_evidence_never_leaks_to_a_sibling_index():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    composition = IndexScopedCalendarEvidence.from_mapping(
+        {"cn.index.sz_component": _szse_evidence()}
+    )
+    result = gmr.build_global_market_research(
+        "cn.index.sh_comp",
+        "2026-09-24",
+        "2026-09-25",
+        evaluation_time="2026-09-25T15:30:00+08:00",
+        providers=[_stub_provider(_ok_envelope(_rows_for("cn.index.sh_comp")))],
+        calendar_evidence=composition,
+    )
+    # The SSE Composite has no evidence of its own, so its status stays
+    # unknown instead of borrowing the Shenzhen Component's sessions.
+    assert result.trading_day_status == "unknown"
+
+
+def test_market_level_calendar_evidence_cannot_be_built():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    with pytest.raises(ValueError, match="canonical index identity"):
+        IndexScopedCalendarEvidence.from_mapping({"cn": _szse_evidence()})
+
+
+def test_calendar_and_calendar_evidence_are_mutually_exclusive():
+    from analysis.research.trading_calendar_evidence import (
+        IndexScopedCalendarEvidence,
+    )
+
+    composition = IndexScopedCalendarEvidence.from_mapping(
+        {"cn.index.sz_component": _szse_evidence()}
+    )
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        gmr.build_global_market_research(
+            "cn.index.sz_component",
+            "2026-09-24",
+            "2026-09-25",
+            evaluation_time="2026-09-25T15:30:00+08:00",
+            calendar=object(),
+            providers=[_stub_provider(_ok_envelope(_rows_for("cn.index.sz_component")))],
+            calendar_evidence=composition,
+        )

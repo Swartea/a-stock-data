@@ -11,20 +11,32 @@ calendar coverage period; it does not imply when the exchange published that
 calendar.  Therefore ``published_at`` and ``data_as_of`` remain unknown unless
 a later source adapter can prove those clocks explicitly.
 
-Market scoping
---------------
+Identity scoping
+----------------
 
-:class:`MarketScopedCalendarEvidence` is the immutable composition that maps
-*explicit market tokens* onto the :class:`TradingCalendarEvidence` values that
-already exist.  It introduces **no second market registry**: the tokens are the
-ones the canonical global-index registry already uses, and callers resolve an
-index to its market through that registry rather than through a table here.
+:class:`IndexScopedCalendarEvidence` is the immutable composition that maps
+*canonical index identities* (``index_id``) onto the
+:class:`TradingCalendarEvidence` values that already exist.  It introduces **no
+second registry**: identity resolution reuses the existing index registries in
+:mod:`analysis.research.index_registry` (canonical ids and their historical
+aliases) and :mod:`analysis.research.global_indices` (the V1 index universe).
+Callers resolve an index to its calendar by its own identity, never by a
+market token.
+
+Scoping by identity is what keeps the evidence honest.  A Shenzhen (SZSE)
+exchange calendar proves the sessions of the *SZSE-published* indices; it does
+not prove the sessions of the SSE Composite or of the CSI 300, which are
+published by different bodies.  Assigning SZSE evidence to those identities is
+therefore an explicit, caller-owned act -- never an automatic consequence of
+sharing a market token.
 
 The composition is deliberately conservative:
 
-* a market that is absent from the composition resolves to ``None`` /
-  ``UNKNOWN`` -- never to some other market's calendar;
-* a date the market's calendar does not cover resolves to ``UNKNOWN`` --
+* an identity that is absent from the composition resolves to ``None`` /
+  ``UNKNOWN`` -- never to some other index's calendar;
+* a market-level token (``cn``/``hk``/``us``) is **not** an identity and is
+  rejected on construction and never resolves on lookup;
+* a date the index's calendar does not cover resolves to ``UNKNOWN`` --
   weekends and holidays are never inferred;
 * the four-field :class:`TradingCalendarEvidence` contract
   (``calendar``/``provider``/``time``/``quality``) is returned untouched.
@@ -32,7 +44,6 @@ The composition is deliberately conservative:
 
 from __future__ import annotations
 
-import re
 from calendar import monthrange
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
@@ -40,16 +51,23 @@ from datetime import date as Date
 from types import MappingProxyType
 from typing import Any
 
+from .global_indices import list_global_indices
+from .index_registry import A_SHARE_INDEX_BY_ID, canonical_index_id
 from .providers import ProviderSpec, build_default_provider_registry
 from .quality import CompletenessStatus, FreshnessStatus, QualityMetadata
 from .time_semantics import TimeMetadata
 from .trading_calendar import TradingCalendar, TradingDayStatus
 from .trading_calendar_szse import trading_calendar_from_szse_rows
 
-# Canonical market-token shape.  The token vocabulary itself is owned by the
-# canonical global-index registry; this pattern only rejects values that could
-# never be a market token, so no second vocabulary is defined here.
-_MARKET_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+# Canonical index identities known to the existing index registries.  Both
+# sources already exist: ``index_registry`` owns the canonical A-share
+# identities and their historical aliases, ``global_indices`` owns the V1
+# global-index universe.  No new registry -- and in particular no new *market*
+# registry -- is introduced here.
+_KNOWN_INDEX_IDS: frozenset[str] = frozenset(
+    set(A_SHARE_INDEX_BY_ID)
+    | {spec.identity.index_id for spec in list_global_indices()}
+)
 
 
 @dataclass(frozen=True)
@@ -83,37 +101,48 @@ class TradingCalendarEvidence:
         return tuple(field.name for field in fields(cls))
 
 
-def canonical_market_token(value: Any) -> str | None:
-    """Return the canonical market token for ``value``, or ``None``.
+def canonical_index_identity(value: Any) -> str | None:
+    """Return the canonical index identity for ``value``, or ``None``.
 
-    The canonical form is the lowercase token already used by the global-index
-    registry (``cn``/``hk``/``us``).  Surrounding whitespace and casing are
-    normalized the same way the existing market selectors normalize them; no
-    new token vocabulary is introduced and unknown tokens stay unknown.
+    ``value`` must be a canonical lowercase ``index_id`` known to the existing
+    index registries, or one of their historical aliases -- the same alias
+    vocabulary :func:`analysis.research.index_registry.canonical_index_id`
+    already accepts at API boundaries.  A market token such as ``cn`` is not
+    an identity and therefore never resolves.
     """
 
     if not isinstance(value, str):
         return None
-    token = value.strip().lower()
-    if not token or not _MARKET_TOKEN_RE.fullmatch(token):
+    token = value.strip()
+    if not token or token != token.lower():
         return None
-    return token
+    try:
+        canonical = canonical_index_id(token)
+    except TypeError:
+        return None
+    if canonical not in _KNOWN_INDEX_IDS:
+        return None
+    return canonical
 
 
 @dataclass(frozen=True)
-class MarketScopedCalendarEvidence:
-    """Immutable composition of market-scoped trading-calendar evidence.
+class IndexScopedCalendarEvidence:
+    """Immutable composition of identity-scoped trading-calendar evidence.
 
-    The composition maps *explicit market tokens* to the
+    The composition maps *canonical index identities* to the
     :class:`TradingCalendarEvidence` values that already exist.  It is a pure
     lookup surface: it stores evidence, it never creates evidence, and it
     never derives a calendar from a date.
 
     Resolution rules (all deliberately conservative):
 
-    * **Missing market** -- :meth:`evidence_for` returns ``None`` and
-      :meth:`status_on` returns ``UNKNOWN``.  A market without evidence never
-      borrows another market's calendar.
+    * **Missing identity** -- :meth:`evidence_for` returns ``None`` and
+      :meth:`status_on` returns ``UNKNOWN``.  An index without evidence never
+      borrows another index's calendar, and one index's calendar never
+      applies to a sibling index merely because both live in the same market.
+    * **Market-level token** -- ``cn`` / ``hk`` / ``us`` are not identities:
+      they are rejected when the composition is built and never resolve on
+      lookup.
     * **Uncovered date** -- :meth:`status_on` returns ``UNKNOWN`` because
       :meth:`TradingCalendar.status_on` only reports dates the source
       explicitly covered.  Weekends and holidays are never inferred.
@@ -122,7 +151,7 @@ class MarketScopedCalendarEvidence:
       exactly as the source adapter built them.
 
     The composition is immutable and deterministic: entries are normalized to a
-    tuple ordered by market token, so iteration order never depends on the
+    tuple ordered by index id, so iteration order never depends on the
     caller's insertion order.
     """
 
@@ -136,86 +165,87 @@ class MarketScopedCalendarEvidence:
             pairs = tuple(raw)
         else:
             raise TypeError(
-                "entries must be a mapping of market token to TradingCalendarEvidence"
+                "entries must be a mapping of index id to TradingCalendarEvidence"
             )
 
         normalized: list[tuple[str, TradingCalendarEvidence]] = []
         seen: set[str] = set()
         for pair in pairs:
             if not isinstance(pair, (tuple, list)) or len(pair) != 2:
-                raise TypeError("entries must contain (market, evidence) pairs")
-            market, evidence = pair
-            token = canonical_market_token(market)
-            if token is None:
+                raise TypeError("entries must contain (index_id, evidence) pairs")
+            index_id, evidence = pair
+            canonical = canonical_index_identity(index_id)
+            if canonical is None:
                 raise ValueError(
-                    "market must be a canonical lowercase token "
-                    "(for example 'cn', 'hk', 'us')"
+                    "index_id must be a canonical index identity known to the "
+                    "index registry (for example 'cn.index.sz_component'); "
+                    "market-level tokens such as 'cn' are not identities"
                 )
-            if token in seen:
-                raise ValueError(f"duplicate market in calendar evidence: {token!r}")
+            if canonical in seen:
+                raise ValueError(f"duplicate index in calendar evidence: {canonical!r}")
             if not isinstance(evidence, TradingCalendarEvidence):
                 raise TypeError("calendar evidence must be TradingCalendarEvidence")
-            seen.add(token)
-            normalized.append((token, evidence))
+            seen.add(canonical)
+            normalized.append((canonical, evidence))
 
         normalized.sort(key=lambda item: item[0])
         object.__setattr__(self, "entries", tuple(normalized))
-        object.__setattr__(self, "_by_market", MappingProxyType(dict(normalized)))
+        object.__setattr__(self, "_by_index", MappingProxyType(dict(normalized)))
 
     @classmethod
     def from_mapping(
-        cls, markets: Mapping[str, TradingCalendarEvidence]
-    ) -> "MarketScopedCalendarEvidence":
-        """Build a composition from a ``{market token: evidence}`` mapping."""
+        cls, index_ids: Mapping[str, TradingCalendarEvidence]
+    ) -> "IndexScopedCalendarEvidence":
+        """Build a composition from an ``{index id: evidence}`` mapping."""
 
-        if not isinstance(markets, Mapping):
-            raise TypeError("markets must be a mapping of market token to evidence")
-        return cls(tuple(markets.items()))
+        if not isinstance(index_ids, Mapping):
+            raise TypeError("index_ids must be a mapping of index id to evidence")
+        return cls(tuple(index_ids.items()))
 
     @classmethod
     def contract_fields(cls) -> tuple[str, ...]:
-        """Return the intentionally small market-scoping composition surface."""
+        """Return the intentionally small identity-scoping composition surface."""
 
         return tuple(field.name for field in fields(cls))
 
     @property
-    def markets(self) -> tuple[str, ...]:
-        """Return the covered market tokens in deterministic order."""
+    def index_ids(self) -> tuple[str, ...]:
+        """Return the covered index identities in deterministic order."""
 
-        return tuple(token for token, _ in self.entries)
+        return tuple(index_id for index_id, _ in self.entries)
 
-    def evidence_for(self, market: Any) -> TradingCalendarEvidence | None:
-        """Return the evidence registered for ``market``, or ``None``.
+    def evidence_for(self, index_id: Any) -> TradingCalendarEvidence | None:
+        """Return the evidence registered for ``index_id``, or ``None``.
 
-        ``None`` means "this market has no calendar evidence"; it never means
-        "closed" and never falls back to another market.
+        ``None`` means "this index has no calendar evidence"; it never means
+        "closed" and never falls back to another index.
         """
 
-        token = canonical_market_token(market)
-        if token is None:
+        canonical = canonical_index_identity(index_id)
+        if canonical is None:
             return None
-        return self._by_market.get(token)
+        return self._by_index.get(canonical)
 
-    def calendar_for(self, market: Any) -> TradingCalendar:
-        """Return the calendar registered for ``market``.
+    def calendar_for(self, index_id: Any) -> TradingCalendar:
+        """Return the calendar registered for ``index_id``.
 
-        A market without evidence yields an **empty** calendar, which keeps
-        every date status ``UNKNOWN`` instead of borrowing another market's
+        An index without evidence yields an **empty** calendar, which keeps
+        every date status ``UNKNOWN`` instead of borrowing another index's
         sessions.
         """
 
-        evidence = self.evidence_for(market)
+        evidence = self.evidence_for(index_id)
         return evidence.calendar if evidence is not None else TradingCalendar()
 
-    def status_on(self, market: Any, date: str) -> TradingDayStatus:
-        """Return the explicit status of ``date`` in ``market``.
+    def status_on(self, index_id: Any, date: str) -> TradingDayStatus:
+        """Return the explicit status of ``date`` for ``index_id``.
 
-        Returns ``UNKNOWN`` for a missing market and for a date the market's
-        calendar does not explicitly cover.  No weekend or holiday inference
-        happens here.
+        Returns ``UNKNOWN`` for an index without evidence and for a date the
+        index's calendar does not explicitly cover.  No weekend or holiday
+        inference happens here.
         """
 
-        evidence = self.evidence_for(market)
+        evidence = self.evidence_for(index_id)
         if evidence is None:
             return TradingDayStatus.UNKNOWN
         return evidence.calendar.status_on(date)
@@ -237,6 +267,9 @@ def trading_calendar_evidence_from_szse_rows(
 
     Freshness stays ``UNKNOWN`` because B1 has no age policy.  The official
     provider identity also does not imply freshness or publication time.
+
+    The returned evidence carries no index scope of its own: the caller
+    decides which canonical index identity it is explicitly assigned to.
     """
 
     calendar = trading_calendar_from_szse_rows(rows, year=year, month=month)

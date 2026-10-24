@@ -38,10 +38,13 @@ The builder accepts one of two calendar sources:
 * ``calendar`` -- the existing single-calendar argument.  Its behavior is
   unchanged for every caller that does not supply the new composition.
 * ``calendar_evidence`` -- the optional
-  :class:`~analysis.research.trading_calendar_evidence.MarketScopedCalendarEvidence`
-  composition.  The index's market comes from the canonical global-index
-  registry, so no second market registry is introduced, and a market without
-  evidence yields an **empty** calendar whose status stays ``unknown``.
+  :class:`~analysis.research.trading_calendar_evidence.IndexScopedCalendarEvidence`
+  composition.  The calendar is resolved through the requested index's own
+  canonical identity (``spec.identity.index_id``) via the existing index
+  registry, so no second market registry is introduced, and an index without
+  evidence yields an **empty** calendar whose status stays ``unknown``.  One
+  index's evidence never applies to a sibling index that merely shares its
+  market.
 
 The two inputs are mutually exclusive: supplying both raises ``ValueError``
 instead of silently preferring one.
@@ -71,7 +74,7 @@ from analysis.research.market_index_universe import MarketIndexUniverse
 from analysis.research.market_snapshot_service import build_market_snapshot
 from analysis.research.market_state import MarketIndexObservation
 from analysis.research.trading_calendar import TradingCalendar
-from analysis.research.trading_calendar_evidence import MarketScopedCalendarEvidence
+from analysis.research.trading_calendar_evidence import IndexScopedCalendarEvidence
 
 # Exact registered identities with validated daily-K provider evidence. A
 # registry entry alone must not make an index appear available. HK/US entries
@@ -442,7 +445,7 @@ def build_global_market_research(
     transport: Any = None,
     snapshot_builder: Any = _default_snapshot_builder,
     now: datetime | None = None,
-    calendar_evidence: MarketScopedCalendarEvidence | None = None,
+    calendar_evidence: IndexScopedCalendarEvidence | None = None,
 ) -> GlobalMarketResearch:
     """Compose normalized daily bars plus an evidence-backed observation.
 
@@ -451,16 +454,16 @@ def build_global_market_research(
     provider call, and every downstream failure degrades into an explicit
     status rather than an exception.
 
-    ``calendar_evidence`` is the optional market-scoped calendar composition.
+    ``calendar_evidence`` is the optional identity-scoped calendar composition.
     It is mutually exclusive with ``calendar``: supplying both raises
     ``ValueError`` instead of silently preferring one.  Without it the legacy
     single-calendar behavior is unchanged.
     """
 
     if calendar_evidence is not None and not isinstance(
-        calendar_evidence, MarketScopedCalendarEvidence
+        calendar_evidence, IndexScopedCalendarEvidence
     ):
-        raise TypeError("calendar_evidence must be MarketScopedCalendarEvidence or None")
+        raise TypeError("calendar_evidence must be IndexScopedCalendarEvidence or None")
     if calendar_evidence is not None and calendar is not None:
         raise ValueError(
             "calendar and calendar_evidence are mutually exclusive; omit "
@@ -559,11 +562,13 @@ def build_global_market_research(
 
     snapshot: Any = None
     snapshot_error: str | None = None
-    # The composition resolves through the canonical registry's market token.
-    # A market without evidence yields an empty calendar, so the snapshot's
-    # trading-day status stays unknown instead of being inferred.
+    # The composition resolves through the requested index's own canonical
+    # identity.  An index without evidence yields an empty calendar, so the
+    # snapshot's trading-day status stays unknown instead of being inferred --
+    # and evidence assigned to a sibling index never leaks in through a shared
+    # market token.
     resolved_calendar = (
-        calendar_evidence.calendar_for(spec.market)
+        calendar_evidence.calendar_for(spec.identity.index_id)
         if calendar_evidence is not None
         else (calendar if calendar is not None else TradingCalendar())
     )
