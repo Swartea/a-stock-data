@@ -132,7 +132,7 @@ def _build_result(items: list, days: int, source: str, fetched_at: str) -> dict:
     cutoff = (date.today() - timedelta(days=days)).isoformat()
     recent = [it for it in items if it.get("date") and it["date"] >= cutoff]
     recent.sort(key=lambda x: x.get("date", ""), reverse=True)
-    rating_cnt = Counter()
+    rating_cnt: Counter[str] = Counter()
     for it in recent:
         r = (it.get("rating") or "").strip()
         if r:
@@ -152,36 +152,37 @@ def _fetch_eastmoney(code: str, days: int, fetched_at: str) -> dict:
     """东财 reportapi 个股研报（qType=0，纯 6 位 code，时间窗）。
     健康响应一律返回 dict（窗口内 0 篇也返回 count=0 的 dict）；
     仅请求/解析级失败才抛异常（由上层决定降级）。"""
-    sess = requests.Session()
-    sess.headers.update({"User-Agent": UA})
-    begin = date.today() - timedelta(days=days)
-    end = date.today() + timedelta(days=1)              # 容错当日发布
-    records = []
-    for page in range(1, 4):                            # 时间窗内一页即够，防御翻页
-        params = {
-            "industryCode": "*", "pageSize": "100", "industry": "*",
-            "rating": "*", "ratingChange": "*",
-            "beginTime": begin.isoformat(), "endTime": end.isoformat(),
-            "pageNo": str(page), "fields": "", "qType": "0",
-            "orgCode": "", "code": code, "rcode": "",
-            "p": str(page), "pageNum": str(page), "pageNumber": str(page),
-        }
-        r = sess.get(REPORT_API, params=params,
-                     headers={"Referer": "https://data.eastmoney.com/"},
-                     timeout=30)
-        r.raise_for_status()
-        d = r.json()
-        rows = d.get("data") or []
-        if not rows:
-            break
-        records.extend(rows)
-        try:
-            total_page = int(d.get("TotalPage") or 1)
-        except (TypeError, ValueError):
-            total_page = 1
-        if page >= total_page or len(records) >= 300:
-            break
-        time.sleep(random.uniform(0.5, 1.0))            # 东财限流：翻页间歇
+    # 会话只覆盖本次东财拉取: 正常返回与异常退出都关连接池, 不用等 GC
+    with requests.Session() as sess:
+        sess.headers.update({"User-Agent": UA})
+        begin = date.today() - timedelta(days=days)
+        end = date.today() + timedelta(days=1)          # 容错当日发布
+        records: list = []
+        for page in range(1, 4):                        # 时间窗内一页即够，防御翻页
+            params = {
+                "industryCode": "*", "pageSize": "100", "industry": "*",
+                "rating": "*", "ratingChange": "*",
+                "beginTime": begin.isoformat(), "endTime": end.isoformat(),
+                "pageNo": str(page), "fields": "", "qType": "0",
+                "orgCode": "", "code": code, "rcode": "",
+                "p": str(page), "pageNum": str(page), "pageNumber": str(page),
+            }
+            r = sess.get(REPORT_API, params=params,
+                         headers={"Referer": "https://data.eastmoney.com/"},
+                         timeout=30)
+            r.raise_for_status()
+            d = r.json()
+            rows = d.get("data") or []
+            if not rows:
+                break
+            records.extend(rows)
+            try:
+                total_page = int(d.get("TotalPage") or 1)
+            except (TypeError, ValueError):
+                total_page = 1
+            if page >= total_page or len(records) >= 300:
+                break
+            time.sleep(random.uniform(0.5, 1.0))        # 东财限流：翻页间歇
 
     items = []
     for rec in records:

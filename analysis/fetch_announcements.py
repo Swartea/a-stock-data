@@ -42,7 +42,8 @@ POSITIVE_KW = ("中标", "回购", "增持", "业绩预增", "重大合同", "�
 _SH_INDEX = {"000300", "000905", "000016", "000688", "000852", "000010"}
 
 # 巨潮 股票→orgId 映射（模块级缓存，首次调用拉取一次，全程复用）
-_CNINFO_ORGID_MAP = {}
+# 注解: 键是 6 位代码 (str), 值是巨潮返回的 orgId (str) —— 让 mypy 能校验 .get(code)
+_CNINFO_ORGID_MAP: dict[str, str] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -115,45 +116,49 @@ def _result(source: str, anns: list) -> dict:
 def _fetch_eastmoney(code: str, days: int) -> list:
     cutoff = _cutoff(days)
     out = []
-    sess = requests.Session()
-    page_index = 1
-    while page_index <= 3:          # 每页 50 条，最多翻 3 页（150 条），窗口内已取完即提前停
-        params = {
-            "page_size": 50,
-            "page_index": page_index,
-            "ann_type": "A",
-            "client_source": "web",
-            "stock_list": code,
-        }
-        r = sess.get(EM_URL, params=params, headers={"User-Agent": UA}, timeout=20)
-        r.raise_for_status()
-        d = r.json()
-        lst = ((d.get("data") or {}).get("list")) or []
-        if not lst:
-            break
-        for item in lst:
-            title = (item.get("title") or item.get("title_ch") or "").strip()
-            date = _norm_date(item.get("notice_date"))
-            if not title:
-                continue
-            if cutoff and (not date or date < cutoff):
-                continue
-            codes = item.get("codes") or []
-            stk = next((x.get("stock_code") for x in codes
-                        if x.get("stock_code") == code), None) or (codes[0].get("stock_code") if codes else code)
-            columns = [c.get("column_name", "") for c in (item.get("columns") or [])]
-            out.append({
-                "date": date,
-                "title": title,
-                "category": "、".join(c for c in columns if c),
-                "sentiment": _sentiment(title),
-                "url": f"https://data.eastmoney.com/notices/detail/{stk}/{item.get('art_code', '')}.html",
-            })
-        # 列表按时间倒序：本页最后一条已落在窗口外 → 无需再翻页
-        oldest = _norm_date((lst[-1] or {}).get("notice_date"))
-        if not cutoff or not oldest or oldest < cutoff:
-            break
-        page_index += 1
+    # 会话只覆盖本次东财拉取: 正常返回与异常退出都关连接池, 不用等 GC
+    with requests.Session() as sess:
+        page_index = 1
+        while page_index <= 3:      # 每页 50 条，最多翻 3 页（150 条），窗口内已取完即提前停
+            # params 的值混有 int (page_size/page_index) 与 str, 显式标注成
+            # `dict[str, str | int]` 才能让 mypy 校验它满足 requests 的 params 契约
+            # (写成 dict[str, object] 会被判过宽而报 arg-type)。
+            params: dict[str, str | int] = {
+                "page_size": 50,
+                "page_index": page_index,
+                "ann_type": "A",
+                "client_source": "web",
+                "stock_list": code,
+            }
+            r = sess.get(EM_URL, params=params, headers={"User-Agent": UA}, timeout=20)
+            r.raise_for_status()
+            d = r.json()
+            lst = ((d.get("data") or {}).get("list")) or []
+            if not lst:
+                break
+            for item in lst:
+                title = (item.get("title") or item.get("title_ch") or "").strip()
+                date = _norm_date(item.get("notice_date"))
+                if not title:
+                    continue
+                if cutoff and (not date or date < cutoff):
+                    continue
+                codes = item.get("codes") or []
+                stk = next((x.get("stock_code") for x in codes
+                            if x.get("stock_code") == code), None) or (codes[0].get("stock_code") if codes else code)
+                columns = [c.get("column_name", "") for c in (item.get("columns") or [])]
+                out.append({
+                    "date": date,
+                    "title": title,
+                    "category": "、".join(c for c in columns if c),
+                    "sentiment": _sentiment(title),
+                    "url": f"https://data.eastmoney.com/notices/detail/{stk}/{item.get('art_code', '')}.html",
+                })
+            # 列表按时间倒序：本页最后一条已落在窗口外 → 无需再翻页
+            oldest = _norm_date((lst[-1] or {}).get("notice_date"))
+            if not cutoff or not oldest or oldest < cutoff:
+                break
+            page_index += 1
     return out
 
 

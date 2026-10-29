@@ -121,7 +121,7 @@ def fetch_finance_summary(code: str) -> dict:
             })
 
         # --- 同比：累计 vs 上年同期（同日-月，年份-1）---
-        by_md = {}
+        by_md: dict[str, list[dict]] = {}   # "MM-DD" → 该月日的各期记录（值为异构 period dict）
         for p in periods:
             by_md.setdefault(p["report_date"][5:], []).append(p)
         for p in periods:

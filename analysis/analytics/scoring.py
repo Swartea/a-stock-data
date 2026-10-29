@@ -62,7 +62,7 @@ def _build_scoring_breakdown(score: dict) -> dict:
     for key, label, sub_dims in _SCORING_BREAKDOWN_GROUPS:
         grp_score = 0
         grp_max = 0
-        grp_dims = {}
+        grp_dims: dict[str, float | None] = {}   # 缺失/非法子维标 None, 正常为 clamp 后分值
         for d in sub_dims:
             mx = _SCORE_DIM_MAX[d]
             grp_max += mx

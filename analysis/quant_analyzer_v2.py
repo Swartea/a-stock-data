@@ -879,7 +879,7 @@ def fetch_macro_snapshot() -> dict:
     # 题材词频
     top_tags = []
     if out["hot_stocks"]:
-        tag_count = {}
+        tag_count: dict[str, int] = {}   # 题材词 → 出现次数
         for hs in out["hot_stocks"]:
             for r in hs.get("reason", "").split("+"):
                 r = r.strip()
@@ -922,7 +922,7 @@ def fetch_holder_num_change(code: str, limit: int = 4) -> list:
         for q in ['1231', '0930', '0630', '0331']:
             candidates.append(f'{y}{q}')
 
-    rows = []
+    rows: list[dict] = []   # 股东户数变动记录（值为 str / int / float / int|None 混装的异构 dict）
     seen = set()
     for d in candidates:
         if len(rows) >= limit:
