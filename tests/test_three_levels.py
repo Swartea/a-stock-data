@@ -402,12 +402,24 @@ def test_html_renderer_contains_three_levels_same_source(html_report_v3_source):
         "HTML 渲染器必须读 result['three_levels']"
 
 
-def test_docx_renderer_follows_md_no_hardcode(md_to_docx_source):
+def test_docx_renderer_follows_md_no_hardcode(md_to_docx_split_source):
     """DOCX 渲染器 md_to_docx.py 不硬编码'三价位'——DOCX 跟随 MD 渲染
 
     P1.5 整改: 用 conftest.md_to_docx_source fixture
+    P2-E S0 整改: 改读 md_to_docx_split_source（薄壳 + 全部 docx_*.py 宿主模块）,
+    并在否定式断言**之前**加覆盖断言 —— 否定式断言在扫描面缺失时会恒真,
+    拆分会静默放松这条门禁, 覆盖断言是它的 fail-closed 前置。
     """
-    src = md_to_docx_source
+    src = md_to_docx_split_source
+    # 覆盖断言: 扫描面必须完整, 否则下面的"不在 src 里"没有意义
+    assert not src.missing_symbols, \
+        f"扫描面漏了宿主符号 {src.missing_symbols}（已纳入: {list(src.files)}）"
+    assert not src.missing_modules, \
+        f"analysis/reporting/ 下的 {src.missing_modules} 没被纳入扫描面"
+    assert not src.absent_modules, \
+        f"DOCX_HOST_MODULES 登记了但磁盘上不存在的模块: {src.absent_modules}"
+    assert src.line_count >= 560, \
+        f"扫描面总行数 {src.line_count} < 560（拆分前 584 的 ~96%），说明有模块漏出扫描面"
     # DOCX 跟随 MD, 不应自己写死"三价位(同源)"或"4 候选"等
     assert "三价位(同源)" not in src, \
         "md_to_docx.py 不应硬编码'三价位(同源)'，DOCX 跟随 MD 渲染"

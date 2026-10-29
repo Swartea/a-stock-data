@@ -54,6 +54,31 @@ jobs:
           # 现有数百条历史样式债务继续完整输出到诊断文件，不在本 PR 批量改动。
           ruff check analysis tests --select=E9,F63,F7,F82
 
+      - name: Critical Ruff gate (config-excluded paths, narrow)
+        run: |
+          # 补上一步门禁的盲区：pyproject.toml:96-102 的 exclude 含 analysis/sections
+          # 与 tests/sections。上一步传的是**目录**（analysis tests），exclude 在目录递归
+          # 时生效，故这两个文件从未真正被 ruff 检查过（--show-files 可证它们不在 125
+          # 份被检查清单里）。这里只点名这两个文件，不扩大到整个被排除目录。
+          #
+          # 为什么用 --isolated：ruff 对**显式路径**默认不应用 exclude（已实测），但那是
+          # 隐式行为，加 --force-exclude 即失效。--isolated 完全忽略 pyproject 配置，
+          # 把「这两个文件必被检查」做成结构性保证，不依赖上述默认。
+          # --target-version 与 pyproject.toml:94 的 py310 对齐（--isolated 不读该设置）；
+          # pyproject 对这两个文件的 per-file-ignores（E402/F401/F811/B011）与本步
+          # 选中的 E9,F63,F7,F82 无交集，故 isolated 不改变任何实际判定。
+          # --no-cache：两文件无缓存收益，顺带保证门禁与环境无关。
+          # 规则与上一步 Critical 门禁完全一致。
+          #
+          # 不要加 --show-files：ruff 0.16.10 的 --show-files 是查询模式，会**抑制全部
+          # 诊断并强制 exit 0**（实测：同一份含 F821 的文件，带它 exit 0 无输出，去掉它
+          # exit 1 报 F821）。用它做门禁等于装一个永远绿的空门禁。范围留证请用
+          # `ruff check ... --show-files` 单独跑，或依赖本步显式点名的两个路径。
+          ruff check --isolated --no-cache --target-version py310 \
+            --select=E9,F63,F7,F82 \
+            analysis/sections/__init__.py \
+            tests/sections/test_registry_gate.py
+
       - name: Full Ruff diagnostics (advisory)
         if: always()
         run: |

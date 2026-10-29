@@ -489,3 +489,245 @@ def pytest_collection_modifyitems(items, config) -> None:
     if drop:
         config.hook.pytest_deselected(items=drop)
         items[:] = keep
+
+
+# ============================================================
+# DOCX 渲染器拆分扫描面 fixture (P2-E S0: 修 H1 否定式门禁退化)
+# ============================================================
+# 为什么需要它
+# ------------
+# tests/test_three_levels.py::test_docx_renderer_follows_md_no_hardcode 与
+# tests/test_multi_state_trading_plan.py::test_docx_renderer_does_not_hardcode_operation
+# 都是**否定式**源码文本断言 (assert "X" not in src)。拆分前 src = 薄壳全文;
+# 一旦 P2-E S1-S5 把代码搬进 analysis/reporting/docx_*.py, 薄壳变小 —— 被搬走的
+# 那一片若恰好含该字面量, 全文就不再包含它, 断言恒真, **静默假绿且不会自己报警**。
+# 每搬一片门禁就松一分。故扫描面必须从"单文件"升级为"薄壳 + 全部宿主模块",
+# 并配下面两条覆盖断言, 让判据随代码搬迁保持有效。
+#
+# 与 P2-D 的方向相反: P2-D 的源码文本断言是**肯定式**, 搬走会变红、自己报警
+# (故 P2D 把 H2 放到 S5); 这里是**否定式**, 搬走只会变绿 —— 所以 P2-E 必须在
+# S0 就修, 不能压到靠后。
+#
+# 拆分前 (S0 现状): 只有薄壳, 本 fixture 等价于读 analysis/md_to_docx.py 单文件。
+# 拆分后 (S1-S5): 每建一个 analysis/reporting/docx_*.py 需在下面 DOCX_HOST_MODULES
+# **登记一行**; 登记即纳入, 漏登记即报错。刻意不做自动 glob —— 理由见该常量注释。
+DOCX_HOST_SHELL = "md_to_docx.py"
+DOCX_HOST_MODULE_GLOB = "docx_*.py"
+
+# **已登记**的宿主模块（相对 analysis/）。这是 host_files 模块部分的**唯一来源**。
+#
+# 为什么必须显式登记、不能用 glob
+# ------------------------------
+# 初版用 `sorted(reporting_dir.glob("docx_*.py"))` 拼 host_files, 又用**同一个 glob**
+# 算磁盘集合 on_disk, 于是 `missing_modules = on_disk - included` **恒为空集** ——
+# 差别被自己抵消了。这类"扫到什么就比什么"的差分是恒真门禁: S1 建出
+# docx_primitives.py 却没登记, 断言也不会红, 而它的 docstring/计划里却写着
+# "挡不住新模块被建出来却没登记进扫描面"。**它当时并没有挡住。**
+#
+# 修法是让两侧**独立**: 登记是判据, 磁盘是事实, 差分才有信息量。代价是 S1 每建一个
+# 模块必须在这里登记一行 —— 这是有意的摩擦: 漏登记 = 漏出门禁, 门禁自己会报警。
+#
+# S1 起: docx_primitives.py 已建出（区块 2/3/4, 108 符号行）并在此登记。S2/S3/S4
+# 建出 docx_tables / docx_paragraphs / docx_sections 时各加一行 —— 漏加即
+# `missing_modules` 报错, 加了未建即 `absent_modules` 报错, 两个方向都会自己报警。
+#
+# S2 起（2026-10-06）: docx_tables.py 已建出（区块 6, 94 符号行）并在此登记,
+# 即 §七 N2 修正节要求的「每建一个模块必须登记一行」。**本行不是可选项**:
+# 删掉它, H1 两条否定式门禁的扫描面就漏掉整个模块, 而否定式断言在漏扫时**恒真**
+# （§7.3 表格「不会 —— 静默假绿」）, 且 `line_count >= 560` 也未必跌破 —— 判据失效
+# 且不报警。S4 建 docx_sections 时同样再加一行。
+#
+# S3 起（2026-10-06）: docx_paragraphs.py 已建出（区块 5, 90 符号行）并在此登记。
+# ⚠️ 本模块是 S3 的**首要风险面**: 区块 5 含**全部中文关键词分支**（`看空|看多`、
+# `数据来源`、`⚠`、`⚠️ 免责声明`、`风险警报` 上色）—— 用户可见文案契约, §八 R3 列为
+# 「高」严重度。漏登记本模块 = H1 两条否定式门禁对这一整块**失去覆盖**, 且因为
+# `line_count >= 560` 在 S3 之后仍远高于阈值（薄壳 361 + 三模块 486 ≈ 847）, 该
+# 覆盖断言**不会替你发现**——只有 `missing_modules` 会。这正是 §七 N2 要求把
+# 判据（登记）与事实（磁盘扫描）拆成两个独立来源的原因。
+#
+# S4 起（2026-10-06）: docx_sections.py 已建出（区块 7, 70 符号行）并在此登记。
+# 区块 7 是 §三 耦合最深的一块（扇出横跨 4 个区块: primitives 的 `_fmt`/`C_MUTED`、
+# paragraphs 的 3 个 `add_*`、tables 的 `flush_table`、python-docx 的
+# `WD_ALIGN_PARAGRAPH`/`Pt`）。漏登记本模块 = H1 两条否定式门禁对灰度块
+# `_load_result_near` / `_render_md_block` **失去覆盖**; 且 `line_count >= 560`
+# 在 S4 之后仍远高于阈值（薄壳 317 + 四模块 556 ≈ 873）, 仍**只有**
+# `missing_modules` 会发现。反向也成立: 本行登记了而磁盘上没有该文件时,
+# `absent_modules` 立刻报错（登记与事实脱节）。
+DOCX_HOST_MODULES: tuple[str, ...] = (
+    "reporting/docx_primitives.py",
+    "reporting/docx_tables.py",
+    "reporting/docx_paragraphs.py",
+    "reporting/docx_sections.py",
+)
+
+# P2-E §五 **计划**拆出的四个模块。仅供对照 / S1-S5 落位时抄写用, **不参与门禁判定**
+# —— 拿"计划"当现状判据, 会让 S0 一开局就因模块尚未建出而误报, 门禁会被迫加豁免,
+# 豁免一旦存在就会被忘记删除。
+DOCX_PLANNED_MODULES = (
+    "reporting/docx_primitives.py",
+    "reporting/docx_paragraphs.py",
+    "reporting/docx_tables.py",
+    "reporting/docx_sections.py",
+)
+
+# 宿主符号契约: 薄壳保留的 3 个 + P2E §五 四个新模块的全部导出名。
+# 列在这里而不是"现扫现比", 是为了让它成为**独立于被扫对象**的判据 ——
+# 否则"扫到什么就比什么"会退化成恒真。
+DOCX_HOST_SYMBOLS = (
+    # 薄壳: 主函数 + 容错 import 的两个绑定
+    "md_to_docx", "enabled_sections", "_SECTIONS_OK",
+    # → analysis/reporting/docx_primitives.py (设计 token + XML 小工具 + 运行拆分)
+    "C_DARK", "C_ACCENT", "C_RED", "C_GREEN", "C_AMBER", "C_MUTED",
+    "H_HAIR", "H_HEADER", "FILL_ZEBRA", "HX_RED", "HX_GREEN", "HX_AMBER", "HX_ACCENT",
+    "F_CJK", "F_MONO", "_EMOJI_RE",
+    "_set_fonts", "_fmt", "_ensure", "p_border", "cell_shade",
+    "table_borders", "cell_bottom_border", "header_repeat",
+    "md_runs", "add_runs",
+    # → analysis/reporting/docx_paragraphs.py (标题/引用/正文/免责声明)
+    "add_heading", "add_quote", "RISK_EMOJI", "add_body",
+    # → analysis/reporting/docx_tables.py (表格 + 3 处业务阈值)
+    "NUM_RANGE", "DATE_ONLY", "_clean_num", "is_numeric_like", "_cell_add", "flush_table",
+    # → analysis/reporting/docx_sections.py (Section Registry 灰度块)
+    "_load_result_near", "_render_md_block",
+)
+
+
+class _SplitSource(str):
+    """拼接后的扫描面。行为与全文 str 完全一致, 额外带覆盖元数据供断言用。
+
+    做成 str 子类而不是换成一个对象, 是为了让两个否定式测试**一行不改语义**地
+    换 fixture: 它们只做 `in src` 判断, 元数据只给新增的覆盖断言用。
+    """
+
+    # 类级注解（不带赋值）: 让 mypy 知道这些属性存在。
+    # 裸注解不产生类属性, 因此与下面的 __slots__ 不冲突。
+    files: tuple
+    host_symbols: tuple
+    missing_symbols: tuple
+    missing_modules: tuple
+    absent_modules: tuple
+    registered_modules: tuple
+    line_count: int
+
+    __slots__ = (
+        "files", "host_symbols", "missing_symbols", "missing_modules",
+        "absent_modules", "registered_modules", "line_count",
+    )
+
+    def __new__(
+        cls, text: str, files, host_symbols, missing_symbols, missing_modules,
+        absent_modules, registered_modules, line_count,
+    ):
+        obj = super().__new__(cls, text)
+        obj.files = tuple(files)
+        obj.host_symbols = tuple(host_symbols)
+        obj.missing_symbols = tuple(missing_symbols)
+        obj.missing_modules = tuple(missing_modules)
+        obj.absent_modules = tuple(absent_modules)
+        obj.registered_modules = tuple(registered_modules)
+        obj.line_count = line_count
+        return obj
+
+
+def _bound_names(src: str) -> set:
+    """扫描面里所有被绑定的名字 (def / class / 赋值 / 参数), 全仓作用域。"""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return set()
+    names: set = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            names.add(node.id)
+        elif isinstance(node, ast.arg):
+            names.add(node.arg)
+    return names
+
+
+def _scan_docx_modules(reporting_dir: Path) -> set:
+    """**独立**扫描磁盘上现存的 docx_*.py 文件名集合（事实侧）。
+
+    这是门禁的事实来源, 与 DOCX_HOST_MODULES（判据侧）没有任何推导关系 ——
+    两者同源就会互相抵消, 差分恒空。
+    """
+    if not reporting_dir.is_dir():
+        return set()
+    return {p.name for p in reporting_dir.glob(DOCX_HOST_MODULE_GLOB)}
+
+
+def _module_diff(registered, on_disk) -> tuple:
+    """双向差分, 返回 ``(missing, absent)``, 均已排序。
+
+    - missing: 磁盘上有、**没登记** —— 新建了 docx_*.py 却漏出门禁扫描面
+    - absent:  登记了、磁盘上**没有** —— 登记与事实脱节（模块被删/改名/未落位）
+
+    两类都必须可观察。单向差分只挡得住一半: 只报 missing 时, 登记里写着一个
+    根本没建出来的模块也会一路绿灯。
+    """
+    reg = set(registered)
+    disk = set(on_disk)
+    return tuple(sorted(disk - reg)), tuple(sorted(reg - disk))
+
+
+def _assemble_host_modules(analysis_dir: Path, registered) -> tuple:
+    """解析宿主模块面。fixture 与负向控制测试**共用这一条代码路径**。
+
+    返回 ``(present, missing, absent, on_disk)``:
+
+    - present: 登记且磁盘存在的模块路径, 按登记顺序
+    - missing: 见 :func:`_module_diff`
+    - absent:  见 :func:`_module_diff`
+    - on_disk: 磁盘上现存的 docx_*.py 文件名集合
+
+    刻意做成纯函数（只读, 不抛, 不改源码树）: 负向控制要能在隔离临时目录里
+    造出"多一个模块 / 少一个模块"的情形, 而**不能**去动真实的 analysis/reporting/。
+    """
+    registered_paths = [analysis_dir / rel for rel in registered]
+    present = [p for p in registered_paths if p.exists()]
+    on_disk = _scan_docx_modules(analysis_dir / "reporting")
+    missing, absent = _module_diff((Path(rel).name for rel in registered), on_disk)
+    return present, missing, absent, on_disk
+
+
+@pytest.fixture(scope="session")
+def md_to_docx_split_source(analysis_dir: Path) -> _SplitSource:
+    """DOCX 渲染器**全部宿主源码**的拼接全文 (薄壳 + 已登记的宿主模块)。
+
+    S0 之前/当前 (未拆): 等价于读 analysis/md_to_docx.py 单文件。
+    S1-S5 之后: 每建一个 analysis/reporting/docx_*.py 就**在 DOCX_HOST_MODULES
+    登记一行**, 扫描面随之扩大; 漏登记会被 missing_modules 当场抓住。
+
+    附带覆盖元数据, 供否定式测试自查扫描面没有漏:
+      - missing_symbols: 宿主符号契约里有、但扫描面中查不到的
+      - missing_modules: 磁盘上有、但没登记进扫描面的 docx_*.py（应为空）
+      - absent_modules:  登记了、但磁盘上没有的 docx_*.py（应为空）
+      - line_count:     扫描面总行数 (拆分前 584)
+    """
+    shell = analysis_dir / DOCX_HOST_SHELL
+    if not shell.exists():
+        pytest.skip(f"{DOCX_HOST_SHELL} 不存在: {shell}")
+
+    present, missing, absent, on_disk = _assemble_host_modules(
+        analysis_dir, DOCX_HOST_MODULES
+    )
+    host_files = [shell] + present
+
+    parts: list = []
+    rel_files: list = []
+    line_count = 0
+    for p in host_files:
+        text = p.read_text(encoding="utf-8")
+        parts.append(text)
+        rel_files.append(str(p.relative_to(analysis_dir.parent)))
+        line_count += len(text.splitlines())
+
+    joined = "\n".join(parts)
+    declared = _bound_names(joined)
+    missing_symbols = [s for s in DOCX_HOST_SYMBOLS if s not in declared]
+
+    return _SplitSource(
+        joined, rel_files, DOCX_HOST_SYMBOLS, missing_symbols, missing, absent,
+        tuple(Path(rel).name for rel in DOCX_HOST_MODULES), line_count,
+    )

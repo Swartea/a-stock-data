@@ -200,12 +200,24 @@ def test_md_renderer_includes_template_used(report_md_source):
     assert '操作口诀' in src, "report_md.py MD 渲染必须有'操作口诀'字样"
 
 
-def test_docx_renderer_does_not_hardcode_operation(md_to_docx_source):
+def test_docx_renderer_does_not_hardcode_operation(md_to_docx_split_source):
     """DOCX 渲染器 md_to_docx.py 不应硬编码操作口诀（DOCX 跟随 MD）
 
     P1.5 整改: 用 conftest.md_to_docx_source fixture
+    P2-E S0 整改: 改读 md_to_docx_split_source（薄壳 + 全部 docx_*.py 宿主模块）,
+    并在否定式断言**之前**加覆盖断言 —— 否定式断言在扫描面缺失时会恒真,
+    拆分会静默放松这条门禁, 覆盖断言是它的 fail-closed 前置。
     """
-    src = md_to_docx_source
+    src = md_to_docx_split_source
+    # 覆盖断言: 扫描面必须完整, 否则下面的"不在 src 里"没有意义
+    assert not src.missing_symbols, \
+        f"扫描面漏了宿主符号 {src.missing_symbols}（已纳入: {list(src.files)}）"
+    assert not src.missing_modules, \
+        f"analysis/reporting/ 下的 {src.missing_modules} 没被纳入扫描面"
+    assert not src.absent_modules, \
+        f"DOCX_HOST_MODULES 登记了但磁盘上不存在的模块: {src.absent_modules}"
+    assert src.line_count >= 560, \
+        f"扫描面总行数 {src.line_count} < 560（拆分前 584 的 ~96%），说明有模块漏出扫描面"
     # 旧 v2 写死的"分两批进"等字样不应再出现
     assert "分两批进" not in src, \
         "md_to_docx.py 不应硬编码'分两批进'，操作口诀由 MD 模板统一驱动"

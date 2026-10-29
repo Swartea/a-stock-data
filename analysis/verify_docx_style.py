@@ -24,7 +24,7 @@ def main():
 
     # ---------- MD 侧结构（独立统计，用于交叉核对完整性） ----------
     md_head = 0
-    md_by = {}
+    md_by: dict[int, int] = {}   # MD 标题层级(1-6) → 该层级的标题行数
     md_tables = 0
     md_table_lines = 0
     for ln in md.split("\n"):
@@ -48,7 +48,7 @@ def main():
     doc = Document(docx_path)
     paras = doc.paragraphs
     headings = [p for p in paras if p.style.name.startswith("Heading")]
-    h_count = {}
+    h_count: dict[int, int] = {}   # docx 标题层级 → 该层级的段落数
     for p in headings:
         lv = int(p.style.name.split()[-1])
         h_count[lv] = h_count.get(lv, 0) + 1

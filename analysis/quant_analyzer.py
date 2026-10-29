@@ -486,7 +486,7 @@ def analyze_stocks(codes: list):
         top3_strs = [f"{i['name']}({i['change_pct']}%)" for i in top3]
         print(f"  领涨板块: {', '.join(top3_strs)}")
     if hot_stocks:
-        top_reasons = {}
+        top_reasons: dict[str, int] = {}   # 题材词 → 出现次数
         for hs in hot_stocks:
             for r in hs.get("reason", "").split("+"):
                 r = r.strip()

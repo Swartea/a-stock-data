@@ -180,7 +180,7 @@ def _fetch_sina_stock_page(code: str, limit: int) -> list:
     m = re.search(r'<div class="datelist">(.*?)</div>\s*</td>', r.text, re.S)
     chunk = m.group(1) if m else r.text
     chunk = chunk.replace("&nbsp;", " ")        # 行间用 &nbsp; 分隔，先归一化
-    rows = []
+    rows: list[dict[str, str]] = []   # 契约六键 date/title/summary/source/url/sentiment, 值恒为 str
     name = _resolve_name(code)
     pat = re.compile(
         r"(\d{4}-\d{2}-\d{2})(?:\s*(\d{2}:\d{2}))?\s*<a[^>]*href=['\"]([^'\"]+)['\"][^>]*>(.*?)</a>",
